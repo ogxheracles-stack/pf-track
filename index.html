@@ -132,6 +132,7 @@ h2{
   min-height:48px;
 }
 .btn.big{min-height:56px;font-size:17px}
+.btn:disabled,.btn.disabled{opacity:.4;pointer-events:none}
 .stack{display:grid;gap:10px;margin-top:16px}
 .bar{
   height:10px;background:#0c1218;border:1px solid var(--line);
@@ -194,6 +195,7 @@ h2{
   border-radius:12px;background:var(--panel2);border:1px solid var(--line2);
   color:var(--text);font:700 24px/1 var(--font);cursor:pointer;
   display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;
+  user-select:none;-webkit-user-select:none;
 }
 .mini:active{background:var(--neon);color:#0a1408;border-color:var(--neon)}
 .ringwrap{position:relative;width:200px;height:200px;margin:12px auto}
@@ -290,6 +292,54 @@ nav.hud button.on .ico{opacity:1}
   border-radius:5px;
 }
 .xpdots i.on{background:var(--cyan);border-color:var(--cyan)}
+.modal-bg{
+  position:fixed;inset:0;z-index:80;
+  background:rgba(4,8,12,.78);
+  display:flex;align-items:flex-end;justify-content:center;
+  padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));
+}
+.modal{
+  width:100%;max-width:400px;
+  background:var(--panel);border:1px solid var(--line2);
+  border-radius:18px;padding:22px 18px 18px;
+  box-shadow:0 -8px 40px rgba(0,0,0,.45);
+}
+.modal h2{margin:0 0 8px;font-size:20px}
+.modal p{margin:0 0 16px;color:var(--dim);font-size:15px;line-height:1.5}
+.modal .stack{margin-top:0}
+.modal input[type=text],.modal textarea{
+  width:100%;min-height:var(--tap);background:#0c1218;
+  border:1px solid var(--line2);border-radius:var(--radius-sm);
+  color:var(--text);padding:14px 16px;
+  font:600 16px/1.3 var(--font);outline:none;margin-bottom:12px;
+  resize:vertical;
+}
+.modal textarea{min-height:110px;font-weight:500}
+.modal input:focus,.modal textarea:focus{border-color:var(--neon)}
+.undoGhost{
+  position:fixed;left:50%;bottom:calc(80px + env(safe-area-inset-bottom,0px));
+  transform:translateX(-50%);z-index:54;
+  background:rgba(20,27,36,.97);border:1px solid var(--line2);
+  border-radius:12px;color:var(--text);
+  padding:12px 16px;font-size:14px;font-weight:600;
+  max-width:min(390px,92vw);display:flex;align-items:center;gap:12px;
+}
+.undoGhost button{
+  background:var(--panel2);border:1px solid var(--line2);color:var(--neon);
+  border-radius:10px;padding:8px 14px;font:700 13px/1 var(--font);cursor:pointer;
+}
+.pinsLine{font-size:13px;color:var(--dim);margin:0 0 12px;line-height:1.45}
+.pinsLine b{color:var(--text);font-weight:600}
+.foodDots{display:flex;gap:8px;margin:12px 0 4px}
+.foodDots i{
+  flex:1;height:12px;background:#0c1218;border:1px solid var(--line);
+  border-radius:6px;
+}
+.foodDots i.on{background:var(--ok);border-color:var(--ok)}
+.foodDots i.partial{background:var(--amber);border-color:var(--amber)}
+.delta{font-size:14px;font-weight:600;margin-top:4px}
+.delta.up{color:var(--hot)}.delta.down{color:var(--ok)}.delta.flat{color:var(--dim)}
+.walkMark{color:var(--amber);font-size:12px;font-weight:700;margin-left:6px}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{
     animation-duration:0.01ms !important;
@@ -305,9 +355,15 @@ nav.hud button.on .ico{opacity:1}
 <body>
 <div id="app"></div>
 <script>
+
 const STORAGE_KEY = "pftrack_v3";
-const REST = 75;
+const LIVE_KEY = "pftrack_live";
+const APP_VERSION = "3.0";
+const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
+const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
+const ISOLATION = {raise:1, rear:1, tri:1, curlbi:1, abd:1, ext:1, curl:1, calf:1};
+const WEEK_ORDER = [6, 0, 1, 2, 3, 4, 5];
 
 const PROGRAMS = {
   "upper-a": {
@@ -373,25 +429,79 @@ let tab = "home";
 let openDay = null;
 let openSession = null;
 let toastMsg = "";
-let restHandle = null;
 let tapLock = false;
 let booted = false;
 let AC = null;
 let toastTimer = null;
 let clockHandle = null;
+let restTickHandle = null;
+let undoSnapshot = null;
+let undoTimer = null;
+let modal = null;
+let walkMinutes = 20;
+let longPressTimer = null;
+let longPressFired = false;
+
+function restSecFor(id) {
+  if (COMPOUND[id]) return 90;
+  if (ISOLATION[id]) return 60;
+  return 75;
+}
 
 function defaults() {
   return {
     lastWeights: {},
     sessions: [],
     bodyweights: [],
-    stats: {wt: 270, ht: "6'2\"", lbm: 175, protein: "160–180"},
+    stats: {wt: 270, ht: "6'2\"", lbm: 175},
     food: null,
+    foodHistory: [],
     live: null,
     exitReason: "",
     sound: true,
-    installHint: true
+    haptics: true,
+    installHint: true,
+    readyUp: {},
+    walks: []
   };
+}
+
+function proteinRange() {
+  const lbm = Number(state.stats.lbm) || 175;
+  return Math.round(lbm) + "–" + Math.round(lbm * 1.1);
+}
+
+function clearLiveStorage() {
+  try { sessionStorage.removeItem(LIVE_KEY); } catch (e) {}
+}
+
+function saveLive() {
+  if (!state || !state.live) {
+    clearLiveStorage();
+    return;
+  }
+  try {
+    sessionStorage.setItem(LIVE_KEY, JSON.stringify({
+      savedAt: Date.now(),
+      live: state.live
+    }));
+  } catch (e) {}
+}
+
+function loadLive() {
+  try {
+    const raw = sessionStorage.getItem(LIVE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !parsed.live || !parsed.savedAt) return null;
+    if (Date.now() - parsed.savedAt > LIVE_TTL_MS) {
+      clearLiveStorage();
+      return null;
+    }
+    return parsed.live;
+  } catch (e) {
+    return null;
+  }
 }
 
 function load() {
@@ -403,13 +513,32 @@ function load() {
       const parsed = JSON.parse(raw);
       data = Object.assign(defaults(), parsed);
       if (!data.stats) data.stats = defaults().stats;
+      if (data.stats.lbm == null) data.stats.lbm = 175;
       if (!data.lastWeights) data.lastWeights = {};
       if (!Array.isArray(data.sessions)) data.sessions = [];
       if (!Array.isArray(data.bodyweights)) data.bodyweights = [];
+      if (!data.readyUp || typeof data.readyUp !== "object") data.readyUp = {};
+      if (!Array.isArray(data.walks)) data.walks = [];
+      if (typeof data.haptics !== "boolean") data.haptics = true;
+      if (typeof data.sound !== "boolean") data.sound = true;
+      if (!Array.isArray(data.foodHistory)) data.foodHistory = [];
+      if (data.food && data.food.date && !data.foodHistory.some(function(f){ return f.date === data.food.date; })) {
+        data.foodHistory.unshift({
+          date: data.food.date,
+          work: !!data.food.work,
+          home: !!data.food.home,
+          after: !!data.food.after
+        });
+      }
+      data.foodHistory = data.foodHistory.slice(0, 7);
     } catch (e) {}
   }
   data.live = null;
   state = data;
+  const resumed = loadLive();
+  if (resumed && resumed.key && PROGRAMS[resumed.key] && Array.isArray(resumed.sets)) {
+    state.live = resumed;
+  }
   return state;
 }
 
@@ -417,6 +546,7 @@ function persist() {
   const copy = Object.assign({}, state);
   copy.live = null;
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(copy)); } catch (e) {}
+  saveLive();
 }
 
 function audio() {
@@ -451,6 +581,7 @@ function sfxDone() { blip(523, 0.1, "triangle", 0.05); setTimeout(function(){ bl
 function sfxWarn() { blip(220, 0.18, "sawtooth", 0.035); }
 
 function buzz(pattern) {
+  if (!state || !state.haptics) return;
   try {
     if (navigator.vibrate) navigator.vibrate(pattern);
   } catch (e) {}
@@ -473,11 +604,16 @@ function weekStart() {
   return d;
 }
 
+function parseLocalDate(iso) {
+  const parts = String(iso || "").split("-");
+  if (parts.length < 3) return new Date(NaN);
+  return new Date(+parts[0], +parts[1] - 1, +parts[2]);
+}
+
 function sessionsThisWeek() {
   const start = weekStart();
   return state.sessions.filter(function(s) {
-    const parts = s.date.split("-");
-    const dt = new Date(+parts[0], +parts[1] - 1, +parts[2]);
+    const dt = parseLocalDate(s.date);
     return dt >= start;
   });
 }
@@ -486,10 +622,30 @@ function didKeyThisWeek(key) {
   return sessionsThisWeek().some(function(s) { return s.key === key; });
 }
 
+function liftKeysClearedThisWeek() {
+  const keys = ["upper-a", "lower-a", "upper-b", "lower-b"];
+  return keys.filter(function(k) { return didKeyThisWeek(k); }).length;
+}
+
+function walkForDate(iso) {
+  return (state.walks || []).find(function(w) { return w.date === iso; });
+}
+
+function walkThisWeekForDay(d) {
+  const start = weekStart();
+  const target = new Date(start);
+  const orderIdx = WEEK_ORDER.indexOf(d);
+  target.setDate(start.getDate() + (orderIdx < 0 ? 0 : orderIdx));
+  const y = target.getFullYear();
+  const m = String(target.getMonth() + 1).padStart(2, "0");
+  const day = String(target.getDate()).padStart(2, "0");
+  return walkForDate(y + "-" + m + "-" + day);
+}
+
 function xp() {
   return state.sessions.reduce(function(n, s) {
     const done = (s.work || []).reduce(function(a, w) {
-      return a + (w.sets || []).filter(function(x) { return x.done; }).length;
+      return a + (w.sets || []).filter(function(x) { return x.done && !x.skipped; }).length;
     }, 0);
     return n + done * 5 + 10;
   }, 0);
@@ -538,6 +694,78 @@ function toast(msg) {
   el.textContent = msg;
 }
 
+function clearUndo() {
+  undoSnapshot = null;
+  if (undoTimer) { clearTimeout(undoTimer); undoTimer = null; }
+  const el = document.getElementById("undoGhost");
+  if (el) el.remove();
+}
+
+function showUndoGhost() {
+  let el = document.getElementById("undoGhost");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "undoGhost";
+    el.className = "undoGhost";
+    document.body.appendChild(el);
+  }
+  el.innerHTML = '<span>Set logged</span><button type="button" id="undoBtn">Undo</button>';
+  const btn = document.getElementById("undoBtn");
+  if (btn) btn.onclick = function() { undoLastSet(); };
+}
+
+function restRemaining() {
+  if (!state.live || !state.live.restUntil) return 0;
+  return Math.max(0, Math.ceil((state.live.restUntil - Date.now()) / 1000));
+}
+
+function restTotal() {
+  if (!state.live) return 75;
+  const ex = PROGRAMS[state.live.key].items[state.live.i];
+  return restSecFor(ex.id);
+}
+
+function stopRestTick() {
+  if (restTickHandle) { clearInterval(restTickHandle); restTickHandle = null; }
+}
+
+function ensureRestTick() {
+  stopRestTick();
+  if (!state.live || !state.live.restUntil) return;
+  if (document.visibilityState !== "visible") return;
+  restTickHandle = setInterval(function() {
+    if (!state.live || !state.live.restUntil) {
+      stopRestTick();
+      return;
+    }
+    const rem = restRemaining();
+    if (rem <= 0) {
+      state.live.restUntil = 0;
+      saveLive();
+      stopRestTick();
+      blip(1046, 0.13, "triangle", 0.05);
+      setTimeout(function() { blip(1568, 0.16, "triangle", 0.05); }, 150);
+      buzz([40, 60, 40]);
+    }
+    if (view === "lift") render();
+  }, 250);
+}
+
+function startRest() {
+  if (!state.live) return;
+  const ex = PROGRAMS[state.live.key].items[state.live.i];
+  const sec = restSecFor(ex.id);
+  state.live.restUntil = Date.now() + sec * 1000;
+  saveLive();
+  ensureRestTick();
+  render();
+}
+
+function clearRest() {
+  if (state.live) state.live.restUntil = 0;
+  stopRestTick();
+}
+
 function go(v) {
   view = v;
   if (v === "home") tab = "home";
@@ -547,64 +775,227 @@ function go(v) {
   render();
 }
 
-function startWorkout(key) {
-  const d = new Date().getDay();
-  if (isWorkDay(d) && !confirm("Mon/Fri is work-walk protocol.\nDeploy a lift anyway?")) return;
+function closeModal() {
+  modal = null;
+  const el = document.getElementById("modalRoot");
+  if (el) el.remove();
+}
+
+function showModal(opts) {
+  closeModal();
+  modal = opts;
+  const root = document.createElement("div");
+  root.id = "modalRoot";
+  root.className = "modal-bg";
+  let body = '<div class="modal"><h2>' + esc(opts.title) + "</h2>";
+  if (opts.body) body += "<p>" + opts.body + "</p>";
+  if (opts.input) {
+    body += '<input type="text" id="modalInput" placeholder="' + esc(opts.placeholder || "") + '" autocomplete="off"/>';
+  }
+  if (opts.textarea) {
+    body += '<textarea id="modalTextarea" placeholder="' + esc(opts.placeholder || "") + '"></textarea>';
+  }
+  body += '<div class="stack">';
+  body += '<button class="btn ' + (opts.danger ? "dan" : "pri") + ' big" id="modalOk">' + esc(opts.okLabel || "Confirm") + "</button>";
+  body += '<button class="btn gho" id="modalCancel">' + esc(opts.cancelLabel || "Cancel") + "</button>";
+  body += "</div></div>";
+  root.innerHTML = body;
+  document.body.appendChild(root);
+  const cancel = document.getElementById("modalCancel");
+  const ok = document.getElementById("modalOk");
+  if (cancel) cancel.onclick = function() {
+    sfxTap();
+    closeModal();
+    if (opts.onCancel) opts.onCancel();
+  };
+  if (ok) ok.onclick = function() {
+    const input = document.getElementById("modalInput");
+    const ta = document.getElementById("modalTextarea");
+    const val = input ? input.value : (ta ? ta.value : "");
+    if (opts.requireText) {
+      const trimmed = String(val || "").trim();
+      if (!trimmed) { toast("Type a short reason"); return; }
+      closeModal();
+      opts.onOk(trimmed);
+      return;
+    }
+    closeModal();
+    opts.onOk(val);
+  };
+  root.addEventListener("click", function(e) {
+    if (e.target === root) {
+      closeModal();
+      if (opts.onCancel) opts.onCancel();
+    }
+  });
+  const focusEl = document.getElementById("modalInput") || document.getElementById("modalTextarea");
+  if (focusEl) setTimeout(function(){ focusEl.focus(); }, 50);
+}
+
+function applyReadyUp(items) {
+  return items.map(function(ex) {
+    let w = state.lastWeights[ex.id] != null ? state.lastWeights[ex.id] : 10;
+    if (state.readyUp && state.readyUp[ex.id]) {
+      w = w + 5;
+      state.lastWeights[ex.id] = w;
+      delete state.readyUp[ex.id];
+      toast(ex.name + " · pin +5");
+    }
+    return [
+      {w: w, r: 12, done: false, skipped: false},
+      {w: w, r: 12, done: false, skipped: false}
+    ];
+  });
+}
+
+function doStartWorkout(key) {
   const p = PROGRAMS[key];
   if (!p) return;
+  clearUndo();
   state.live = {
     key: key,
     date: todayISO(),
     i: 0,
     set: 0,
-    resting: 0,
+    restUntil: 0,
     started: Date.now(),
-    sets: p.items.map(function(ex) {
-      const w = state.lastWeights[ex.id] != null ? state.lastWeights[ex.id] : 10;
-      return [
-        {w: w, r: 12, done: false},
-        {w: w, r: 12, done: false}
-      ];
-    })
+    sets: applyReadyUp(p.items)
   };
   state.exitReason = "";
+  persist();
   sfxConfirm();
   buzz(25);
   go("lift");
 }
 
-function bump(kind, dir) {
+function startWorkout(key) {
+  const d = new Date().getDay();
+  if (liftKeysClearedThisWeek() >= 4) {
+    showModal({
+      title: "Cycle already full",
+      body: "All 4 lift sectors cleared this Sat→Fri window. Type a short reason to override.",
+      input: true,
+      requireText: true,
+      placeholder: "Reason…",
+      okLabel: "Override & deploy",
+      danger: true,
+      onOk: function(reason) {
+        state._overrideReason = reason;
+        if (isWorkDay(d)) {
+          showModal({
+            title: "Work-walk day",
+            body: "Mon/Fri is walk protocol. Deploy a lift anyway?",
+            okLabel: "Deploy lift",
+            danger: true,
+            onOk: function() { doStartWorkout(key); }
+          });
+        } else {
+          doStartWorkout(key);
+        }
+      }
+    });
+    return;
+  }
+  if (isWorkDay(d)) {
+    showModal({
+      title: "Work-walk protocol",
+      body: "Mon/Fri is walking, not PF. Deploy a lift anyway?",
+      okLabel: "Deploy lift",
+      danger: true,
+      onOk: function() { doStartWorkout(key); }
+    });
+    return;
+  }
+  doStartWorkout(key);
+}
+
+function bump(kind, dir, step) {
   if (!state.live) return;
   const live = state.live;
   const s = live.sets[live.i][live.set];
+  const st = step || 1;
   if (kind === "w") {
-    s.w = Math.max(5, s.w + dir * 5);
+    s.w = Math.max(5, s.w + dir * 5 * st);
   } else {
-    s.r = Math.max(1, Math.min(30, s.r + dir));
+    s.r = Math.max(1, Math.min(30, s.r + dir * st));
   }
   sfxTap();
-  render();
+  saveLive();
+  // In-place update so long-press isn't destroyed by full re-render
+  const box = document.querySelectorAll(".setbox b");
+  if (box && box.length >= 2) {
+    box[0].textContent = s.w;
+    box[1].textContent = s.r;
+  } else {
+    render();
+  }
 }
 
-function startRest() {
-  clearInterval(restHandle);
-  state.live.resting = REST;
-  restHandle = setInterval(function() {
-    if (!state.live || state.live.resting <= 0) {
-      clearInterval(restHandle);
-      return;
+function bindLongPress(btn, kind, dir) {
+  let holdTimeout = null;
+  let holdInterval = null;
+  let armed = false;
+  function fire(step) {
+    if (step > 1) longPressFired = true;
+    bump(kind, dir, step);
+  }
+  function clearLP() {
+    if (holdTimeout) { clearTimeout(holdTimeout); holdTimeout = null; }
+    if (holdInterval) { clearInterval(holdInterval); holdInterval = null; }
+  }
+  btn.addEventListener("pointerdown", function(e) {
+    e.preventDefault();
+    longPressFired = false;
+    armed = true;
+    clearLP();
+    holdTimeout = setTimeout(function() {
+      holdTimeout = null;
+      fire(2);
+      holdInterval = setInterval(function() { fire(2); }, 220);
+    }, 420);
+  });
+  function end(e) {
+    const wasLong = longPressFired;
+    const wasArmed = armed;
+    armed = false;
+    clearLP();
+    if (wasArmed && !wasLong && e.type !== "pointercancel") fire(1);
+    longPressFired = false;
+  }
+  btn.addEventListener("pointerup", end);
+  btn.addEventListener("pointerleave", function() {
+    armed = false;
+    clearLP();
+    longPressFired = false;
+  });
+  btn.addEventListener("pointercancel", end);
+}
+
+function checkProgression(session) {
+  (session.work || []).forEach(function(w) {
+    const sets = (w.sets || []).filter(function(x) { return x.done && !x.skipped; });
+    if (sets.length < 2) return;
+    if (!(sets[0].r >= 15 && sets[1].r >= 15)) return;
+    const pin = sets[0].w;
+    if (sets[1].w !== pin) return;
+    let found = null;
+    for (let i = 1; i < state.sessions.length; i++) {
+      const s = state.sessions[i];
+      if (!s.work) continue;
+      for (let j = 0; j < s.work.length; j++) {
+        const ww = s.work[j];
+        if (ww.id !== w.id) continue;
+        const ss = (ww.sets || []).filter(function(x) { return x.done && !x.skipped; });
+        if (ss.length >= 2) { found = ss.slice(0, 2); break; }
+      }
+      if (found) break;
     }
-    state.live.resting -= 1;
-    if (state.live.resting <= 0) {
-      state.live.resting = 0;
-      clearInterval(restHandle);
-      blip(1046, 0.13, "triangle", 0.05);
-      setTimeout(function() { blip(1568, 0.16, "triangle", 0.05); }, 150);
-      buzz([40, 60, 40]);
-    }
-    if (view === "lift") render();
-  }, 1000);
-  render();
+    if (!found) return;
+    if (found[0].w !== pin || found[1].w !== pin) return;
+    if (!(found[0].r >= 15 && found[1].r >= 15)) return;
+    state.readyUp[w.id] = true;
+    toast(w.name + " · ready to up one hole");
+  });
 }
 
 function completeSet() {
@@ -614,43 +1005,104 @@ function completeSet() {
   const live = state.live;
   if (!live) return;
   const ex = PROGRAMS[live.key].items[live.i];
+  undoSnapshot = {
+    i: live.i,
+    set: live.set,
+    restUntil: live.restUntil || 0,
+    setData: Object.assign({}, live.sets[live.i][live.set]),
+    lastW: state.lastWeights[ex.id]
+  };
   live.sets[live.i][live.set].done = true;
+  live.sets[live.i][live.set].skipped = false;
   state.lastWeights[ex.id] = live.sets[live.i][live.set].w;
   sfxConfirm();
   buzz(30);
+  if (undoTimer) clearTimeout(undoTimer);
+  undoTimer = setTimeout(function() {
+    clearUndo();
+  }, 8000);
   if (live.set === 0) {
     live.set = 1;
     startRest();
+    showUndoGhost();
   } else {
-    clearInterval(restHandle);
-    live.resting = 0;
+    clearRest();
     if (live.i < PROGRAMS[live.key].items.length - 1) {
       live.i += 1;
       live.set = 0;
+      saveLive();
       render();
+      showUndoGhost();
     } else {
+      clearUndo();
       finishWorkout("complete");
     }
   }
 }
 
+function undoLastSet() {
+  if (!undoSnapshot || !state.live) return;
+  const live = state.live;
+  const snap = undoSnapshot;
+  const ex = PROGRAMS[live.key].items[snap.i];
+  live.i = snap.i;
+  live.set = snap.set;
+  live.restUntil = 0;
+  live.sets[snap.i][snap.set] = Object.assign({}, snap.setData, {done: false, skipped: false});
+  if (snap.lastW == null) delete state.lastWeights[ex.id];
+  else state.lastWeights[ex.id] = snap.lastW;
+  clearUndo();
+  stopRestTick();
+  saveLive();
+  sfxTap();
+  toast("Set undone");
+  render();
+}
+
+function skipMovement() {
+  const live = state.live;
+  if (!live) return;
+  clearUndo();
+  clearRest();
+  const sets = live.sets[live.i];
+  for (let i = live.set; i < sets.length; i++) {
+    if (!sets[i].done) {
+      sets[i].done = false;
+      sets[i].skipped = true;
+    }
+  }
+  if (live.i < PROGRAMS[live.key].items.length - 1) {
+    live.i += 1;
+    live.set = 0;
+    saveLive();
+    render();
+  } else {
+    finishWorkout("partial");
+  }
+}
+
 function finishWorkout(reason) {
-  clearInterval(restHandle);
+  clearUndo();
+  clearRest();
   const live = state.live;
   if (!live) return;
   const p = PROGRAMS[live.key];
-  state.sessions.unshift({
+  const session = {
     date: live.date,
     key: live.key,
     name: p.name,
     minutes: Math.max(1, Math.round((Date.now() - live.started) / 60000)),
+    reason: reason || "complete",
     work: p.items.map(function(ex, i) {
       return {id: ex.id, name: ex.name, sets: live.sets[i]};
     })
-  });
+  };
+  state.sessions.unshift(session);
   if (state.sessions.length > 60) state.sessions.length = 60;
+  if (reason === "complete") checkProgression(session);
   state.live = null;
   state.exitReason = reason || "complete";
+  clearLiveStorage();
   if (reason === "complete") sfxDone();
   else sfxWarn();
   buzz(60);
@@ -662,8 +1114,9 @@ function statusbar() {
   const now = new Date();
   const hh = String(now.getHours()).padStart(2, "0");
   const mm = String(now.getMinutes()).padStart(2, "0");
+  const ss = String(now.getSeconds()).padStart(2, "0");
   const live = state.live ? '<span class="dotlive"></span>LIVE' : "OFFLINE";
-  return '<div class="sb"><span><b>PF//TRACK</b> · MARATHON</span><span>' + live + " · " + hh + ":" + mm + "</span></div>";
+  return '<div class="sb"><span><b>PF//TRACK</b> · v' + APP_VERSION + '</span><span id="sbClock">' + live + " · " + hh + ":" + mm + ":" + ss + "</span></div>";
 }
 
 function nav(active) {
@@ -687,20 +1140,88 @@ function weekDots() {
 
 function ensureFood() {
   const t = todayISO();
-  if (!state.food || state.food.date !== t) {
-    state.food = {date: t, work: false, home: false, after: false};
+  let entry = (state.foodHistory || []).find(function(f) { return f.date === t; });
+  if (!entry) {
+    entry = {date: t, work: false, home: false, after: false};
+    state.foodHistory.unshift(entry);
   }
-  return state.food;
+  state.foodHistory = state.foodHistory
+    .sort(function(a, b) { return a.date < b.date ? 1 : -1; })
+    .slice(0, 7);
+  state.food = entry;
+  return entry;
+}
+
+function foodDotsHtml() {
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    days.push(y + "-" + m + "-" + day);
+  }
+  return '<div class="foodDots">' + days.map(function(iso) {
+    const f = (state.foodHistory || []).find(function(x) { return x.date === iso; });
+    if (!f) return "<i></i>";
+    const n = (f.work ? 1 : 0) + (f.home ? 1 : 0) + (f.after ? 1 : 0);
+    if (n >= 2) return '<i class="on"></i>';
+    if (n === 1) return '<i class="partial"></i>';
+    return "<i></i>";
+  }).join("") + "</div>";
+}
+
+function weightDeltaHtml() {
+  const list = state.bodyweights || [];
+  if (!list.length) return "";
+  const latest = list[0];
+  const latestDt = parseLocalDate(latest.date).getTime();
+  let older = null;
+  for (let i = 1; i < list.length; i++) {
+    const dt = parseLocalDate(list[i].date).getTime();
+    const days = (latestDt - dt) / 86400000;
+    if (days >= 5 && days <= 10) { older = list[i]; break; }
+  }
+  if (!older && list.length > 1) older = list[list.length - 1];
+  if (!older) return '<div class="delta flat">trend · need ~7d prior</div>';
+  const delta = Math.round((latest.lb - older.lb) * 10) / 10;
+  const cls = delta > 0 ? "up" : (delta < 0 ? "down" : "flat");
+  const sign = delta > 0 ? "+" : "";
+  return '<div class="delta ' + cls + '">trend ' + sign + delta + " lb vs ~7d</div>";
+}
+
+function installHintHtml() {
+  if (!state.installHint) return "";
+  if (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) return "";
+  if (window.navigator.standalone) return "";
+  const ua = navigator.userAgent || "";
+  const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const isAndroid = /Android/i.test(ua);
+  let copy = "";
+  if (isIOS) copy = "Safari → Share → Add to Home Screen.";
+  else if (isAndroid) copy = "Browser menu → Install app / Add to Home screen.";
+  else return "";
+  return '<p class="sub mt" id="installHint">' + copy + ' <span style="color:var(--neon);font-weight:600">Dismiss</span></p>';
+}
+
+function lastPinsLine(prog) {
+  if (!prog) return "";
+  const bits = prog.items.map(function(ex) {
+    const w = state.lastWeights[ex.id];
+    return esc(ex.name.split(" ")[0]) + " " + (w != null ? w : "—");
+  });
+  return '<p class="pinsLine"><b>Last pins</b> · ' + bits.join(" · ") + "</p>";
 }
 
 function screenBoot() {
   return '<div class="boot">' +
     '<div class="boottitle">PF//TRACK</div>' +
-    '<p class="sub" style="margin-bottom:22px">Marathon edition · local only</p>' +
+    '<p class="sub" style="margin-bottom:22px">Marathon edition · v' + APP_VERSION + ' · local only</p>' +
     '<div class="bootline">Loading…</div>' +
     '<div class="bootline" style="animation-delay:.15s">Storage · ' + STORAGE_KEY + '</div>' +
-    '<div class="bootline" style="animation-delay:.3s">LBM · ' + state.stats.lbm + ' lb</div>' +
-    '<div class="bootline" style="animation-delay:.45s">Week · Sat → Sun → Tue → Wed</div>' +
+    '<div class="bootline" style="animation-delay:.3s">LBM · ' + state.stats.lbm + ' lb · protein ' + esc(proteinRange()) + '</div>' +
+    '<div class="bootline" style="animation-delay:.45s">Week · Sat → Fri</div>' +
     '<div class="bootline dim" style="animation-delay:.6s">No cloud · no account · no excuses</div>' +
     '<div class="bar mt" style="margin-top:28px"><i style="animation:bootfill 1.4s ease forwards"></i></div>' +
   '</div>';
@@ -712,10 +1233,12 @@ function screenHome() {
   const week = sessionsThisWeek();
   const lastW = state.bodyweights[0];
   const title = plan.key ? prog.name : (isWorkDay(plan.d) ? "Work Walk Protocol" : "Rest Cycle");
+  const full = liftKeysClearedThisWeek() >= 4;
   let html = statusbar();
   html += '<div class="lbl">' + esc(plan.short) + " · LBM ~" + state.stats.lbm + " LB · LV " + level() + "</div>";
   html += "<h1>" + esc(title) + "</h1>";
   html += '<p class="sub">' + esc(plan.note) + "</p>";
+  if (prog) html += lastPinsLine(prog);
   html += '<div class="card"><div class="row" style="border:0;padding:0 0 4px">';
   html += '<div><div class="lbl">Sessions this week</div><div class="stat">' + week.length + "<small>/4</small></div></div>";
   html += '<div class="r"><div class="lbl">Total XP</div><div class="stat" style="font-size:22px">' + xp() + "</div></div>";
@@ -723,23 +1246,38 @@ function screenHome() {
   html += weekDots();
   html += '<div class="bar"><i style="width:' + (xpInto() / 40 * 100) + '%"></i></div>';
   html += '<div class="lbl">LV ' + level() + " → LV " + (level() + 1) + " · " + (40 - xpInto()) + " pts</div>";
-  html += '<div class="lbl" style="margin-top:8px;color:' + (lastW ? "var(--neon2)" : "var(--dim)") + '">';
+  html += '<div class="lbl" style="margin-top:8px">';
   html += lastW ? ("SCALE " + lastW.lb + " LB · " + lastW.date) : "NO SCALE LOGGED";
   html += "</div></div>";
   if (plan.key) {
     html += '<div class="stack">';
-    html += '<button class="btn pri big" data-go="start:' + plan.key + '">Start ' + esc(plan.short) + " session</button>";
+    if (full) {
+      html += '<button class="btn pri big" data-go="start:' + plan.key + '">Override deploy</button>';
+      html += '<p class="sub" style="margin:0">4/4 sectors cleared — override needs a reason.</p>';
+    } else {
+      html += '<button class="btn pri big" data-go="start:' + plan.key + '">Start ' + esc(plan.short) + " session</button>";
+    }
     html += '<button class="btn gho" data-day="' + plan.d + '">Inspect manifest</button>';
     html += "</div>";
+  } else if (isWorkDay(plan.d)) {
+    const walk = walkForDate(todayISO());
+    html += '<div class="card mt"><div class="lbl">Work walk</div>';
+    html += '<div class="stat" style="font-size:28px;margin:6px 0">' + walkMinutes + "<small> min</small></div>";
+    html += '<div class="step"><button class="mini" id="walkMinus">−</button><b>' + walkMinutes + '</b><button class="mini" id="walkPlus">+</button></div>';
+    html += '<div class="stack"><button class="btn pri" id="walkLog">' + (walk ? "Update walk · " + walk.minutes + "m" : "Walk logged") + "</button></div>";
+    if (walk) html += '<div class="lbl" style="margin-top:10px;color:var(--amber)">Walk marked · ' + walk.minutes + " min</div>";
+    html += "</div>";
+    html += '<div class="stack"><button class="btn gho" data-day="' + plan.d + '">Why today is dark</button></div>';
   } else {
     html += '<div class="stack"><button class="btn gho" data-day="' + plan.d + '">Why today is dark</button></div>';
+  }
+  if (state.live) {
+    html += '<div class="stack"><button class="btn ok big" data-go="lift">Resume live session</button></div>';
   }
   html += '<div class="card cue mt"><b>2×10–15 · 3–4 reps left · same pin until 15 is easy twice.</b><br>';
   if (isWorkDay(plan.d)) html += "High-walk day: no incline.<br>";
   html += "Cramp = leave. No kickbacks. Laterals on both uppers.</div>";
-  if (state.installHint) {
-    html += '<p class="sub mt" id="installHint">Safari → Share → Add to Home Screen. <span style="color:var(--neon);font-weight:600">Dismiss</span></p>';
-  }
+  html += installHintHtml();
   html += nav("home");
   return html;
 }
@@ -749,13 +1287,16 @@ function screenWeek() {
   let html = statusbar();
   html += '<div class="lbl">Weekly plan</div><h1>Week in, week out</h1>';
   html += '<p class="sub">Tap a day for the manifest. Same rotation forever. Saturday starts it.</p>';
-  html += WEEK.map(function(w) {
+  html += WEEK_ORDER.map(function(di) {
+    const w = WEEK[di];
     const name = w.key ? PROGRAMS[w.key].name : (isWorkDay(w.d) ? "Work walking" : "Gym off");
     const done = w.key && didKeyThisWeek(w.key);
+    const walked = isWorkDay(w.d) && walkThisWeekForDay(w.d);
     const cls = done ? "on" : (w.d === today ? "today" : (w.key ? "" : (isWorkDay(w.d) ? "hot" : "")));
-    const tag = done ? "cleared" : (w.d === today ? "today" : (w.key ? "lift" : "dark"));
+    let tag = done ? "cleared" : (w.d === today ? "today" : (w.key ? "lift" : "dark"));
+    if (walked && !done) tag = "walk";
     return '<button class="daybtn ' + (w.d === today ? "is-today" : "") + '" data-day="' + w.d + '">' +
-      '<div class="l"><b>' + esc(w.label) + "</b><span>" + esc(name) + "</span></div>" +
+      '<div class="l"><b>' + esc(w.label) + (walked ? '<span class="walkMark">WALK</span>' : "") + "</b><span>" + esc(name) + "</span></div>" +
       '<span class="pill ' + cls + '">' + tag + "</span></button>";
   }).join("");
   html += nav("week");
@@ -774,18 +1315,27 @@ function screenDay() {
   html += "<h1>" + esc(prog ? prog.name : w.label) + "</h1>";
   html += '<p class="sub">' + esc(w.note) + (prog ? " " + esc(prog.why) : "") + "</p>";
   if (prog) {
+    html += lastPinsLine(prog);
     html += '<div class="card">' + prog.items.map(function(ex) {
       return '<div class="row"><div><b>' + esc(ex.name) + '</b><div class="n">' + esc(ex.cue) +
         '</div></div><div class="r"><b style="color:var(--neon)">' + esc(ex.sets) +
         '</b><div class="n">pin ' + pin(ex.id) + "</div></div></div>";
     }).join("") + "</div>";
-    html += '<div class="stack"><button class="btn pri big" data-go="start:' + w.key + '">Start ' + esc(w.short) + " session</button></div>";
+    const full = liftKeysClearedThisWeek() >= 4;
+    html += '<div class="stack"><button class="btn pri big" data-go="start:' + w.key + '">' +
+      (full ? "Override deploy" : ("Start " + esc(w.short) + " session")) + "</button></div>";
   } else {
     html += '<div class="card cue">';
     html += isWorkDay(w.d)
       ? "Work already loads legs, feet, and back. A quick PF stop is how Monday furniture becomes a limp."
       : "Quiet gym day so the next work shift is clean. Food window still 2pm–8pm.";
     html += "</div>";
+    if (isWorkDay(w.d) && w.d === new Date().getDay()) {
+      const walk = walkForDate(todayISO());
+      html += '<div class="card mt"><div class="lbl">Work walk</div>';
+      html += '<div class="step"><button class="mini" id="walkMinus">−</button><b>' + walkMinutes + '</b><button class="mini" id="walkPlus">+</button></div>';
+      html += '<div class="stack"><button class="btn pri" id="walkLog">' + (walk ? "Update walk · " + walk.minutes + "m" : "Walk logged") + "</button></div></div>";
+    }
   }
   html += '<p class="sub mt">Leave 3–4 reps in the tank. No kickbacks. Laterals stay on both uppers.</p>';
   html += nav("week");
@@ -801,14 +1351,16 @@ function screenLift() {
   const step = live.i * 2 + live.set + 1;
   const total = prog.items.length * 2;
   const pct = Math.round((step - 1) / total * 100);
+  const rem = restRemaining();
   let html = statusbar();
-  if (live.resting > 0) {
-    const off = CIRC * (1 - live.resting / REST);
-    html += '<div class="lbl center">Rest timer</div>';
+  if (rem > 0) {
+    const totalRest = restTotal();
+    const off = CIRC * (1 - rem / totalRest);
+    html += '<div class="lbl center">Rest · ' + totalRest + "s</div>";
     html += '<div class="ringwrap"><svg class="ring" viewBox="0 0 120 120">';
     html += '<circle class="bg" cx="60" cy="60" r="52"/>';
     html += '<circle class="fg" cx="60" cy="60" r="52" stroke-dasharray="' + CIRC.toFixed(1) + '" stroke-dashoffset="' + off.toFixed(1) + '"/>';
-    html += '</svg><div class="num">' + live.resting + "</div></div>";
+    html += '</svg><div class="num">' + rem + "</div></div>";
     html += '<p class="sub center">Sit. Don\'t wander.<br><b style="color:var(--neon)">SET 2/2</b> · ' + esc(ex.name) + "</p>";
     html += '<div class="stack"><button class="btn pri big" id="skipRest">Skip rest</button></div>';
     html += nav("home");
@@ -820,9 +1372,9 @@ function screenLift() {
   html += "<h1>" + esc(ex.name) + "</h1>";
   html += '<div class="card cue">' + esc(ex.cue) + "</div>";
   html += '<div class="setbox"><div><div class="lbl">Pin (lb)</div><div class="step">';
-  html += '<button class="mini" data-act="w-">−</button><b>' + s.w + '</b><button class="mini" data-act="w+">+</button>';
+  html += '<button class="mini" data-act="w-" type="button">−</button><b>' + s.w + '</b><button class="mini" data-act="w+" type="button">+</button>';
   html += '</div></div><div><div class="lbl">Reps</div><div class="step">';
-  html += '<button class="mini" data-act="r-">−</button><b>' + s.r + '</b><button class="mini" data-act="r+">+</button>';
+  html += '<button class="mini" data-act="r-" type="button">−</button><b>' + s.r + '</b><button class="mini" data-act="r+" type="button">+</button>';
   html += "</div></div></div>";
   html += '<div class="dots">' + prog.items.map(function(_, i) {
     return '<div class="dot ' + (i <= live.i ? "on" : "") + '" style="' + (i > live.i ? "opacity:.35" : "") + '"></div>';
@@ -842,11 +1394,11 @@ function screenDone() {
   const last = state.sessions[0];
   let html = statusbar();
   html += '<div class="check">' + (reason === "complete" ? "✓" : "!") + "</div>";
-  html += '<div class="lbl center">' + (reason === "complete" ? "Session complete" : reason === "cramp" ? "Cramp abort" : "Session saved") + "</div>";
+  html += '<div class="lbl center">' + (reason === "complete" ? "Session complete" : reason === "cramp" ? "Cramp abort" : reason === "partial" ? "Partial session" : "Session saved") + "</div>";
   html += "<h1 class=\"center\">" + (reason === "complete" ? "Nice work." : reason === "cramp" ? "Leave. Heal." : "Logged.") + "</h1>";
   if (last) {
     html += '<div class="card"><div class="row" style="border:0;padding:0"><div><div class="lbl">Session</div><b>' + esc(last.name) +
-      '</b></div><div class="r"><div class="lbl">Time</div><b>' + last.minutes + " min</b></div></div></div>";
+      '</b><div class="n">reason · ' + esc(last.reason || reason) + '</div></div><div class="r"><div class="lbl">Time</div><b>' + last.minutes + " min</b></div></div></div>";
   }
   html += '<div class="stack"><button class="btn pri big" data-go="home">Back to today</button>';
   html += '<button class="btn gho" data-go="log">Open Stats</button></div>';
@@ -857,9 +1409,12 @@ function screenDone() {
 function screenFuel() {
   const food = ensureFood();
   const lastW = state.bodyweights[0];
+  const isWed = new Date().getDay() === 3;
   let html = statusbar();
   html += '<div class="lbl">Nutrition</div><h1>Fuel window</h1>';
-  html += '<p class="sub">2pm–8pm. Protein ' + esc(state.stats.protein) + " g. Three checkboxes. That’s the whole system.</p>";
+  html += '<p class="sub">2pm–8pm. Protein ' + esc(proteinRange()) + " g (from LBM). Three checkboxes. That’s the whole system.</p>";
+  html += '<div class="lbl">Last 7 days</div>';
+  html += foodDotsHtml();
   html += '<div class="card">';
   [
     {k: "work", label: "Work meal", hint: "Shift food — already counted"},
@@ -871,12 +1426,16 @@ function screenFuel() {
     html += '<div class="sw"></div></div>';
   });
   html += "</div>";
+  if (isWed) {
+    html += '<div class="card cue mt"><b>Wednesday cheat note</b><br>Bigger food day ends tonight. Not a 4th toggle — just permission.</div>';
+  }
   html += '<div class="card mt"><div class="lbl">Bodyweight</div>';
   html += '<div class="stat" style="font-size:28px;margin:6px 0">' + (lastW ? lastW.lb + "<small> LB</small>" : "—") + "</div>";
   if (lastW) html += '<div class="lbl">' + lastW.date + "</div>";
+  html += weightDeltaHtml();
   html += '<div class="stack" style="margin-top:10px"><input type="number" id="bwInput" placeholder="Today\'s weight (lb)" min="100" max="500" step="0.1"/>';
   html += '<button class="btn pri" id="bwSave">Log Scale</button></div></div>';
-  html += '<div class="card cue mt"><b>Stats lock</b><br>HT ' + esc(state.stats.ht) + " · WT ~" + state.stats.wt + " · LBM ~" + state.stats.lbm + " · Protein " + esc(state.stats.protein) + "</div>";
+  html += '<div class="card cue mt"><b>Stats lock</b><br>HT ' + esc(state.stats.ht) + " · WT ~" + state.stats.wt + " · LBM ~" + state.stats.lbm + " · Protein " + esc(proteinRange()) + "</div>";
   html += nav("fuel");
   return html;
 }
@@ -884,7 +1443,7 @@ function screenFuel() {
 function screenLog() {
   let html = statusbar();
   html += '<div class="lbl">Progress</div><h1>Stats &amp; log</h1>';
-  html += '<p class="sub">LV ' + level() + " · " + xp() + " XP · " + state.sessions.length + " sessions stored.</p>";
+  html += '<p class="sub">LV ' + level() + " · " + xp() + " XP · " + state.sessions.length + " sessions · v" + APP_VERSION + "</p>";
   html += '<div class="card"><div class="row" style="border:0;padding:0">';
   html += '<div><div class="lbl">Level</div><div class="stat">' + level() + '</div></div>';
   html += '<div class="r"><div class="lbl">Into next</div><div class="stat" style="font-size:22px">' + xpInto() + "<small>/40</small></div></div>";
@@ -895,18 +1454,28 @@ function screenLog() {
   } else {
     html += state.sessions.slice(0, 12).map(function(s, idx) {
       const sets = (s.work || []).reduce(function(a, w) {
-        return a + (w.sets || []).filter(function(x) { return x.done; }).length;
+        return a + (w.sets || []).filter(function(x) { return x.done && !x.skipped; }).length;
+      }, 0);
+      const skipped = (s.work || []).reduce(function(a, w) {
+        return a + (w.sets || []).filter(function(x) { return x.skipped; }).length;
       }, 0);
       return '<button class="daybtn" data-sess="' + idx + '"><div class="l"><b>' + esc(s.name) +
-        "</b><span>" + esc(s.date) + " · " + s.minutes + " min · " + sets + " sets</span></div>" +
-        '<span class="pill on">view</span></button>';
+        "</b><span>" + esc(s.date) + " · " + s.minutes + " min · " + sets + " sets" +
+        (skipped ? " · " + skipped + " skip" : "") +
+        (s.reason && s.reason !== "complete" ? " · " + esc(s.reason) : "") +
+        '</span></div><span class="pill on">view</span></button>';
     }).join("");
   }
   html += "</div>";
   html += '<div class="card mt"><h2>System</h2>';
   html += '<div class="toggle ' + (state.sound ? "on" : "") + '" id="soundToggle"><div><b>Sound FX</b><span>Blips on confirm / rest / done</span></div><div class="sw"></div></div>';
-  html += '<div class="stack mt"><button class="btn dan" id="wipeData">Wipe Local Data</button></div>';
-  html += '<p class="sub mt" style="margin-bottom:0">Storage · ' + STORAGE_KEY + " · live never persisted</p></div>";
+  html += '<div class="toggle ' + (state.haptics ? "on" : "") + '" id="hapticsToggle"><div><b>Haptics</b><span>Buzz on tap / rest / done</span></div><div class="sw"></div></div>';
+  html += '<div class="stack mt">';
+  html += '<button class="btn gho" id="dumpLog">Dump log</button>';
+  html += '<button class="btn gho" id="loadDump">Load dump</button>';
+  html += '<button class="btn dan" id="wipeData">Wipe Local Data</button>';
+  html += "</div>";
+  html += '<p class="sub mt" style="margin-bottom:0">Storage · ' + STORAGE_KEY + " · live → sessionStorage · v" + APP_VERSION + "</p></div>";
   html += nav("log");
   return html;
 }
@@ -917,11 +1486,14 @@ function screenSession() {
   let html = statusbar();
   html += '<button class="btn gho" data-go="log" style="margin-bottom:14px">← Stats</button>';
   html += '<span class="pill on">' + esc(s.date) + "</span>";
+  if (s.reason) html += ' <span class="pill ' + (s.reason === "complete" ? "on" : "hot") + '">' + esc(s.reason) + "</span>";
   html += "<h1>" + esc(s.name) + "</h1>";
   html += '<p class="sub">' + s.minutes + " minutes · key " + esc(s.key) + "</p>";
   html += '<div class="card">' + (s.work || []).map(function(w) {
     const sets = (w.sets || []).map(function(x, i) {
-      return "S" + (i + 1) + " " + x.w + "×" + x.r + (x.done ? "" : " (skip)");
+      if (x.skipped) return "S" + (i + 1) + " " + x.w + "×" + x.r + " (skipped)";
+      if (x.done) return "S" + (i + 1) + " " + x.w + "×" + x.r;
+      return "S" + (i + 1) + " " + x.w + "×" + x.r + " (open)";
     }).join(" · ");
     return '<div class="row"><div><b>' + esc(w.name) + '</b><div class="n">' + esc(sets) + "</div></div></div>";
   }).join("") + "</div>";
@@ -944,10 +1516,71 @@ function render() {
   else if (view === "session") html = screenSession();
   else html = screenHome();
   app.innerHTML = html;
+  if (undoSnapshot && view === "lift") showUndoGhost();
   bind();
+  if (view === "lift" && restRemaining() > 0) ensureRestTick();
+  else if (!(state.live && state.live.restUntil && restRemaining() > 0)) stopRestTick();
 }
 
 function $(id) { return document.getElementById(id); }
+
+function bindWalkControls() {
+  if ($("walkMinus")) $("walkMinus").onclick = function() {
+    walkMinutes = Math.max(5, walkMinutes - 5);
+    sfxTap();
+    render();
+  };
+  if ($("walkPlus")) $("walkPlus").onclick = function() {
+    walkMinutes = Math.min(180, walkMinutes + 5);
+    sfxTap();
+    render();
+  };
+  if ($("walkLog")) $("walkLog").onclick = function() {
+    const t = todayISO();
+    const existing = (state.walks || []).findIndex(function(w) { return w.date === t; });
+    const entry = {date: t, minutes: walkMinutes};
+    if (existing >= 0) state.walks[existing] = entry;
+    else {
+      state.walks.unshift(entry);
+      if (state.walks.length > 60) state.walks.length = 60;
+    }
+    sfxConfirm();
+    buzz(25);
+    persist();
+    toast("Walk logged · " + walkMinutes + " min");
+    render();
+  };
+}
+
+function copyText(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text).then(function() { return true; }).catch(function() { return false; });
+  }
+  return Promise.resolve(false).then(function() {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) {}
+    ta.remove();
+    return ok;
+  });
+}
+
+function wipeAll() {
+  try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+  try { sessionStorage.removeItem("pftrack_booted"); } catch (e) {}
+  clearLiveStorage();
+  clearUndo();
+  clearRest();
+  state = defaults();
+  sfxWarn();
+  toast("Data wiped");
+  go("home");
+}
 
 function bind() {
   document.querySelectorAll("[data-nav]").forEach(function(btn) {
@@ -986,13 +1619,16 @@ function bind() {
     };
   });
   document.querySelectorAll("[data-act]").forEach(function(btn) {
-    btn.onclick = function() {
-      const a = btn.getAttribute("data-act");
-      if (a === "w+") bump("w", 1);
-      else if (a === "w-") bump("w", -1);
-      else if (a === "r+") bump("r", 1);
-      else if (a === "r-") bump("r", -1);
-    };
+    const a = btn.getAttribute("data-act");
+    let kind = "r", dir = 1;
+    if (a === "w+") { kind = "w"; dir = 1; }
+    else if (a === "w-") { kind = "w"; dir = -1; }
+    else if (a === "r+") { kind = "r"; dir = 1; }
+    else if (a === "r-") { kind = "r"; dir = -1; }
+    if (kind === "w") bindLongPress(btn, "w", dir);
+    else {
+      btn.onclick = function() { bump("r", dir, 1); };
+    }
   });
   document.querySelectorAll("[data-food]").forEach(function(el) {
     el.onclick = function() {
@@ -1004,34 +1640,34 @@ function bind() {
       render();
     };
   });
+  bindWalkControls();
   if ($("did")) $("did").onclick = function() { completeSet(); };
   if ($("skipRest")) $("skipRest").onclick = function() {
-    clearInterval(restHandle);
-    if (state.live) state.live.resting = 0;
+    clearRest();
+    saveLive();
     sfxTap();
     render();
   };
   if ($("cramp")) $("cramp").onclick = function() {
-    if (!confirm("Cramp abort — leave the floor?")) return;
-    finishWorkout("cramp");
+    showModal({
+      title: "Cramp abort",
+      body: "Leave the floor now? Session saves as cramp.",
+      okLabel: "Abort & leave",
+      danger: true,
+      onOk: function() { finishWorkout("cramp"); }
+    });
   };
   if ($("quit")) $("quit").onclick = function() {
-    if (!confirm("End & save current progress?")) return;
-    finishWorkout("quit");
+    showModal({
+      title: "End & save",
+      body: "Save current progress and exit?",
+      okLabel: "End & save",
+      onOk: function() { finishWorkout("quit"); }
+    });
   };
   if ($("skipEx")) $("skipEx").onclick = function() {
     sfxTap();
-    const live = state.live;
-    if (!live) return;
-    clearInterval(restHandle);
-    live.resting = 0;
-    if (live.i < PROGRAMS[live.key].items.length - 1) {
-      live.i += 1;
-      live.set = 0;
-      render();
-    } else {
-      finishWorkout("complete");
-    }
+    skipMovement();
   };
   if ($("bwSave")) $("bwSave").onclick = function() {
     const inp = $("bwInput");
@@ -1051,15 +1687,76 @@ function bind() {
     persist();
     render();
   };
+  if ($("hapticsToggle")) $("hapticsToggle").onclick = function() {
+    state.haptics = !state.haptics;
+    if (state.haptics) buzz(20);
+    persist();
+    render();
+  };
+  if ($("dumpLog")) $("dumpLog").onclick = function() {
+    let raw = "";
+    try { raw = localStorage.getItem(STORAGE_KEY) || "{}"; } catch (e) { raw = "{}"; }
+    copyText(raw).then(function(ok) {
+      if (ok) toast("Dump copied");
+      else {
+        showModal({
+          title: "Dump log",
+          body: "Copy this JSON manually.",
+          textarea: true,
+          placeholder: "",
+          okLabel: "Done",
+          onOk: function() {}
+        });
+        setTimeout(function() {
+          const ta = document.getElementById("modalTextarea");
+          if (ta) { ta.value = raw; ta.select(); }
+        }, 60);
+      }
+    });
+  };
+  if ($("loadDump")) $("loadDump").onclick = function() {
+    showModal({
+      title: "Load dump",
+      body: "Paste a PF//TRACK JSON dump. This replaces local storage.",
+      textarea: true,
+      placeholder: '{ "sessions": [] … }',
+      okLabel: "Preview…",
+      onOk: function(val) {
+        let parsed = null;
+        try { parsed = JSON.parse(val); } catch (e) { toast("Invalid JSON"); return; }
+        if (!parsed || typeof parsed !== "object") { toast("Invalid dump"); return; }
+        showModal({
+          title: "Replace storage?",
+          body: "This overwrites " + STORAGE_KEY + " and reloads state.",
+          okLabel: "Replace & reload",
+          danger: true,
+          onOk: function() {
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed)); } catch (e) {}
+            clearLiveStorage();
+            load();
+            toast("Dump loaded · v" + APP_VERSION);
+            go("home");
+          }
+        });
+      }
+    });
+  };
   if ($("wipeData")) $("wipeData").onclick = function() {
-    if (!confirm("Wipe ALL local PF//TRACK data?")) return;
-    if (!confirm("Really wipe? This cannot be undone.")) return;
-    try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
-    clearInterval(restHandle);
-    state = defaults();
-    sfxWarn();
-    toast("Data wiped");
-    go("home");
+    showModal({
+      title: "Wipe local data",
+      body: "Clears " + STORAGE_KEY + ", live session, and boot flag. Cannot be undone.",
+      okLabel: "Wipe everything",
+      danger: true,
+      onOk: function() {
+        showModal({
+          title: "Really wipe?",
+          body: "Last chance. All sessions, walks, and food history go.",
+          okLabel: "Yes, wipe",
+          danger: true,
+          onOk: function() { wipeAll(); }
+        });
+      }
+    });
   };
   if ($("installHint")) $("installHint").onclick = function() {
     state.installHint = false;
@@ -1069,23 +1766,111 @@ function bind() {
 }
 
 function tickClock() {
-  const el = document.querySelector(".sb span:last-child");
+  if (document.visibilityState !== "visible") return;
+  const el = document.getElementById("sbClock");
   if (!el || view === "boot") return;
   const now = new Date();
   const hh = String(now.getHours()).padStart(2, "0");
   const mm = String(now.getMinutes()).padStart(2, "0");
+  const ss = String(now.getSeconds()).padStart(2, "0");
   const live = state.live ? '<span class="dotlive"></span>LIVE' : "OFFLINE";
-  el.innerHTML = live + " · " + hh + ":" + mm;
+  el.innerHTML = live + " · " + hh + ":" + mm + ":" + ss;
+}
+
+function startClock() {
+  if (clockHandle) clearInterval(clockHandle);
+  clockHandle = null;
+  if (document.visibilityState !== "visible") return;
+  clockHandle = setInterval(tickClock, 1000);
+  tickClock();
+}
+
+function setupPwaChrome() {
+  try {
+    const c = document.createElement("canvas");
+    c.width = 180; c.height = 180;
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#0a0e14";
+    ctx.fillRect(0, 0, 180, 180);
+    ctx.fillStyle = "#b8ff2e";
+    if (ctx.roundRect) {
+      ctx.beginPath();
+      ctx.roundRect(28, 28, 124, 124, 28);
+      ctx.fill();
+    } else {
+      ctx.fillRect(28, 28, 124, 124);
+    }
+    ctx.fillStyle = "#0a1408";
+    ctx.font = "bold 52px system-ui,sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("PF", 90, 88);
+    ctx.font = "bold 18px system-ui,sans-serif";
+    ctx.fillText("TRACK", 90, 122);
+    const iconUrl = c.toDataURL("image/png");
+    let link = document.querySelector('link[rel="apple-touch-icon"]');
+    if (!link) {
+      link = document.createElement("link");
+      link.rel = "apple-touch-icon";
+      document.head.appendChild(link);
+    }
+    link.href = iconUrl;
+    let icon = document.querySelector('link[rel="icon"]');
+    if (!icon) {
+      icon = document.createElement("link");
+      icon.rel = "icon";
+      document.head.appendChild(icon);
+    }
+    icon.href = iconUrl;
+    const manifest = {
+      name: "PF//TRACK",
+      short_name: "PF//TRACK",
+      display: "standalone",
+      orientation: "portrait",
+      background_color: "#0a0e14",
+      theme_color: "#0a0e14",
+      start_url: "./",
+      icons: [{src: iconUrl, sizes: "180x180", type: "image/png"}]
+    };
+    const blob = new Blob([JSON.stringify(manifest)], {type: "application/json"});
+    const murl = URL.createObjectURL(blob);
+    let ml = document.querySelector('link[rel="manifest"]');
+    if (!ml) {
+      ml = document.createElement("link");
+      ml.rel = "manifest";
+      document.head.appendChild(ml);
+    }
+    ml.href = murl;
+  } catch (e) {}
+}
+
+function onVisibility() {
+  if (document.visibilityState === "visible") {
+    startClock();
+    if (state && state.live && state.live.restUntil) {
+      if (restRemaining() <= 0) {
+        state.live.restUntil = 0;
+        saveLive();
+      }
+      ensureRestTick();
+      if (view === "lift") render();
+    }
+  } else {
+    if (clockHandle) { clearInterval(clockHandle); clockHandle = null; }
+    stopRestTick();
+  }
 }
 
 function bootSequence() {
   load();
+  setupPwaChrome();
   let skip = false;
   try { skip = sessionStorage.getItem("pftrack_booted") === "1"; } catch (e) {}
   if (skip) {
     booted = true;
-    view = "home";
+    view = state.live ? "lift" : "home";
     render();
+    startClock();
     return;
   }
   view = "boot";
@@ -1093,14 +1878,16 @@ function bootSequence() {
   setTimeout(function() {
     try { sessionStorage.setItem("pftrack_booted", "1"); } catch (e) {}
     booted = true;
-    view = "home";
+    view = state.live ? "lift" : "home";
     sfxDone();
     render();
+    startClock();
   }, 1600);
 }
 
+document.addEventListener("visibilitychange", onVisibility);
 bootSequence();
-clockHandle = setInterval(tickClock, 15000);
+
 </script>
 </body>
 </html>
