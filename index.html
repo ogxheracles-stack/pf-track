@@ -340,6 +340,95 @@ nav.hud button.on .ico{opacity:1}
 .delta{font-size:14px;font-weight:600;margin-top:4px}
 .delta.up{color:var(--hot)}.delta.down{color:var(--ok)}.delta.flat{color:var(--dim)}
 .walkMark{color:var(--amber);font-size:12px;font-weight:700;margin-left:6px}
+
+/* Companion dragon */
+#pet-root{
+  position:fixed;left:max(12px,env(safe-area-inset-left,0px));
+  bottom:calc(78px + env(safe-area-inset-bottom,0px));
+  z-index:42;width:72px;height:72px;
+  border-radius:18px;border:1px solid var(--line2);
+  background:rgba(20,27,36,.94);
+  box-shadow:0 8px 28px rgba(0,0,0,.4);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;padding:0;overflow:visible;
+  -webkit-user-select:none;user-select:none;
+}
+#pet-root.hidden{display:none}
+#pet-root .pet-badge{
+  position:absolute;top:-6px;right:-6px;min-width:22px;height:20px;
+  padding:0 6px;border-radius:999px;font:700 11px/20px var(--mono);
+  background:var(--amber);color:#1a1004;border:1px solid #ffd080;
+}
+#pet-root.celebrate{
+  animation:petPulse 2.4s ease;
+  box-shadow:0 0 0 3px rgba(184,255,46,.35),0 8px 28px rgba(0,0,0,.4);
+}
+@keyframes petPulse{
+  0%,100%{transform:scale(1)}
+  20%{transform:scale(1.08)}
+  40%{transform:scale(1.02)}
+  60%{transform:scale(1.06)}
+}
+#pet-root svg{display:block;width:56px;height:56px}
+.pet-art{
+  --pet-body:#6a9e5a;--pet-belly:#a8d48a;--pet-accent:#b8ff2e;
+  --pet-horn:#b8ff2e;--pet-eye:#0a0e14;--pet-wing:#4a7a3a;
+}
+.pet-backdrop{
+  position:fixed;inset:0;z-index:70;background:rgba(4,8,12,.72);
+  opacity:0;pointer-events:none;transition:opacity .2s ease;
+}
+.pet-backdrop.open{opacity:1;pointer-events:auto}
+.pet-panel{
+  position:fixed;left:50%;bottom:0;transform:translate(-50%,110%);
+  width:100%;max-width:430px;z-index:72;
+  background:var(--panel);border:1px solid var(--line2);
+  border-radius:20px 20px 0 0;
+  padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));
+  box-shadow:0 -12px 48px rgba(0,0,0,.5);
+  transition:transform .28s ease;
+  max-height:min(88vh,720px);overflow:auto;
+}
+.pet-panel.open{transform:translate(-50%,0)}
+.pet-panel .pet-hero{
+  display:flex;align-items:center;gap:14px;margin-bottom:14px;
+}
+.pet-panel .pet-hero .art{
+  width:96px;height:96px;border-radius:20px;
+  background:var(--panel2);border:1px solid var(--line);
+  display:grid;place-items:center;flex-shrink:0;
+}
+.pet-panel .pet-hero .art svg{width:80px;height:80px}
+.pet-panel .pet-hero h2{margin:0 0 4px;font-size:20px}
+.pet-panel .pet-hero .stage{color:var(--neon);font-weight:700;font-size:13px}
+.pet-panel .contract{
+  font-size:13px;color:var(--dim);line-height:1.5;margin:0 0 14px;
+  padding:12px 14px;background:rgba(184,255,46,.06);
+  border:1px solid rgba(184,255,46,.22);border-radius:12px;
+}
+.pet-panel .ember-flow{
+  display:flex;justify-content:space-between;gap:10px;margin-bottom:14px;
+  padding:12px 14px;background:var(--panel2);border:1px solid var(--line);
+  border-radius:12px;font-size:13px;color:var(--dim);
+}
+.pet-panel .ember-flow b{color:var(--amber);font-family:var(--mono)}
+.pet-store{display:grid;gap:8px}
+.pet-item{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  min-height:56px;padding:12px 14px;
+  background:var(--panel2);border:1px solid var(--line);
+  border-radius:12px;color:var(--text);font:600 14px/1.3 var(--font);
+  cursor:pointer;text-align:left;width:100%;
+}
+.pet-item:active{filter:brightness(1.06)}
+.pet-item .meta{font-size:12px;color:var(--dim);font-weight:500;margin-top:3px}
+.pet-item .cost{font-family:var(--mono);font-size:13px;color:var(--amber);white-space:nowrap}
+.pet-item.owned .cost{color:var(--ok)}
+.pet-item.equipped{border-color:rgba(184,255,46,.55);background:rgba(184,255,46,.08)}
+.pet-item:disabled{opacity:.45;pointer-events:none}
+.pet-close{
+  margin-top:12px;
+}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{
     animation-duration:0.01ms !important;
@@ -349,21 +438,46 @@ nav.hud button.on .ico{opacity:1}
   .ring .fg{transition:none}
   .bootline{opacity:1;animation:none}
   .bar>i[style*="bootfill"]{width:100% !important;animation:none !important}
+  #pet-root.celebrate{animation:none}
+  .pet-backdrop,.pet-panel{transition:none}
 }
 </style>
 </head>
 <body>
 <div id="app"></div>
+<div id="pet-root" class="hidden" aria-label="Companion" role="button" tabindex="0"></div>
+<div id="pet-backdrop" class="pet-backdrop" hidden></div>
+<div id="pet-panel" class="pet-panel" hidden></div>
 <script>
 
 const STORAGE_KEY = "pftrack_v3";
 const LIVE_KEY = "pftrack_live";
-const APP_VERSION = "3.0";
+const APP_VERSION = "3.1";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
 const ISOLATION = {raise:1, rear:1, tri:1, curlbi:1, abd:1, ext:1, curl:1, calf:1};
 const WEEK_ORDER = [6, 0, 1, 2, 3, 4, 5];
+
+const EMBER_PER_SESSION = 10;
+const EMBER_FULL_WEEK_BONUS = 25;
+const PET_STAGES = [
+  {id:"hatchling", label:"Hatchling", min:1, max:2},
+  {id:"whelp", label:"Whelp", min:3, max:5},
+  {id:"drake", label:"Drake", min:6, max:9},
+  {id:"wyrm", label:"Wyrm", min:10, max:999}
+];
+const PET_ITEMS = [
+  {id:"scale_moss", slot:"scale", name:"Moss Scales", cost:0, palette:{"--pet-body":"#6a9e5a","--pet-belly":"#a8d48a","--pet-accent":"#b8ff2e","--pet-wing":"#4a7a3a"}},
+  {id:"scale_ember", slot:"scale", name:"Ember Scales", cost:50, palette:{"--pet-body":"#c45a2e","--pet-belly":"#f0a060","--pet-accent":"#ffb020","--pet-wing":"#8a3a18"}},
+  {id:"scale_void", slot:"scale", name:"Void Scales", cost:100, palette:{"--pet-body":"#3a2a5a","--pet-belly":"#6a5a8a","--pet-accent":"#a88cff","--pet-wing":"#2a1a40"}},
+  {id:"horn_neon", slot:"horn", name:"Neon Horns", cost:0, palette:{"--pet-horn":"#b8ff2e"}},
+  {id:"horn_bone", slot:"horn", name:"Bone Horns", cost:75, palette:{"--pet-horn":"#e8e0d0"}},
+  {id:"horn_crystal", slot:"horn", name:"Crystal Horns", cost:120, palette:{"--pet-horn":"#5ec8d8"}},
+  {id:"extra_hoard", slot:"extra", name:"Ember Hoard", cost:40},
+  {id:"extra_wisps", slot:"extra", name:"Spirit Wisps", cost:60},
+  {id:"extra_crown", slot:"extra", name:"Wyrm Crown", cost:150}
+];
 
 const PROGRAMS = {
   "upper-a": {
@@ -462,7 +576,15 @@ function defaults() {
     haptics: true,
     installHint: true,
     readyUp: {},
-    walks: []
+    walks: [],
+    pet: {
+      ember: 0,
+      owned: ["scale_moss", "horn_neon"],
+      equipped: {scale: "scale_moss", horn: "horn_neon", extras: []},
+      lastSeenLevel: 1,
+      celebrateUntil: 0,
+      fullWeekAwarded: ""
+    }
   };
 }
 
@@ -531,8 +653,10 @@ function load() {
         });
       }
       data.foodHistory = data.foodHistory.slice(0, 7);
+      data.pet = normalizePet(data.pet);
     } catch (e) {}
   }
+  data.pet = normalizePet(data.pet);
   data.live = null;
   state = data;
   const resumed = loadLive();
@@ -663,6 +787,324 @@ function todayPlan() {
   const d = new Date().getDay();
   return WEEK.find(function(w) { return w.d === d; });
 }
+
+
+function defaultPet() {
+  return {
+    ember: 0,
+    owned: ["scale_moss", "horn_neon"],
+    equipped: {scale: "scale_moss", horn: "horn_neon", extras: []},
+    lastSeenLevel: 1,
+    celebrateUntil: 0,
+    fullWeekAwarded: ""
+  };
+}
+
+function normalizePet(raw) {
+  const d = defaultPet();
+  if (!raw || typeof raw !== "object") return d;
+  const p = Object.assign({}, d, raw);
+  if (!Array.isArray(p.owned)) p.owned = d.owned.slice();
+  ["scale_moss", "horn_neon"].forEach(function(id) {
+    if (p.owned.indexOf(id) < 0) p.owned.push(id);
+  });
+  if (!p.equipped || typeof p.equipped !== "object") p.equipped = Object.assign({}, d.equipped);
+  if (!p.equipped.scale) p.equipped.scale = "scale_moss";
+  if (!p.equipped.horn) p.equipped.horn = "horn_neon";
+  if (!Array.isArray(p.equipped.extras)) p.equipped.extras = [];
+  p.ember = Math.max(0, Number(p.ember) || 0);
+  p.lastSeenLevel = Math.max(1, Number(p.lastSeenLevel) || 1);
+  p.celebrateUntil = Number(p.celebrateUntil) || 0;
+  p.fullWeekAwarded = typeof p.fullWeekAwarded === "string" ? p.fullWeekAwarded : "";
+  return p;
+}
+
+function ensurePet() {
+  if (!state.pet) state.pet = defaultPet();
+  else state.pet = normalizePet(state.pet);
+  return state.pet;
+}
+
+function petStage() {
+  const lv = level();
+  for (let i = 0; i < PET_STAGES.length; i++) {
+    const s = PET_STAGES[i];
+    if (lv >= s.min && lv <= s.max) return s;
+  }
+  return PET_STAGES[PET_STAGES.length - 1];
+}
+
+function petItem(id) {
+  return PET_ITEMS.find(function(it) { return it.id === id; }) || null;
+}
+
+function applyPetPalette(el) {
+  if (!el) return;
+  const pet = ensurePet();
+  el.classList.add("pet-art");
+  const scale = petItem(pet.equipped.scale);
+  const horn = petItem(pet.equipped.horn);
+  const base = {"--pet-body":"#6a9e5a","--pet-belly":"#a8d48a","--pet-accent":"#b8ff2e","--pet-wing":"#4a7a3a","--pet-horn":"#b8ff2e","--pet-eye":"#0a0e14"};
+  Object.keys(base).forEach(function(k) { el.style.setProperty(k, base[k]); });
+  if (scale && scale.palette) Object.keys(scale.palette).forEach(function(k) { el.style.setProperty(k, scale.palette[k]); });
+  if (horn && horn.palette) Object.keys(horn.palette).forEach(function(k) { el.style.setProperty(k, horn.palette[k]); });
+}
+
+function dragonSVG(size) {
+  const s = size || 56;
+  const stage = petStage().id;
+  const pet = ensurePet();
+  const hasHoard = pet.equipped.extras.indexOf("extra_hoard") >= 0;
+  const hasWisps = pet.equipped.extras.indexOf("extra_wisps") >= 0;
+  const hasCrown = pet.equipped.extras.indexOf("extra_crown") >= 0;
+  let bodyScale = stage === "hatchling" ? 0.78 : stage === "whelp" ? 0.88 : stage === "drake" ? 1 : 1.08;
+  let wings = "";
+  if (stage === "drake" || stage === "wyrm") {
+    wings =
+      '<path d="M18 38 Q6 28 10 18 Q22 28 26 34 Z" fill="var(--pet-wing)" opacity=".9"/>' +
+      '<path d="M46 38 Q58 28 54 18 Q42 28 38 34 Z" fill="var(--pet-wing)" opacity=".9"/>';
+  } else if (stage === "whelp") {
+    wings =
+      '<path d="M20 40 Q12 32 14 24 Q24 32 28 36 Z" fill="var(--pet-wing)" opacity=".75"/>' +
+      '<path d="M44 40 Q52 32 50 24 Q40 32 36 36 Z" fill="var(--pet-wing)" opacity=".75"/>';
+  }
+  let horns =
+    '<path d="M24 22 L20 10 L26 18 Z" fill="var(--pet-horn)"/>' +
+    '<path d="M40 22 L44 10 L38 18 Z" fill="var(--pet-horn)"/>';
+  if (stage === "hatchling") {
+    horns =
+      '<circle cx="24" cy="16" r="2.2" fill="var(--pet-horn)"/>' +
+      '<circle cx="40" cy="16" r="2.2" fill="var(--pet-horn)"/>';
+  }
+  let crown = "";
+  if (hasCrown) {
+    crown = '<path d="M22 14 L26 8 L32 12 L38 8 L42 14 Z" fill="#ffd080" stroke="#c9a040" stroke-width="1"/>';
+  }
+  let hoard = "";
+  if (hasHoard) {
+    hoard =
+      '<ellipse cx="32" cy="54" rx="14" ry="4" fill="#ffb020" opacity=".55"/>' +
+      '<circle cx="26" cy="52" r="2.2" fill="#ffd080"/>' +
+      '<circle cx="34" cy="51" r="2.6" fill="#ffb020"/>' +
+      '<circle cx="40" cy="53" r="1.8" fill="#ffe0a0"/>';
+  }
+  let wisps = "";
+  if (hasWisps) {
+    wisps =
+      '<circle cx="12" cy="28" r="2" fill="var(--pet-accent)" opacity=".7">' +
+      '<animate attributeName="cy" values="28;22;28" dur="2.4s" repeatCount="indefinite"/></circle>' +
+      '<circle cx="52" cy="24" r="1.6" fill="var(--pet-accent)" opacity=".55">' +
+      '<animate attributeName="cy" values="24;18;24" dur="2.8s" repeatCount="indefinite"/></circle>' +
+      '<circle cx="48" cy="42" r="1.4" fill="var(--cyan)" opacity=".5">' +
+      '<animate attributeName="cy" values="42;36;42" dur="3s" repeatCount="indefinite"/></circle>';
+  }
+  let tail =
+    '<path d="M44 46 Q58 48 56 38 Q52 46 44 44 Z" fill="var(--pet-body)"/>';
+  if (stage === "wyrm") {
+    tail =
+      '<path d="M44 46 Q62 50 60 34 Q54 46 44 44 Z" fill="var(--pet-body)"/>' +
+      '<circle cx="60" cy="34" r="2.4" fill="var(--pet-accent)"/>';
+  }
+  return (
+    '<svg class="dragon-svg" width="' + s + '" height="' + s + '" viewBox="0 0 64 64" aria-hidden="true">' +
+      '<g transform="translate(32 34) scale(' + bodyScale + ') translate(-32 -34)">' +
+        wings +
+        '<ellipse cx="32" cy="40" rx="16" ry="14" fill="var(--pet-body)"/>' +
+        '<ellipse cx="32" cy="42" rx="10" ry="9" fill="var(--pet-belly)"/>' +
+        '<circle cx="32" cy="24" r="12" fill="var(--pet-body)"/>' +
+        '<circle cx="27" cy="23" r="2.2" fill="var(--pet-eye)"/>' +
+        '<circle cx="37" cy="23" r="2.2" fill="var(--pet-eye)"/>' +
+        '<circle cx="27.6" cy="22.4" r="0.7" fill="#fff" opacity=".8"/>' +
+        '<circle cx="37.6" cy="22.4" r="0.7" fill="#fff" opacity=".8"/>' +
+        '<path d="M28 29 Q32 32 36 29" fill="none" stroke="var(--pet-accent)" stroke-width="1.4" stroke-linecap="round"/>' +
+        horns +
+        crown +
+        tail +
+        hoard +
+      '</g>' +
+      wisps +
+    '</svg>'
+  );
+}
+
+function petVisible() {
+  if (!booted || view === "boot") return false;
+  if (view === "lift" && state.live && !(state.live.restUntil && restRemaining() > 0)) return false;
+  return true;
+}
+
+function maybeFlagCelebration() {
+  const pet = ensurePet();
+  const lv = level();
+  if (lv > pet.lastSeenLevel) {
+    pet.celebrateUntil = Date.now() + 2400;
+    pet.lastSeenLevel = lv;
+    return true;
+  }
+  pet.lastSeenLevel = Math.max(pet.lastSeenLevel, lv);
+  return false;
+}
+
+function awardSessionEmbers() {
+  const pet = ensurePet();
+  let gained = EMBER_PER_SESSION;
+  let bonus = 0;
+  const ws = weekStart();
+  if (liftKeysClearedThisWeek() >= 4 && pet.fullWeekAwarded !== ws) {
+    bonus = EMBER_FULL_WEEK_BONUS;
+    pet.fullWeekAwarded = ws;
+  }
+  pet.ember += gained + bonus;
+  maybeFlagCelebration();
+  return {gained: gained, bonus: bonus, total: pet.ember};
+}
+
+function renderPetWidget() {
+  const root = document.getElementById("pet-root");
+  if (!root) return;
+  ensurePet();
+  if (!petVisible()) {
+    root.classList.add("hidden");
+    return;
+  }
+  root.classList.remove("hidden");
+  const pet = state.pet;
+  const celebrating = pet.celebrateUntil && Date.now() < pet.celebrateUntil;
+  root.classList.toggle("celebrate", !!celebrating);
+  root.innerHTML = dragonSVG(56) + '<span class="pet-badge">' + pet.ember + "</span>";
+  applyPetPalette(root);
+  if (celebrating) {
+    const left = pet.celebrateUntil - Date.now();
+    setTimeout(function() {
+      if (state && state.pet) state.pet.celebrateUntil = 0;
+      const r = document.getElementById("pet-root");
+      if (r) r.classList.remove("celebrate");
+      persist();
+    }, Math.max(50, left));
+  }
+}
+
+function petPanelHtml() {
+  const pet = ensurePet();
+  const stage = petStage();
+  let html = '<div class="pet-hero"><div class="art pet-art" id="petHeroArt">' + dragonSVG(80) + "</div><div>";
+  html += '<div class="stage">' + esc(stage.label).toUpperCase() + " · LV " + level() + "</div>";
+  html += "<h2>Companion</h2>";
+  html += '<div class="lbl">' + pet.ember + " embers</div></div></div>";
+  html += '<p class="contract">Never hungry. Never sad. Never nags. Grows with sessions you already logged. Embers are earned, not owed.</p>';
+  html += '<div class="ember-flow"><span>Session <b>+' + EMBER_PER_SESSION + "</b></span><span>Full week <b>+" + EMBER_FULL_WEEK_BONUS + "</b></span><span>Week <b>" + liftKeysClearedThisWeek() + "/4</b></span></div>";
+  html += '<div class="lbl" style="margin-bottom:8px">Store</div><div class="pet-store">';
+  PET_ITEMS.forEach(function(it) {
+    const owned = pet.owned.indexOf(it.id) >= 0;
+    let equipped = false;
+    if (it.slot === "extra") equipped = pet.equipped.extras.indexOf(it.id) >= 0;
+    else equipped = pet.equipped[it.slot] === it.id;
+    let cls = "pet-item";
+    if (owned) cls += " owned";
+    if (equipped) cls += " equipped";
+    const canBuy = !owned && pet.ember >= it.cost;
+    const disabled = !owned && !canBuy;
+    let action = owned ? (equipped && it.slot !== "extra" ? "equipped" : "equip") : "buy";
+    let costLabel = owned ? (equipped ? "ON" : "EQUIP") : (it.cost === 0 ? "FREE" : it.cost + "✦");
+    html += '<button type="button" class="' + cls + '" data-pet-item="' + it.id + '" data-pet-act="' + action + '"' + (disabled ? " disabled" : "") + ">";
+    html += "<div><b>" + esc(it.name) + "</b><div class=\"meta\">" + esc(it.slot) + (equipped ? " · equipped" : owned ? " · owned" : "") + "</div></div>";
+    html += '<span class="cost">' + costLabel + "</span></button>";
+  });
+  html += '</div><button type="button" class="btn gho pet-close" id="petClose">Close</button>';
+  return html;
+}
+
+function openPetPanel() {
+  const panel = document.getElementById("pet-panel");
+  const backdrop = document.getElementById("pet-backdrop");
+  if (!panel || !backdrop) return;
+  panel.hidden = false;
+  backdrop.hidden = false;
+  panel.innerHTML = petPanelHtml();
+  const hero = document.getElementById("petHeroArt");
+  applyPetPalette(hero);
+  applyPetPalette(panel.querySelector(".pet-art"));
+  requestAnimationFrame(function() {
+    panel.classList.add("open");
+    backdrop.classList.add("open");
+  });
+  bindPetPanel();
+  sfxTap();
+}
+
+function closePetPanel() {
+  const panel = document.getElementById("pet-panel");
+  const backdrop = document.getElementById("pet-backdrop");
+  if (!panel || !backdrop) return;
+  panel.classList.remove("open");
+  backdrop.classList.remove("open");
+  setTimeout(function() {
+    panel.hidden = true;
+    backdrop.hidden = true;
+    panel.innerHTML = "";
+  }, 220);
+}
+
+function buyOrEquipPet(id) {
+  const pet = ensurePet();
+  const it = petItem(id);
+  if (!it) return;
+  const owned = pet.owned.indexOf(id) >= 0;
+  if (!owned) {
+    if (pet.ember < it.cost) { toast("Need more embers"); return; }
+    pet.ember -= it.cost;
+    pet.owned.push(id);
+    if (it.slot === "extra") {
+      if (pet.equipped.extras.indexOf(id) < 0) pet.equipped.extras.push(id);
+    } else {
+      pet.equipped[it.slot] = id;
+    }
+    sfxConfirm();
+    buzz(30);
+    toast("Unlocked · " + it.name);
+  } else if (it.slot === "extra") {
+    const idx = pet.equipped.extras.indexOf(id);
+    if (idx >= 0) pet.equipped.extras.splice(idx, 1);
+    else pet.equipped.extras.push(id);
+    sfxTap();
+  } else {
+    pet.equipped[it.slot] = id;
+    sfxTap();
+  }
+  persist();
+  renderPetWidget();
+  const panel = document.getElementById("pet-panel");
+  if (panel && !panel.hidden) {
+    panel.innerHTML = petPanelHtml();
+    applyPetPalette(document.getElementById("petHeroArt"));
+    bindPetPanel();
+  }
+}
+
+function bindPetPanel() {
+  const close = document.getElementById("petClose");
+  if (close) close.onclick = function() { closePetPanel(); };
+  document.querySelectorAll("[data-pet-item]").forEach(function(btn) {
+    btn.onclick = function() {
+      buyOrEquipPet(btn.getAttribute("data-pet-item"));
+    };
+  });
+}
+
+function bindPetChrome() {
+  const root = document.getElementById("pet-root");
+  const backdrop = document.getElementById("pet-backdrop");
+  if (root) {
+    root.onclick = function() {
+      if (root.classList.contains("hidden")) return;
+      openPetPanel();
+    };
+  }
+  if (backdrop) {
+    backdrop.onclick = function() { closePetPanel(); };
+  }
+}
+
 
 function esc(s) {
   return String(s == null ? "" : s)
@@ -1103,11 +1545,15 @@ function finishWorkout(reason) {
   state.live = null;
   state.exitReason = reason || "complete";
   clearLiveStorage();
+  const emberAward = awardSessionEmbers();
   if (reason === "complete") sfxDone();
   else sfxWarn();
   buzz(60);
   persist();
   go("done");
+  let emberMsg = "+" + emberAward.gained + " embers";
+  if (emberAward.bonus) emberMsg += " · +" + emberAward.bonus + " week bonus";
+  toast(emberMsg);
 }
 
 function statusbar() {
@@ -1444,7 +1890,12 @@ function screenLog() {
   let html = statusbar();
   html += '<div class="lbl">Progress</div><h1>Stats &amp; log</h1>';
   html += '<p class="sub">LV ' + level() + " · " + xp() + " XP · " + state.sessions.length + " sessions · v" + APP_VERSION + "</p>";
-  html += '<div class="card"><div class="row" style="border:0;padding:0">';
+  ensurePet();
+  html += '<div class="card"><div class="row" style="border:0;padding:0;align-items:center">';
+  html += '<div><div class="lbl">Companion</div><b>' + esc(petStage().label) + '</b><div class="n">' + state.pet.ember + ' embers · reflective only</div></div>';
+  html += '<div class="r"><button class="btn gho" id="openPetFromLog" style="min-height:44px;width:auto;padding:10px 14px">Open</button></div>';
+  html += '</div></div>';
+  html += '<div class="card mt"><div class="row" style="border:0;padding:0">';
   html += '<div><div class="lbl">Level</div><div class="stat">' + level() + '</div></div>';
   html += '<div class="r"><div class="lbl">Into next</div><div class="stat" style="font-size:22px">' + xpInto() + "<small>/40</small></div></div>";
   html += '</div><div class="bar"><i style="width:' + (xpInto() / 40 * 100) + '%"></i></div></div>';
@@ -1518,6 +1969,8 @@ function render() {
   app.innerHTML = html;
   if (undoSnapshot && view === "lift") showUndoGhost();
   bind();
+  bindPetChrome();
+  renderPetWidget();
   if (view === "lift" && restRemaining() > 0) ensureRestTick();
   else if (!(state.live && state.live.restUntil && restRemaining() > 0)) stopRestTick();
 }
@@ -1762,6 +2215,9 @@ function bind() {
     state.installHint = false;
     persist();
     render();
+  };
+  if ($("openPetFromLog")) $("openPetFromLog").onclick = function() {
+    openPetPanel();
   };
 }
 
