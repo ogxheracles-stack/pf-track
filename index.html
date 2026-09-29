@@ -246,7 +246,7 @@ input:focus{border-color:var(--neon)}
 nav.hud{
   position:fixed;left:50%;bottom:0;transform:translateX(-50%);
   width:100%;max-width:430px;z-index:45;
-  display:grid;grid-template-columns:repeat(4,1fr);
+  display:grid;grid-template-columns:repeat(5,1fr);
   background:rgba(10,14,20,.96);
   backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
   border-top:1px solid var(--line);
@@ -340,6 +340,39 @@ nav.hud button.on .ico{opacity:1}
 .delta{font-size:14px;font-weight:600;margin-top:4px}
 .delta.up{color:var(--hot)}.delta.down{color:var(--ok)}.delta.flat{color:var(--dim)}
 .walkMark{color:var(--amber);font-size:12px;font-weight:700;margin-left:6px}
+
+.pinCard .row{padding:12px 0}
+.pinCard .pinVal{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--neon)}
+.pinCard .repsVal{font-size:12px;color:var(--dim);margin-top:2px}
+.fuelBar{
+  height:14px;background:#0c1218;border:1px solid var(--line);
+  border-radius:8px;margin:10px 0 8px;position:relative;overflow:hidden;
+}
+.fuelBar>i{
+  display:block;height:100%;border-radius:7px;
+  background:linear-gradient(90deg,var(--cyan),var(--neon));
+}
+.fuelBar .mark{
+  position:absolute;top:0;bottom:0;width:2px;background:rgba(255,255,255,.25);
+}
+.heat{
+  background:rgba(255,107,138,.1);
+  border-color:rgba(255,107,138,.4);
+  color:#ffb0c0;
+}
+.heat b{color:#ffd0da}
+.crowdTag{display:inline-block;margin-top:6px}
+.preSkip{opacity:.45}
+.preSkip .n{color:var(--amber)}
+.shame{border-style:dashed}
+.uplinkBox{
+  width:100%;min-height:160px;background:#0c1218;
+  border:1px solid var(--line2);border-radius:var(--radius-sm);
+  color:var(--text);padding:14px 16px;
+  font:500 13px/1.45 var(--mono);outline:none;resize:vertical;
+}
+.uplinkBox:focus{border-color:var(--neon)}
+
 
 /* Companion dragon */
 #pet-root{
@@ -452,7 +485,7 @@ nav.hud button.on .ico{opacity:1}
 
 const STORAGE_KEY = "pftrack_v3";
 const LIVE_KEY = "pftrack_live";
-const APP_VERSION = "3.1";
+const APP_VERSION = "3.2";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -528,12 +561,12 @@ const PROGRAMS = {
 };
 
 const WEEK = [
-  {d:0, label:"Sunday", short:"Sun", key:"lower-a", note:"After Saturday upper. Legs while you still have the weekend."},
+  {d:0, label:"Sunday", short:"Sun", key:"lower-a", note:"Lower A can be heavier. Weekend legs while recovery still exists."},
   {d:1, label:"Monday", short:"Mon", key:null, note:"Busiest work day. Walking is the session. No PF."},
   {d:2, label:"Tuesday", short:"Tue", key:"upper-b", note:"Second upper. Laterals + curls. Not a make-up dump."},
-  {d:3, label:"Wednesday", short:"Wed", key:"lower-b", note:"Work off. Light legs if hamstring is quiet. Bigger food day ends tonight."},
+  {d:3, label:"Wednesday", short:"Wed", key:"lower-b", note:"Lower B protects Thu–Fri delivery. Light posterior only. Bigger food day ends tonight."},
   {d:4, label:"Thursday", short:"Thu", key:null, note:"Gym off on purpose. Protects Friday. Food window only."},
-  {d:5, label:"Friday", short:"Fri", key:null, note:"Busiest work day. No lift, no laterals cameo, no incline."},
+  {d:5, label:"Friday", short:"Fri", key:null, note:"Work-walk only. Not a lift day. No PF, no laterals cameo, no incline."},
   {d:6, label:"Saturday", short:"Sat", key:"upper-a", note:"Week starts here. V-taper session."}
 ];
 
@@ -577,6 +610,9 @@ function defaults() {
     installHint: true,
     readyUp: {},
     walks: [],
+    feetCookedWeek: "",
+    hamWeird: false,
+    sleepHours: null,
     pet: {
       ember: 0,
       owned: ["scale_moss", "horn_neon"],
@@ -641,6 +677,10 @@ function load() {
       if (!Array.isArray(data.bodyweights)) data.bodyweights = [];
       if (!data.readyUp || typeof data.readyUp !== "object") data.readyUp = {};
       if (!Array.isArray(data.walks)) data.walks = [];
+      if (typeof data.feetCookedWeek !== "string") data.feetCookedWeek = "";
+      if (typeof data.hamWeird !== "boolean") data.hamWeird = false;
+      if (data.sleepHours != null) data.sleepHours = Number(data.sleepHours);
+      else data.sleepHours = null;
       if (typeof data.haptics !== "boolean") data.haptics = true;
       if (typeof data.sound !== "boolean") data.sound = true;
       if (!Array.isArray(data.foodHistory)) data.foodHistory = [];
@@ -649,7 +689,8 @@ function load() {
           date: data.food.date,
           work: !!data.food.work,
           home: !!data.food.home,
-          after: !!data.food.after
+          after: !!data.food.after,
+          rice: !!data.food.rice
         });
       }
       data.foodHistory = data.foodHistory.slice(0, 7);
@@ -765,6 +806,282 @@ function walkThisWeekForDay(d) {
   const day = String(target.getDate()).padStart(2, "0");
   return walkForDate(y + "-" + m + "-" + day);
 }
+
+
+function weekStartISO() {
+  const d = weekStart();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return y + "-" + m + "-" + day;
+}
+
+function isFeetCooked() {
+  if (state.feetCookedWeek && state.feetCookedWeek === weekStartISO()) return true;
+  const start = weekStart();
+  return (state.walks || []).some(function(w) {
+    if (!w.feetCooked) return false;
+    const dt = parseLocalDate(w.date);
+    return dt >= start;
+  });
+}
+
+function setFeetCooked(on) {
+  state.feetCookedWeek = on ? weekStartISO() : "";
+  if (!on) {
+    const start = weekStart();
+    (state.walks || []).forEach(function(w) {
+      const dt = parseLocalDate(w.date);
+      if (dt >= start) w.feetCooked = false;
+    });
+  }
+}
+
+function lastRepsFor(id) {
+  for (let i = 0; i < (state.sessions || []).length; i++) {
+    const s = state.sessions[i];
+    if (!s.work) continue;
+    for (let j = 0; j < s.work.length; j++) {
+      if (s.work[j].id !== id) continue;
+      const sets = (s.work[j].sets || []).filter(function(x) { return x.done && !x.skipped; });
+      if (sets.length) return sets.map(function(x) { return x.r; }).join("/");
+      break;
+    }
+  }
+  return "—";
+}
+
+function pinCardHtml(prog, opts) {
+  if (!prog) return "";
+  opts = opts || {};
+  let html = '<div class="card pinCard' + (opts.mt ? " mt" : "") + '"><div class="lbl">Pins · last session</div>';
+  html += prog.items.map(function(ex) {
+    const pin = state.lastWeights[ex.id];
+    const reps = lastRepsFor(ex.id);
+    const preSkip = (opts.key === "lower-b") && (
+      (ex.id === "calf" && isFeetCooked()) ||
+      (ex.id === "curl" && state.hamWeird)
+    );
+    return '<div class="row' + (preSkip ? " preSkip" : "") + '"><div><b>' + esc(ex.name) +
+      '</b>' + (preSkip ? '<div class="n">pre-skip · lock on</div>' : '') +
+      '</div><div class="r"><div class="pinVal">' + (pin != null ? pin : "—") +
+      '</div><div class="repsVal">reps ' + esc(reps) + "</div></div></div>";
+  }).join("");
+  html += "</div>";
+  return html;
+}
+
+function crowdTagHtml() {
+  const now = new Date();
+  const h = now.getHours();
+  const dow = now.getDay();
+  let label = "";
+  let cls = "pill";
+  if (h < 7 || h >= 18) {
+    label = "low crowd window";
+    cls += " on";
+  } else if (dow === 6 && h >= 10 && h < 16) {
+    label = "expect wait · don't add machines";
+    cls += " hot";
+  } else {
+    label = "mid crowd";
+  }
+  return '<span class="pill crowdTag ' + cls.replace("pill ", "") + '">' + esc(label) + "</span>";
+}
+
+function sleepCueHtml(plan) {
+  if (!plan || plan.key !== "upper-a") return "";
+  const hrs = state.sleepHours;
+  if (hrs == null || hrs >= 6) return "";
+  return '<div class="card cue mt"><b>Short sleep · ' + hrs + 'h</b><br>Same pin, no hero. Laterals stay.</div>';
+}
+
+function heatBannerHtml(plan) {
+  if (!plan || !isWorkDay(plan.d)) return "";
+  return '<div class="card cue heat mt"><b>Heat protocol</b><br>Salt · water · no incline · no quick PF stop.</div>';
+}
+
+function fuelWindowMeta() {
+  const now = new Date();
+  const mins = now.getHours() * 60 + now.getMinutes();
+  const start = 14 * 60;
+  const end = 20 * 60;
+  let pct = 0;
+  let phase = "before";
+  if (mins < start) {
+    pct = 0;
+    phase = "before";
+  } else if (mins >= end) {
+    pct = 100;
+    phase = "after";
+  } else {
+    pct = Math.round((mins - start) / (end - start) * 100);
+    phase = "open";
+  }
+  return {pct: pct, phase: phase, mins: mins};
+}
+
+function lowerDayOneLiner(key) {
+  if (key === "lower-a") return "Sunday can be heavier — matching legs while the weekend still exists.";
+  if (key === "lower-b") return "Wednesday protects Thu–Fri delivery — light posterior only.";
+  return "";
+}
+
+function movementFullySkipped(sets) {
+  return (sets || []).length > 0 && (sets || []).every(function(s) { return s.skipped; });
+}
+
+function advancePastPreSkipped() {
+  if (!state.live) return;
+  const live = state.live;
+  const items = PROGRAMS[live.key].items;
+  while (live.i < items.length && movementFullySkipped(live.sets[live.i])) {
+    live.i += 1;
+    live.set = 0;
+  }
+}
+
+const MOVEMENT_ALIASES = {
+  press: "press", "shoulder press": "press", "prensa hombro": "press", "press hombro": "press",
+  "shoulder": "press", hombro: "press",
+  lat: "lat", "lat pulldown": "lat", jalon: "lat", "jalón": "lat", "jalon pecho": "lat",
+  "lat pull": "lat", pulldown: "lat",
+  row: "row", remo: "row", "seated row": "row", "remo sentado": "row",
+  raise: "raise", "lateral raise": "raise", aperturas: "raise", "aperturas laterales": "raise",
+  laterales: "raise", laterals: "raise",
+  rear: "rear", "rear fly": "rear", "face pull": "rear", "facepull": "rear",
+  "aperturas traseras": "rear",
+  tri: "tri", "tricep pushdown": "tri", pushdown: "tri", triceps: "tri", tríceps: "tri",
+  curlbi: "curlbi", "bicep curl": "curlbi", biceps: "curlbi", bíceps: "curlbi",
+  "curl de biceps": "curlbi", "curl de bíceps": "curlbi", "curl biceps": "curlbi",
+  chest: "chest", "chest press": "chest", "press pecho": "chest", pecho: "chest",
+  lpress: "lpress", "leg press": "lpress", prensa: "lpress", "prensa pierna": "lpress",
+  "legpress": "lpress",
+  abd: "abd", "hip abductor": "abd", abductor: "abd", abductores: "abd",
+  ext: "ext", "leg extension": "ext", extension: "ext", extensión: "ext", "extension pierna": "ext",
+  curl: "curl", "seated leg curl": "curl", "leg curl": "curl", "curl femoral": "curl",
+  femoral: "curl", "curl pierna": "curl",
+  calf: "calf", "calf raise": "calf", gemelos: "calf", pantorrilla: "calf", pantorrillas: "calf"
+};
+
+function resolveMovementId(raw) {
+  const k = String(raw || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (!k) return null;
+  if (MOVEMENT_ALIASES[k]) return MOVEMENT_ALIASES[k];
+  // try without accents already stripped
+  const keys = Object.keys(MOVEMENT_ALIASES);
+  for (let i = 0; i < keys.length; i++) {
+    const ak = keys[i].normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (ak === k) return MOVEMENT_ALIASES[keys[i]];
+  }
+  // known program ids
+  const ids = ["press","lat","row","raise","rear","tri","curlbi","chest","lpress","abd","ext","curl","calf"];
+  if (ids.indexOf(k) >= 0) return k;
+  return null;
+}
+
+function formatPFTRACK(session) {
+  if (!session) return "";
+  let lines = ["PFTRACK"];
+  if (session.key) lines.push("key: " + session.key);
+  (session.work || []).forEach(function(w) {
+    const sets = (w.sets || []).filter(function(x) { return x.done && !x.skipped; });
+    if (!sets.length) return;
+    lines.push(w.id + " " + sets.map(function(s) { return s.w + "x" + s.r; }).join(" "));
+  });
+  if (session.diff != null) lines.push("diff: " + session.diff);
+  if (session.sore != null) lines.push("sore: " + session.sore);
+  if (session.feet != null) lines.push("feet: " + session.feet);
+  return lines.join("\n");
+}
+
+function parsePFTRACK(text) {
+  const raw = String(text || "").trim();
+  if (!raw) return {ok: false, error: "Empty"};
+  const lines = raw.split(/\r?\n/).map(function(l) { return l.trim(); }).filter(Boolean);
+  let start = 0;
+  if (/^pftrack$/i.test(lines[0])) start = 1;
+  const pins = {};
+  let key = null;
+  let log = false;
+  let meta = {};
+  for (let i = start; i < lines.length; i++) {
+    const line = lines[i];
+    const metaM = line.match(/^(key|diff|sore|feet|log)\s*:\s*(.+)$/i);
+    if (metaM) {
+      const mk = metaM[1].toLowerCase();
+      const mv = metaM[2].trim();
+      if (mk === "key") key = mv.toLowerCase();
+      else if (mk === "log") log = /^(1|true|yes|y)$/i.test(mv);
+      else meta[mk] = mv;
+      continue;
+    }
+    const m = line.match(/^(.+?)\s+((?:\d+(?:\.\d+)?[xX×]\d+)(?:\s+\d+(?:\.\d+)?[xX×]\d+)*)$/);
+    if (!m) continue;
+    const id = resolveMovementId(m[1]);
+    if (!id) continue;
+    const pairs = m[2].split(/\s+/).map(function(p) {
+      const parts = p.split(/[xX×]/);
+      return {w: parseFloat(parts[0]), r: parseInt(parts[1], 10)};
+    }).filter(function(p) { return p.w > 0 && p.r > 0; });
+    if (!pairs.length) continue;
+    pins[id] = pairs;
+  }
+  return {ok: true, key: key, pins: pins, log: log, meta: meta};
+}
+
+function applyPFTRACK(parsed) {
+  if (!parsed || !parsed.ok) return {updated: 0};
+  let updated = 0;
+  const work = [];
+  Object.keys(parsed.pins).forEach(function(id) {
+    const pairs = parsed.pins[id];
+    const last = pairs[pairs.length - 1];
+    state.lastWeights[id] = last.w;
+    updated++;
+    // readyUp if both sets 15+
+    if (pairs.length >= 2 && pairs[0].r >= 15 && pairs[1].r >= 15 && pairs[0].w === pairs[1].w) {
+      // leave readyUp detection to next complete session; pins only here
+    }
+    work.push({
+      id: id,
+      name: id,
+      sets: pairs.map(function(p) { return {w: p.w, r: p.r, done: true, skipped: false}; })
+    });
+  });
+  if (parsed.log && work.length) {
+    const key = parsed.key && PROGRAMS[parsed.key] ? parsed.key : null;
+    const name = key ? PROGRAMS[key].name : "Uplink session";
+    // enrich names from program if possible
+    if (key) {
+      work.forEach(function(w) {
+        const ex = PROGRAMS[key].items.find(function(x) { return x.id === w.id; });
+        if (ex) w.name = ex.name;
+      });
+    } else {
+      Object.keys(PROGRAMS).forEach(function(k) {
+        PROGRAMS[k].items.forEach(function(ex) {
+          work.forEach(function(w) { if (w.id === ex.id && w.name === w.id) w.name = ex.name; });
+        });
+      });
+    }
+    state.sessions.unshift({
+      date: todayISO(),
+      key: key || "uplink",
+      name: name,
+      minutes: 1,
+      reason: "uplink",
+      work: work,
+      diff: parsed.meta.diff,
+      sore: parsed.meta.sore,
+      feet: parsed.meta.feet
+    });
+    if (state.sessions.length > 60) state.sessions.length = 60;
+  }
+  persist();
+  return {updated: updated, logged: !!parsed.log};
+}
+
 
 function xp() {
   return state.sessions.reduce(function(n, s) {
@@ -1214,6 +1531,7 @@ function go(v) {
   if (v === "week" || v === "day") tab = "week";
   if (v === "fuel") tab = "fuel";
   if (v === "log" || v === "session") tab = "log";
+  if (v === "link") tab = "link";
   render();
 }
 
@@ -1238,8 +1556,8 @@ function showModal(opts) {
     body += '<textarea id="modalTextarea" placeholder="' + esc(opts.placeholder || "") + '"></textarea>';
   }
   body += '<div class="stack">';
-  body += '<button class="btn ' + (opts.danger ? "dan" : "pri") + ' big" id="modalOk">' + esc(opts.okLabel || "Confirm") + "</button>";
-  body += '<button class="btn gho" id="modalCancel">' + esc(opts.cancelLabel || "Cancel") + "</button>";
+  body += '<button class="btn pri big" id="modalCancel">' + esc(opts.cancelLabel || "Cancel") + "</button>";
+  body += '<button class="btn ' + (opts.danger ? "dan" : "gho") + '" id="modalOk">' + esc(opts.okLabel || "Confirm") + "</button>";
   body += "</div></div>";
   root.innerHTML = body;
   document.body.appendChild(root);
@@ -1294,6 +1612,17 @@ function doStartWorkout(key) {
   const p = PROGRAMS[key];
   if (!p) return;
   clearUndo();
+  const sets = applyReadyUp(p.items);
+  if (key === "lower-b") {
+    p.items.forEach(function(ex, idx) {
+      if (ex.id === "calf" && isFeetCooked()) {
+        sets[idx].forEach(function(s) { s.skipped = true; s.done = false; });
+      }
+      if (ex.id === "curl" && state.hamWeird) {
+        sets[idx].forEach(function(s) { s.skipped = true; s.done = false; });
+      }
+    });
+  }
   state.live = {
     key: key,
     date: todayISO(),
@@ -1301,8 +1630,16 @@ function doStartWorkout(key) {
     set: 0,
     restUntil: 0,
     started: Date.now(),
-    sets: applyReadyUp(p.items)
+    sets: sets
   };
+  advancePastPreSkipped();
+  if (state.live.i >= p.items.length) {
+    // everything pre-skipped — still open empty? finish as partial
+    state.exitReason = "";
+    persist();
+    finishWorkout("partial");
+    return;
+  }
   state.exitReason = "";
   persist();
   sfxConfirm();
@@ -1472,9 +1809,15 @@ function completeSet() {
     if (live.i < PROGRAMS[live.key].items.length - 1) {
       live.i += 1;
       live.set = 0;
-      saveLive();
-      render();
-      showUndoGhost();
+      advancePastPreSkipped();
+      if (live.i >= PROGRAMS[live.key].items.length) {
+        clearUndo();
+        finishWorkout("complete");
+      } else {
+        saveLive();
+        render();
+        showUndoGhost();
+      }
     } else {
       clearUndo();
       finishWorkout("complete");
@@ -1516,8 +1859,13 @@ function skipMovement() {
   if (live.i < PROGRAMS[live.key].items.length - 1) {
     live.i += 1;
     live.set = 0;
-    saveLive();
-    render();
+    advancePastPreSkipped();
+    if (live.i >= PROGRAMS[live.key].items.length) {
+      finishWorkout("partial");
+    } else {
+      saveLive();
+      render();
+    }
   } else {
     finishWorkout("partial");
   }
@@ -1570,6 +1918,7 @@ function nav(active) {
     {id: "home", ico: "◉", label: "Today", go: "home"},
     {id: "week", ico: "▦", label: "Plan", go: "week"},
     {id: "fuel", ico: "⇪", label: "Fuel", go: "fuel"},
+    {id: "link", ico: "⇄", label: "Link", go: "link"},
     {id: "log", ico: "≡", label: "Stats", go: "log"}
   ];
   return '<nav class="hud">' + items.map(function(it) {
@@ -1588,7 +1937,7 @@ function ensureFood() {
   const t = todayISO();
   let entry = (state.foodHistory || []).find(function(f) { return f.date === t; });
   if (!entry) {
-    entry = {date: t, work: false, home: false, after: false};
+    entry = {date: t, work: false, home: false, after: false, rice: false};
     state.foodHistory.unshift(entry);
   }
   state.foodHistory = state.foodHistory
@@ -1611,7 +1960,7 @@ function foodDotsHtml() {
   return '<div class="foodDots">' + days.map(function(iso) {
     const f = (state.foodHistory || []).find(function(x) { return x.date === iso; });
     if (!f) return "<i></i>";
-    const n = (f.work ? 1 : 0) + (f.home ? 1 : 0) + (f.after ? 1 : 0);
+    const n = (f.work ? 1 : 0) + (f.home ? 1 : 0) + (f.after ? 1 : 0); // rice shame ignored
     if (n >= 2) return '<i class="on"></i>';
     if (n === 1) return '<i class="partial"></i>';
     return "<i></i>";
@@ -1680,12 +2029,39 @@ function screenHome() {
   const lastW = state.bodyweights[0];
   const title = plan.key ? prog.name : (isWorkDay(plan.d) ? "Work Walk Protocol" : "Rest Cycle");
   const full = liftKeysClearedThisWeek() >= 4;
+  const hour = new Date().getHours();
+  const deployFirst = !!(plan.key && (hour >= 5 || hour >= 17));
   let html = statusbar();
   html += '<div class="lbl">' + esc(plan.short) + " · LBM ~" + state.stats.lbm + " LB · LV " + level() + "</div>";
   html += "<h1>" + esc(title) + "</h1>";
   html += '<p class="sub">' + esc(plan.note) + "</p>";
-  if (prog) html += lastPinsLine(prog);
-  html += '<div class="card"><div class="row" style="border:0;padding:0 0 4px">';
+  html += crowdTagHtml();
+  if (prog && plan.key && (plan.key === "lower-a" || plan.key === "lower-b")) {
+    html += '<p class="sub" style="margin-top:8px">' + esc(lowerDayOneLiner(plan.key)) + "</p>";
+  }
+  html += sleepCueHtml(plan);
+  html += heatBannerHtml(plan);
+
+  function deployBlock() {
+    let out = "";
+    if (prog) out += pinCardHtml(prog, {key: plan.key});
+    out += '<div class="stack">';
+    if (full) {
+      out += '<button class="btn pri big" data-go="start:' + plan.key + '">Override deploy</button>';
+      out += '<p class="sub" style="margin:0">4/4 sectors cleared — override needs a reason.</p>';
+    } else {
+      out += '<button class="btn pri big" data-go="start:' + plan.key + '">Deploy · ' + esc(plan.short) + "</button>";
+    }
+    out += '<button class="btn gho" data-day="' + plan.d + '">Inspect manifest</button>';
+    out += "</div>";
+    return out;
+  }
+
+  if (plan.key && deployFirst) {
+    html += deployBlock();
+  }
+
+  html += '<div class="card' + (plan.key && deployFirst ? " mt" : "") + '"><div class="row" style="border:0;padding:0 0 4px">';
   html += '<div><div class="lbl">Sessions this week</div><div class="stat">' + week.length + "<small>/4</small></div></div>";
   html += '<div class="r"><div class="lbl">Total XP</div><div class="stat" style="font-size:22px">' + xp() + "</div></div>";
   html += "</div>";
@@ -1695,33 +2071,36 @@ function screenHome() {
   html += '<div class="lbl" style="margin-top:8px">';
   html += lastW ? ("SCALE " + lastW.lb + " LB · " + lastW.date) : "NO SCALE LOGGED";
   html += "</div></div>";
-  if (plan.key) {
-    html += '<div class="stack">';
-    if (full) {
-      html += '<button class="btn pri big" data-go="start:' + plan.key + '">Override deploy</button>';
-      html += '<p class="sub" style="margin:0">4/4 sectors cleared — override needs a reason.</p>';
-    } else {
-      html += '<button class="btn pri big" data-go="start:' + plan.key + '">Start ' + esc(plan.short) + " session</button>";
-    }
-    html += '<button class="btn gho" data-day="' + plan.d + '">Inspect manifest</button>';
-    html += "</div>";
-  } else if (isWorkDay(plan.d)) {
+
+  if (plan.key && !deployFirst) {
+    html += deployBlock();
+  } else if (!plan.key && isWorkDay(plan.d)) {
     const walk = walkForDate(todayISO());
     html += '<div class="card mt"><div class="lbl">Work walk</div>';
     html += '<div class="stat" style="font-size:28px;margin:6px 0">' + walkMinutes + "<small> min</small></div>";
     html += '<div class="step"><button class="mini" id="walkMinus">−</button><b>' + walkMinutes + '</b><button class="mini" id="walkPlus">+</button></div>';
-    html += '<div class="stack"><button class="btn pri" id="walkLog">' + (walk ? "Update walk · " + walk.minutes + "m" : "Walk logged") + "</button></div>";
-    if (walk) html += '<div class="lbl" style="margin-top:10px;color:var(--amber)">Walk marked · ' + walk.minutes + " min</div>";
+    html += '<div class="toggle ' + ((walk && walk.feetCooked) || isFeetCooked() ? "on" : "") + '" id="feetCookedToggle" style="margin-top:12px"><div><b>Feet cooked</b><span>Locks Lower B calf this week</span></div><div class="sw"></div></div>';
+    html += '<div class="stack"><button class="btn pri" id="walkLog">' + (walk ? "Update walk · " + walk.minutes + "m" : "Log walk") + "</button></div>";
+    if (walk) html += '<div class="lbl" style="margin-top:10px;color:var(--amber)">Walk marked · ' + walk.minutes + " min" + (walk.feetCooked ? " · feet cooked" : "") + "</div>";
     html += "</div>";
     html += '<div class="stack"><button class="btn gho" data-day="' + plan.d + '">Why today is dark</button></div>';
-  } else {
+  } else if (!plan.key) {
     html += '<div class="stack"><button class="btn gho" data-day="' + plan.d + '">Why today is dark</button></div>';
   }
+
+  // locks + sleep on home
+  html += '<div class="card mt"><div class="lbl">Locks & recovery</div>';
+  html += '<div class="toggle ' + (isFeetCooked() ? "on" : "") + '" id="feetLockToggle"><div><b>Feet cooked</b><span>Pre-skips Lower B calf · no guilt</span></div><div class="sw"></div></div>';
+  html += '<div class="toggle ' + (state.hamWeird ? "on" : "") + '" id="hamWeirdToggle"><div><b>Ham weird</b><span>Pre-skips Lower B seated curl</span></div><div class="sw"></div></div>';
+  html += '<div class="lbl" style="margin-top:12px">Last night sleep (hours)</div>';
+  html += '<div class="step"><button class="mini" id="sleepMinus">−</button><b id="sleepVal">' + (state.sleepHours != null ? state.sleepHours : "—") + '</b><button class="mini" id="sleepPlus">+</button></div>';
+  html += "</div>";
+
   if (state.live) {
     html += '<div class="stack"><button class="btn ok big" data-go="lift">Resume live session</button></div>';
   }
   html += '<div class="card cue mt"><b>2×10–15 · 3–4 reps left · same pin until 15 is easy twice.</b><br>';
-  if (isWorkDay(plan.d)) html += "High-walk day: no incline.<br>";
+  if (isWorkDay(plan.d)) html += "High-walk day: no incline. Friday is not a lift.<br>";
   html += "Cramp = leave. No kickbacks. Laterals on both uppers.</div>";
   html += installHintHtml();
   html += nav("home");
@@ -1760,30 +2139,43 @@ function screenDay() {
   html += '<span class="pill ' + (w.key ? "on" : "hot") + '">' + esc(w.short) + "</span>";
   html += "<h1>" + esc(prog ? prog.name : w.label) + "</h1>";
   html += '<p class="sub">' + esc(w.note) + (prog ? " " + esc(prog.why) : "") + "</p>";
+  if (w.key === "lower-a" || w.key === "lower-b") {
+    html += '<p class="sub">' + esc(lowerDayOneLiner(w.key)) + "</p>";
+  }
   if (prog) {
-    html += lastPinsLine(prog);
-    html += '<div class="card">' + prog.items.map(function(ex) {
-      return '<div class="row"><div><b>' + esc(ex.name) + '</b><div class="n">' + esc(ex.cue) +
+    html += pinCardHtml(prog, {key: w.key});
+    html += '<div class="card mt">' + prog.items.map(function(ex) {
+      const preSkip = (w.key === "lower-b") && (
+        (ex.id === "calf" && isFeetCooked()) ||
+        (ex.id === "curl" && state.hamWeird)
+      );
+      return '<div class="row' + (preSkip ? " preSkip" : "") + '"><div><b>' + esc(ex.name) + '</b><div class="n">' +
+        (preSkip ? "Pre-skip · lock on" : esc(ex.cue)) +
         '</div></div><div class="r"><b style="color:var(--neon)">' + esc(ex.sets) +
-        '</b><div class="n">pin ' + pin(ex.id) + "</div></div></div>";
+        '</b><div class="n">pin ' + pin(ex.id) + " · reps " + esc(lastRepsFor(ex.id)) + "</div></div></div>";
     }).join("") + "</div>";
+    if (w.key === "lower-a" || w.key === "lower-b") {
+      html += '<div class="card mt"><div class="toggle ' + (state.hamWeird ? "on" : "") + '" id="hamWeirdToggle"><div><b>Ham weird</b><span>Sticky · pre-skips Lower B curl</span></div><div class="sw"></div></div>';
+      html += '<div class="toggle ' + (isFeetCooked() ? "on" : "") + '" id="feetLockToggle"><div><b>Feet cooked</b><span>Sticky this week · pre-skips Lower B calf</span></div><div class="sw"></div></div></div>';
+    }
     const full = liftKeysClearedThisWeek() >= 4;
     html += '<div class="stack"><button class="btn pri big" data-go="start:' + w.key + '">' +
-      (full ? "Override deploy" : ("Start " + esc(w.short) + " session")) + "</button></div>";
+      (full ? "Override deploy" : ("Deploy · " + esc(w.short))) + "</button></div>";
   } else {
     html += '<div class="card cue">';
     html += isWorkDay(w.d)
-      ? "Work already loads legs, feet, and back. A quick PF stop is how Monday furniture becomes a limp."
+      ? "Work already loads legs, feet, and back. A quick PF stop is how Monday furniture becomes a limp. Friday is walk protocol — not a lift."
       : "Quiet gym day so the next work shift is clean. Food window still 2pm–8pm.";
     html += "</div>";
     if (isWorkDay(w.d) && w.d === new Date().getDay()) {
       const walk = walkForDate(todayISO());
       html += '<div class="card mt"><div class="lbl">Work walk</div>';
       html += '<div class="step"><button class="mini" id="walkMinus">−</button><b>' + walkMinutes + '</b><button class="mini" id="walkPlus">+</button></div>';
-      html += '<div class="stack"><button class="btn pri" id="walkLog">' + (walk ? "Update walk · " + walk.minutes + "m" : "Walk logged") + "</button></div></div>";
+      html += '<div class="toggle ' + ((walk && walk.feetCooked) || isFeetCooked() ? "on" : "") + '" id="feetCookedToggle" style="margin-top:12px"><div><b>Feet cooked</b><span>Locks Lower B calf this week</span></div><div class="sw"></div></div>';
+      html += '<div class="stack"><button class="btn pri" id="walkLog">' + (walk ? "Update walk · " + walk.minutes + "m" : "Log walk") + "</button></div></div>";
     }
   }
-  html += '<p class="sub mt">Leave 3–4 reps in the tank. No kickbacks. Laterals stay on both uppers.</p>';
+  html += '<p class="sub mt">Leave 3–4 reps in the tank. No kickbacks. Laterals stay on both uppers. No fifth machine.</p>';
   html += nav("week");
   return html;
 }
@@ -1816,7 +2208,10 @@ function screenLift() {
   html += '<div class="bar"><i style="width:' + pct + '%"></i></div>';
   html += '<div class="lbl" style="margin-bottom:14px">Move ' + (live.i + 1) + "/" + prog.items.length + " · Set " + (live.set + 1) + "/2 · " + pct + "%</div>";
   html += "<h1>" + esc(ex.name) + "</h1>";
-  html += '<div class="card cue">' + esc(ex.cue) + "</div>";
+  let liftCue = ex.cue;
+  if (live.key === "lower-b" && ex.id === "calf" && isFeetCooked()) liftCue = "Pre-skip · feet cooked. No guilt.";
+  if (live.key === "lower-b" && ex.id === "curl" && state.hamWeird) liftCue = "Pre-skip · ham weird. No guilt.";
+  html += '<div class="card cue">' + esc(liftCue) + "</div>";
   html += '<div class="setbox"><div><div class="lbl">Pin (lb)</div><div class="step">';
   html += '<button class="mini" data-act="w-" type="button">−</button><b>' + s.w + '</b><button class="mini" data-act="w+" type="button">+</button>';
   html += '</div></div><div><div class="lbl">Reps</div><div class="step">';
@@ -1854,11 +2249,23 @@ function screenDone() {
 
 function screenFuel() {
   const food = ensureFood();
+  if (food.rice == null) food.rice = false;
   const lastW = state.bodyweights[0];
   const isWed = new Date().getDay() === 3;
+  const win = fuelWindowMeta();
+  const plan = todayPlan();
   let html = statusbar();
   html += '<div class="lbl">Nutrition</div><h1>Fuel window</h1>';
-  html += '<p class="sub">2pm–8pm. Protein ' + esc(proteinRange()) + " g (from LBM). Three checkboxes. That’s the whole system.</p>";
+  html += '<p class="sub">2pm–8pm. Protein ' + esc(proteinRange()) + " g (from LBM). Three locks. That’s the whole system.</p>";
+  html += '<div class="card"><div class="lbl">Window · 2pm–8pm</div>';
+  html += '<div class="fuelBar"><i style="width:' + win.pct + '%"></i></div>';
+  if (win.phase === "before") html += '<div class="lbl">Opens at 2pm</div>';
+  else if (win.phase === "open") html += '<div class="lbl" style="color:var(--ok)">Open · eat in the window</div>';
+  else html += '<div class="lbl" style="color:var(--amber)">Closed</div>';
+  if (win.phase === "after" && !food.home) {
+    html += '<div class="card cue mt" style="margin-top:12px"><b>Eat the plate</b><br>Home is still empty after 8pm. Not cut speech — finish the meal.</div>';
+  }
+  html += "</div>";
   html += '<div class="lbl">Last 7 days</div>';
   html += foodDotsHtml();
   html += '<div class="card">';
@@ -1871,18 +2278,43 @@ function screenFuel() {
     html += "<div><b>" + item.label + "</b><span>" + item.hint + "</span></div>";
     html += '<div class="sw"></div></div>';
   });
+  html += '<div class="toggle shame ' + (food.rice ? "on" : "") + '" data-food="rice">';
+  html += "<div><b>Second rice mountain</b><span>Shame toggle only — not a lock</span></div>";
+  html += '<div class="sw"></div></div>';
   html += "</div>";
   if (isWed) {
-    html += '<div class="card cue mt"><b>Wednesday cheat note</b><br>Bigger food day ends tonight. Not a 4th toggle — just permission.</div>';
+    html += '<div class="card cue mt"><b>Wednesday cheat note</b><br>Bigger food day ends tonight. Not a 4th lock — just permission.</div>';
   }
   html += '<div class="card mt"><div class="lbl">Bodyweight</div>';
   html += '<div class="stat" style="font-size:28px;margin:6px 0">' + (lastW ? lastW.lb + "<small> LB</small>" : "—") + "</div>";
   if (lastW) html += '<div class="lbl">' + lastW.date + "</div>";
   html += weightDeltaHtml();
-  html += '<div class="stack" style="margin-top:10px"><input type="number" id="bwInput" placeholder="Today\'s weight (lb)" min="100" max="500" step="0.1"/>';
+  html += '<div class="stack" style="margin-top:10px"><input type="number" id="bwInput" placeholder="Weight today (lb)" min="100" max="500" step="0.1"/>';
   html += '<button class="btn pri" id="bwSave">Log Scale</button></div></div>';
   html += '<div class="card cue mt"><b>Stats lock</b><br>HT ' + esc(state.stats.ht) + " · WT ~" + state.stats.wt + " · LBM ~" + state.stats.lbm + " · Protein " + esc(proteinRange()) + "</div>";
   html += nav("fuel");
+  return html;
+}
+
+function screenLink() {
+  const last = state.sessions[0];
+  let html = statusbar();
+  html += '<div class="lbl">Uplink</div><h1>Link</h1>';
+  html += '<p class="sub">Copy a session as a PFTRACK block, or paste pins from text. No key required to apply pins. Spanish gym aliases work.</p>';
+  html += '<div class="card"><div class="lbl">Last session</div>';
+  if (last) {
+    html += '<b>' + esc(last.name) + '</b><div class="n">' + esc(last.date) + " · " + esc(last.key || "") + "</div>";
+  } else {
+    html += '<p class="sub" style="margin:0">No sessions yet.</p>';
+  }
+  html += '<div class="stack" style="margin-top:12px"><button class="btn pri" id="copyPFTRACK"' + (last ? "" : " disabled") + '>Copy last session as PFTRACK</button></div></div>';
+  html += '<div class="card mt"><div class="lbl">Paste uplink</div>';
+  html += '<textarea class="uplinkBox" id="uplinkPaste" placeholder="PFTRACK&#10;key: upper-a&#10;press 50x12 50x15&#10;raise 15x15 15x15"></textarea>';
+  html += '<div class="stack"><button class="btn pri" id="applyPins">Apply pins</button>';
+  html += '<button class="btn gho" id="applyPinsLog">Apply pins + log session</button></div>';
+  html += '<p class="sub" style="margin-bottom:0">Pins update lastWeights. Session log only if you tap “+ log” or the block has log: 1.</p></div>';
+  html += '<div class="card cue mt"><b>Aliases</b><br>prensa → lpress · jalón → lat · remo → row · aperturas → raise · curl de bíceps → curlbi · press hombro → press · gemelos → calf</div>';
+  html += nav("link");
   return html;
 }
 
@@ -1898,7 +2330,9 @@ function screenLog() {
   html += '<div class="card mt"><div class="row" style="border:0;padding:0">';
   html += '<div><div class="lbl">Level</div><div class="stat">' + level() + '</div></div>';
   html += '<div class="r"><div class="lbl">Into next</div><div class="stat" style="font-size:22px">' + xpInto() + "<small>/40</small></div></div>";
-  html += '</div><div class="bar"><i style="width:' + (xpInto() / 40 * 100) + '%"></i></div></div>';
+  html += '</div><div class="bar"><i style="width:' + (xpInto() / 40 * 100) + '%"></i></div>';
+  html += '<div class="lbl" style="margin-top:12px">Last night sleep (h)</div>';
+  html += '<div class="step"><button class="mini" id="sleepMinus">−</button><b id="sleepVal">' + (state.sleepHours != null ? state.sleepHours : "—") + '</b><button class="mini" id="sleepPlus">+</button></div></div>';
   html += '<div class="card mt"><h2>Recent Sessions</h2>';
   if (!state.sessions.length) {
     html += '<p class="sub" style="margin:0">No sessions yet. Deploy something.</p>';
@@ -1963,6 +2397,7 @@ function render() {
   else if (view === "lift") html = screenLift();
   else if (view === "done") html = screenDone();
   else if (view === "fuel") html = screenFuel();
+  else if (view === "link") html = screenLink();
   else if (view === "log") html = screenLog();
   else if (view === "session") html = screenSession();
   else html = screenHome();
@@ -1988,10 +2423,22 @@ function bindWalkControls() {
     sfxTap();
     render();
   };
+  if ($("feetCookedToggle")) $("feetCookedToggle").onclick = function() {
+    const on = !isFeetCooked();
+    setFeetCooked(on);
+    const t = todayISO();
+    const w = walkForDate(t);
+    if (w) w.feetCooked = on;
+    sfxTap();
+    persist();
+    render();
+  };
   if ($("walkLog")) $("walkLog").onclick = function() {
     const t = todayISO();
     const existing = (state.walks || []).findIndex(function(w) { return w.date === t; });
-    const entry = {date: t, minutes: walkMinutes};
+    const cooked = isFeetCooked() || ($("feetCookedToggle") && $("feetCookedToggle").classList.contains("on"));
+    const entry = {date: t, minutes: walkMinutes, feetCooked: !!cooked};
+    if (cooked) setFeetCooked(true);
     if (existing >= 0) state.walks[existing] = entry;
     else {
       state.walks.unshift(entry);
@@ -2000,7 +2447,7 @@ function bindWalkControls() {
     sfxConfirm();
     buzz(25);
     persist();
-    toast("Walk logged · " + walkMinutes + " min");
+    toast("Walk logged · " + walkMinutes + " min" + (cooked ? " · feet cooked" : ""));
     render();
   };
 }
@@ -2043,6 +2490,7 @@ function bind() {
       if (v === "home") go("home");
       else if (v === "week") go("week");
       else if (v === "fuel") go("fuel");
+      else if (v === "link") go("link");
       else if (v === "log") go("log");
     };
   });
@@ -2211,6 +2659,79 @@ function bind() {
       }
     });
   };
+
+  if ($("feetLockToggle")) $("feetLockToggle").onclick = function() {
+    setFeetCooked(!isFeetCooked());
+    sfxTap();
+    persist();
+    render();
+  };
+  if ($("hamWeirdToggle")) $("hamWeirdToggle").onclick = function() {
+    state.hamWeird = !state.hamWeird;
+    sfxTap();
+    persist();
+    render();
+  };
+  if ($("sleepMinus")) $("sleepMinus").onclick = function() {
+    let h = state.sleepHours == null ? 7 : state.sleepHours;
+    h = Math.max(0, Math.round((h - 0.5) * 2) / 2);
+    state.sleepHours = h;
+    sfxTap();
+    persist();
+    render();
+  };
+  if ($("sleepPlus")) $("sleepPlus").onclick = function() {
+    let h = state.sleepHours == null ? 6 : state.sleepHours;
+    h = Math.min(14, Math.round((h + 0.5) * 2) / 2);
+    state.sleepHours = h;
+    sfxTap();
+    persist();
+    render();
+  };
+  if ($("copyPFTRACK")) $("copyPFTRACK").onclick = function() {
+    const last = state.sessions[0];
+    if (!last) { toast("No session"); return; }
+    const block = formatPFTRACK(last);
+    copyText(block).then(function(ok) {
+      if (ok) toast("PFTRACK copied");
+      else {
+        showModal({
+          title: "PFTRACK block",
+          body: "Copy manually.",
+          textarea: true,
+          okLabel: "Done",
+          onOk: function() {}
+        });
+        setTimeout(function() {
+          const ta = document.getElementById("modalTextarea");
+          if (ta) { ta.value = block; ta.select(); }
+        }, 60);
+      }
+    });
+  };
+  if ($("applyPins")) $("applyPins").onclick = function() {
+    const ta = $("uplinkPaste");
+    const parsed = parsePFTRACK(ta && ta.value);
+    if (!parsed.ok) { toast(parsed.error || "Bad block"); return; }
+    if (!Object.keys(parsed.pins).length) { toast("No pins found"); return; }
+    parsed.log = false;
+    const res = applyPFTRACK(parsed);
+    sfxConfirm();
+    toast("Applied " + res.updated + " pins");
+    render();
+  };
+  if ($("applyPinsLog")) $("applyPinsLog").onclick = function() {
+    const ta = $("uplinkPaste");
+    const parsed = parsePFTRACK(ta && ta.value);
+    if (!parsed.ok) { toast(parsed.error || "Bad block"); return; }
+    if (!Object.keys(parsed.pins).length) { toast("No pins found"); return; }
+    parsed.log = true;
+    const res = applyPFTRACK(parsed);
+    sfxConfirm();
+    toast("Applied " + res.updated + " pins · session logged");
+    render();
+  };
+
   if ($("installHint")) $("installHint").onclick = function() {
     state.installHint = false;
     persist();
