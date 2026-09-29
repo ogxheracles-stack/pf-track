@@ -344,6 +344,16 @@ nav.hud button.on .ico{opacity:1}
 .pinCard .row{padding:12px 0}
 .pinCard .pinVal{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--neon)}
 .pinCard .repsVal{font-size:12px;color:var(--dim);margin-top:2px}
+.pinStrip{padding:10px 14px}
+.pinStrip .pinLine{
+  display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+  padding:5px 0;font-size:13px;line-height:1.35;border-bottom:1px solid var(--line);
+}
+.pinStrip .pinLine:last-child{border-bottom:0;padding-bottom:0}
+.pinStrip .pinLine b{font-weight:600;color:var(--text)}
+.pinStrip .pinLine .meta{font-family:var(--mono);font-size:12px;color:var(--dim);white-space:nowrap}
+.pinStrip .pinLine .meta b{color:var(--neon);font-weight:700}
+.pinStrip .pinLine.preSkip{opacity:.55}
 .fuelBar{
   height:14px;background:#0c1218;border:1px solid var(--line);
   border-radius:8px;margin:10px 0 8px;position:relative;overflow:hidden;
@@ -485,7 +495,7 @@ nav.hud button.on .ico{opacity:1}
 
 const STORAGE_KEY = "pftrack_v3";
 const LIVE_KEY = "pftrack_live";
-const APP_VERSION = "3.2";
+const APP_VERSION = "3.3";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -871,6 +881,26 @@ function pinCardHtml(prog, opts) {
   return html;
 }
 
+function pinStripHtml(prog, opts) {
+  if (!prog) return "";
+  opts = opts || {};
+  let html = '<div class="card pinStrip' + (opts.mt === false ? "" : " mt") + '">';
+  html += prog.items.map(function(ex) {
+    const pin = state.lastWeights[ex.id];
+    const reps = lastRepsFor(ex.id);
+    const preSkip = (opts.key === "lower-b") && (
+      (ex.id === "calf" && isFeetCooked()) ||
+      (ex.id === "curl" && state.hamWeird)
+    );
+    const short = ex.name;
+    return '<div class="pinLine' + (preSkip ? " preSkip" : "") + '"><b>' + esc(short) +
+      '</b><span class="meta"><b>' + (pin != null ? pin : "—") + "</b> · " + esc(reps) +
+      (preSkip ? " · skip" : "") + "</span></div>";
+  }).join("");
+  html += "</div>";
+  return html;
+}
+
 function crowdTagHtml() {
   const now = new Date();
   const h = now.getHours();
@@ -1133,6 +1163,8 @@ function normalizePet(raw) {
   p.lastSeenLevel = Math.max(1, Number(p.lastSeenLevel) || 1);
   p.celebrateUntil = Number(p.celebrateUntil) || 0;
   p.fullWeekAwarded = typeof p.fullWeekAwarded === "string" ? p.fullWeekAwarded : "";
+  // Old builds stored a Date → JSON UTC string; never equals local weekStartISO()
+  if (p.fullWeekAwarded.indexOf("T") >= 0) p.fullWeekAwarded = "";
   return p;
 }
 
@@ -1266,7 +1298,7 @@ function awardSessionEmbers() {
   const pet = ensurePet();
   let gained = EMBER_PER_SESSION;
   let bonus = 0;
-  const ws = weekStart();
+  const ws = weekStartISO();
   if (liftKeysClearedThisWeek() >= 4 && pet.fullWeekAwarded !== ws) {
     bonus = EMBER_FULL_WEEK_BONUS;
     pet.fullWeekAwarded = ws;
@@ -1488,6 +1520,19 @@ function stopRestTick() {
   if (restTickHandle) { clearInterval(restTickHandle); restTickHandle = null; }
 }
 
+function patchRestUI() {
+  const rem = restRemaining();
+  const num = document.querySelector(".ringwrap .num");
+  const fg = document.querySelector(".ring circle.fg");
+  if (!num || !fg) return false;
+  if (rem <= 0) return false;
+  num.textContent = String(rem);
+  const totalRest = restTotal();
+  const off = CIRC * (1 - rem / Math.max(1, totalRest));
+  fg.setAttribute("stroke-dashoffset", off.toFixed(1));
+  return true;
+}
+
 function ensureRestTick() {
   stopRestTick();
   if (!state.live || !state.live.restUntil) return;
@@ -1505,8 +1550,11 @@ function ensureRestTick() {
       blip(1046, 0.13, "triangle", 0.05);
       setTimeout(function() { blip(1568, 0.16, "triangle", 0.05); }, 150);
       buzz([40, 60, 40]);
+      if (view === "lift") render();
+      return;
     }
-    if (view === "lift") render();
+    // Patch ring in place — no full render / no pet SVG rebuild while resting
+    if (view === "lift" && !patchRestUI()) render();
   }, 250);
 }
 
@@ -1595,11 +1643,9 @@ function showModal(opts) {
 function applyReadyUp(items) {
   return items.map(function(ex) {
     let w = state.lastWeights[ex.id] != null ? state.lastWeights[ex.id] : 10;
+    // Apply +5 to live sets only; consume readyUp flag on first completed set
     if (state.readyUp && state.readyUp[ex.id]) {
       w = w + 5;
-      state.lastWeights[ex.id] = w;
-      delete state.readyUp[ex.id];
-      toast(ex.name + " · pin +5");
     }
     return [
       {w: w, r: 12, done: false, skipped: false},
@@ -1784,16 +1830,22 @@ function completeSet() {
   const live = state.live;
   if (!live) return;
   const ex = PROGRAMS[live.key].items[live.i];
+  const readyPending = !!(state.readyUp && state.readyUp[ex.id]);
   undoSnapshot = {
     i: live.i,
     set: live.set,
     restUntil: live.restUntil || 0,
     setData: Object.assign({}, live.sets[live.i][live.set]),
-    lastW: state.lastWeights[ex.id]
+    lastW: state.lastWeights[ex.id],
+    readyUpId: readyPending ? ex.id : null
   };
   live.sets[live.i][live.set].done = true;
   live.sets[live.i][live.set].skipped = false;
   state.lastWeights[ex.id] = live.sets[live.i][live.set].w;
+  if (readyPending) {
+    delete state.readyUp[ex.id];
+    toast(ex.name + " · pin +5");
+  }
   sfxConfirm();
   buzz(30);
   if (undoTimer) clearTimeout(undoTimer);
@@ -1836,6 +1888,7 @@ function undoLastSet() {
   live.sets[snap.i][snap.set] = Object.assign({}, snap.setData, {done: false, skipped: false});
   if (snap.lastW == null) delete state.lastWeights[ex.id];
   else state.lastWeights[ex.id] = snap.lastW;
+  if (snap.readyUpId) state.readyUp[snap.readyUpId] = true;
   clearUndo();
   stopRestTick();
   saveLive();
@@ -1893,15 +1946,23 @@ function finishWorkout(reason) {
   state.live = null;
   state.exitReason = reason || "complete";
   clearLiveStorage();
-  const emberAward = awardSessionEmbers();
+  const doneSets = (session.work || []).reduce(function(a, w) {
+    return a + (w.sets || []).filter(function(x) { return x.done && !x.skipped; }).length;
+  }, 0);
+  let emberAward = {gained: 0, bonus: 0, total: ensurePet().ember};
+  if (doneSets > 0) {
+    emberAward = awardSessionEmbers();
+  }
   if (reason === "complete") sfxDone();
   else sfxWarn();
   buzz(60);
   persist();
   go("done");
-  let emberMsg = "+" + emberAward.gained + " embers";
-  if (emberAward.bonus) emberMsg += " · +" + emberAward.bonus + " week bonus";
-  toast(emberMsg);
+  if (doneSets > 0) {
+    let emberMsg = "+" + emberAward.gained + " embers";
+    if (emberAward.bonus) emberMsg += " · +" + emberAward.bonus + " week bonus";
+    toast(emberMsg);
+  }
 }
 
 function statusbar() {
@@ -2030,11 +2091,17 @@ function screenHome() {
   const title = plan.key ? prog.name : (isWorkDay(plan.d) ? "Work Walk Protocol" : "Rest Cycle");
   const full = liftKeysClearedThisWeek() >= 4;
   const hour = new Date().getHours();
-  const deployFirst = !!(plan.key && (hour >= 5 || hour >= 17));
+  const deployFirst = !!(plan.key && hour >= 5);
   let html = statusbar();
   html += '<div class="lbl">' + esc(plan.short) + " · LBM ~" + state.stats.lbm + " LB · LV " + level() + "</div>";
   html += "<h1>" + esc(title) + "</h1>";
   html += '<p class="sub">' + esc(plan.note) + "</p>";
+
+  // Sticky Resume — first Home action whenever a live session exists
+  if (state.live) {
+    html += '<div class="stack"><button class="btn ok big" data-go="lift">Resume live session</button></div>';
+  }
+
   html += crowdTagHtml();
   if (prog && plan.key && (plan.key === "lower-a" || plan.key === "lower-b")) {
     html += '<p class="sub" style="margin-top:8px">' + esc(lowerDayOneLiner(plan.key)) + "</p>";
@@ -2044,7 +2111,7 @@ function screenHome() {
 
   function deployBlock() {
     let out = "";
-    if (prog) out += pinCardHtml(prog, {key: plan.key});
+    // Deploy first, then compact one-line pin strip (never bury Deploy under full pin card)
     out += '<div class="stack">';
     if (full) {
       out += '<button class="btn pri big" data-go="start:' + plan.key + '">Override deploy</button>';
@@ -2052,8 +2119,9 @@ function screenHome() {
     } else {
       out += '<button class="btn pri big" data-go="start:' + plan.key + '">Deploy · ' + esc(plan.short) + "</button>";
     }
-    out += '<button class="btn gho" data-day="' + plan.d + '">Inspect manifest</button>';
     out += "</div>";
+    if (prog) out += pinStripHtml(prog, {key: plan.key});
+    out += '<div class="stack"><button class="btn gho" data-day="' + plan.d + '">Inspect manifest</button></div>';
     return out;
   }
 
@@ -2096,9 +2164,6 @@ function screenHome() {
   html += '<div class="step"><button class="mini" id="sleepMinus">−</button><b id="sleepVal">' + (state.sleepHours != null ? state.sleepHours : "—") + '</b><button class="mini" id="sleepPlus">+</button></div>';
   html += "</div>";
 
-  if (state.live) {
-    html += '<div class="stack"><button class="btn ok big" data-go="lift">Resume live session</button></div>';
-  }
   html += '<div class="card cue mt"><b>2×10–15 · 3–4 reps left · same pin until 15 is easy twice.</b><br>';
   if (isWorkDay(plan.d)) html += "High-walk day: no incline. Friday is not a lift.<br>";
   html += "Cramp = leave. No kickbacks. Laterals on both uppers.</div>";
@@ -2356,8 +2421,8 @@ function screenLog() {
   html += '<div class="toggle ' + (state.sound ? "on" : "") + '" id="soundToggle"><div><b>Sound FX</b><span>Blips on confirm / rest / done</span></div><div class="sw"></div></div>';
   html += '<div class="toggle ' + (state.haptics ? "on" : "") + '" id="hapticsToggle"><div><b>Haptics</b><span>Buzz on tap / rest / done</span></div><div class="sw"></div></div>';
   html += '<div class="stack mt">';
-  html += '<button class="btn gho" id="dumpLog">Dump log</button>';
-  html += '<button class="btn gho" id="loadDump">Load dump</button>';
+  html += '<button class="btn gho" id="dumpLog">Export backup</button>';
+  html += '<button class="btn gho" id="loadDump">Import backup</button>';
   html += '<button class="btn dan" id="wipeData">Wipe Local Data</button>';
   html += "</div>";
   html += '<p class="sub mt" style="margin-bottom:0">Storage · ' + STORAGE_KEY + " · live → sessionStorage · v" + APP_VERSION + "</p></div>";
@@ -2598,10 +2663,10 @@ function bind() {
     let raw = "";
     try { raw = localStorage.getItem(STORAGE_KEY) || "{}"; } catch (e) { raw = "{}"; }
     copyText(raw).then(function(ok) {
-      if (ok) toast("Dump copied");
+      if (ok) toast("Backup copied");
       else {
         showModal({
-          title: "Dump log",
+          title: "Export backup",
           body: "Copy this JSON manually.",
           textarea: true,
           placeholder: "",
@@ -2617,15 +2682,15 @@ function bind() {
   };
   if ($("loadDump")) $("loadDump").onclick = function() {
     showModal({
-      title: "Load dump",
-      body: "Paste a PF//TRACK JSON dump. This replaces local storage.",
+      title: "Import backup",
+      body: "Paste a PF//TRACK JSON backup. This replaces local storage.",
       textarea: true,
       placeholder: '{ "sessions": [] … }',
       okLabel: "Preview…",
       onOk: function(val) {
         let parsed = null;
         try { parsed = JSON.parse(val); } catch (e) { toast("Invalid JSON"); return; }
-        if (!parsed || typeof parsed !== "object") { toast("Invalid dump"); return; }
+        if (!parsed || typeof parsed !== "object") { toast("Invalid backup"); return; }
         showModal({
           title: "Replace storage?",
           body: "This overwrites " + STORAGE_KEY + " and reloads state.",
@@ -2635,7 +2700,7 @@ function bind() {
             try { localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed)); } catch (e) {}
             clearLiveStorage();
             load();
-            toast("Dump loaded · v" + APP_VERSION);
+            toast("Backup loaded · v" + APP_VERSION);
             go("home");
           }
         });
@@ -2714,10 +2779,12 @@ function bind() {
     const parsed = parsePFTRACK(ta && ta.value);
     if (!parsed.ok) { toast(parsed.error || "Bad block"); return; }
     if (!Object.keys(parsed.pins).length) { toast("No pins found"); return; }
-    parsed.log = false;
+    // Honor log: 1 from block; “+ log” button still forces a session log
     const res = applyPFTRACK(parsed);
     sfxConfirm();
-    toast("Applied " + res.updated + " pins");
+    toast(res.logged
+      ? ("Applied " + res.updated + " pins · session logged")
+      : ("Applied " + res.updated + " pins"));
     render();
   };
   if ($("applyPinsLog")) $("applyPinsLog").onclick = function() {
