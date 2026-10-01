@@ -650,6 +650,110 @@ details.pet-cosmetics > summary{margin-bottom:4px;color:var(--text)}
 .calDots i.note{background:var(--dim)}
 
 
+/* Command hub v4.1 + neon city + macro rings */
+.hubWrap{position:relative;margin:0 -16px 8px;padding:0 16px 28px;overflow:hidden}
+.hubArt{
+  position:absolute;left:0;right:0;bottom:0;height:140px;pointer-events:none;z-index:0;
+  opacity:.55;
+}
+.hubArt svg{display:block;width:100%;height:100%}
+.hubGlow{
+  position:absolute;inset:auto -20% -40px -20%;height:160px;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse 50% 60% at 30% 80%,rgba(255,0,170,.22),transparent 70%),
+    radial-gradient(ellipse 45% 55% at 70% 85%,rgba(0,229,255,.2),transparent 70%),
+    radial-gradient(ellipse 40% 50% at 50% 100%,rgba(184,255,46,.1),transparent 70%);
+}
+html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.28}
+.hubContent{position:relative;z-index:1}
+.hubGreet{font-size:28px;font-weight:700;letter-spacing:-0.02em;margin:4px 0 4px;color:var(--text)}
+.hubTag{font-size:14px;color:var(--dim);margin:0 0 14px;font-weight:500}
+.hubMetrics{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 14px;
+}
+.hubMetric{
+  background:rgba(20,27,36,.72);border:1px solid var(--line);border-radius:14px;
+  padding:12px 10px;text-align:center;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+}
+.hubMetric .lbl{margin-bottom:4px}
+.hubMetric .val{font-family:var(--mono);font-size:18px;font-weight:700;color:var(--neon);line-height:1.1}
+.hubMetric .val small{font-size:11px;color:var(--dim);font-weight:600;margin-left:2px}
+.hubTiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 10px}
+.hubTile{
+  display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-end;
+  min-height:108px;padding:16px;border-radius:18px;border:1px solid var(--line2);
+  background:
+    linear-gradient(145deg,rgba(94,200,216,.12),transparent 55%),
+    var(--panel);
+  color:var(--text);font-family:var(--font);cursor:pointer;text-align:left;
+  box-shadow:inset 0 0 0 1px rgba(255,0,170,.06),0 8px 24px rgba(0,0,0,.22);
+}
+.hubTile.nut{
+  background:
+    linear-gradient(145deg,rgba(255,0,170,.12),transparent 55%),
+    var(--panel);
+}
+.hubTile .tico{font-size:22px;color:var(--cyan);margin-bottom:8px;text-shadow:0 0 14px rgba(0,229,255,.35)}
+.hubTile.nut .tico{color:#ff4ec8;text-shadow:0 0 14px rgba(255,0,170,.35)}
+.hubTile .tlabel{font-size:17px;font-weight:700}
+.hubTile .tnote{font-size:12px;color:var(--dim);margin-top:4px;font-weight:500}
+.hubTile:active{filter:brightness(1.1)}
+.hubMini{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 12px;
+}
+.hubMini .hubTile{
+  min-height:72px;padding:12px;border-radius:14px;
+  background:var(--panel);
+  box-shadow:none;
+}
+.hubMini .tico{font-size:16px;margin-bottom:4px}
+.hubMini .tlabel{font-size:13px}
+.hubMini .tnote{display:none}
+.bubbleSection.hubBubbles{margin-top:10px}
+.bubbleSection.hubBubbles .bubbleMap{gap:8px}
+.bubbleSection.hubBubbles .bubble{
+  min-height:56px;aspect-ratio:auto;border-radius:16px;padding:8px 4px;gap:4px;
+}
+.bubbleSection.hubBubbles .bubble .bico{font-size:16px}
+.bubbleSection.hubBubbles .bubble .blabel{font-size:11px}
+.macroRings{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0 0 14px;
+}
+.macroRing{
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+}
+.macroRing .mdisc{
+  width:64px;height:64px;border-radius:50%;
+  display:grid;place-items:center;
+  background:conic-gradient(var(--mcolor) calc(var(--mpct) * 1%), rgba(255,255,255,.08) 0);
+  position:relative;
+}
+.macroRing .mdisc::before{
+  content:"";position:absolute;inset:8px;border-radius:50%;background:var(--panel);
+  border:1px solid var(--line);
+}
+.macroRing .mval{
+  position:relative;z-index:1;font-family:var(--mono);font-size:11px;font-weight:700;color:var(--text);
+  text-align:center;line-height:1.1;
+}
+.macroRing .mlbl{font-size:11px;font-weight:600;color:var(--dim);letter-spacing:0.04em}
+.macroTargets{display:grid;gap:4px}
+.macroRow{
+  display:grid;grid-template-columns:1fr;gap:6px;
+  padding:10px 0;border-bottom:1px solid var(--line);
+}
+.macroRow:last-child{border-bottom:0}
+.macroRow > b{font-size:13px;font-weight:700}
+.macroRow .macroSteps{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.macroRow .step{justify-content:space-between}
+.macroRow .step b{min-width:44px;text-align:center;font-size:14px}
+.bootArt{position:relative}
+.bootArt .hubArt{opacity:.4;height:100px;bottom:auto;top:auto;position:relative;margin-top:18px}
+@media (prefers-reduced-motion: reduce){
+  .hubGlow{opacity:.35}
+  .hubArt{opacity:.4}
+}
+
 /* Home bubble map v3.7 */
 .bubbleSection{margin-top:18px}
 .bubbleSection > .lbl{margin-bottom:10px}
@@ -722,7 +826,7 @@ details.pet-cosmetics > summary{margin-bottom:4px;color:var(--text)}
 
 const STORAGE_KEY = "pftrack_v3";
 const LIVE_KEY = "pftrack_live";
-const APP_VERSION = "4.0";
+const APP_VERSION = "4.1";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -1006,7 +1110,8 @@ function defaults() {
     lastWeights: {},
     sessions: [],
     bodyweights: [],
-    stats: {wt: 270, ht: "6'2\"", lbm: 175},
+    stats: {wt: 270, ht: "6'2\"", lbm: 175, bf: null},
+    macros: null,
     food: null,
     foodHistory: [],
     dayNotes: {},
@@ -1042,6 +1147,116 @@ function defaults() {
 function proteinRange() {
   const lbm = Number(state.stats.lbm) || 175;
   return Math.round(lbm) + "–" + Math.round(lbm * 1.1);
+}
+
+function defaultMacrosFromLbm() {
+  const lbm = Number(state && state.stats && state.stats.lbm) || 175;
+  const proteinTarget = Math.round(lbm); // lower end of LBM range
+  const fatTarget = Math.max(40, Math.round(lbm * 0.35));
+  const calTarget = Math.round(lbm * 12);
+  const carbsTarget = Math.max(50, Math.round((calTarget - proteinTarget * 4 - fatTarget * 9) / 4));
+  return {
+    calTarget: calTarget,
+    proteinTarget: proteinTarget,
+    carbsTarget: carbsTarget,
+    fatTarget: fatTarget,
+    cal: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0
+  };
+}
+
+function ensureMacros() {
+  const base = defaultMacrosFromLbm();
+  if (!state.macros || typeof state.macros !== "object") {
+    state.macros = base;
+  } else {
+    const m = state.macros;
+    ["calTarget","proteinTarget","carbsTarget","fatTarget","cal","protein","carbs","fat"].forEach(function(k) {
+      if (m[k] == null || isNaN(Number(m[k]))) m[k] = base[k];
+      else m[k] = Number(m[k]);
+    });
+  }
+  return state.macros;
+}
+
+function greetingForHour(h) {
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+function activityStreak() {
+  // Consecutive calendar days (ending today or yesterday) with a session or walk.
+  const days = {};
+  (state.sessions || []).forEach(function(s) {
+    if (s && s.date) days[s.date] = 1;
+  });
+  (state.walks || []).forEach(function(w) {
+    if (w && w.date) days[w.date] = 1;
+  });
+  let streak = 0;
+  const cursor = new Date();
+  // Allow streak to start from yesterday if today empty
+  const today = todayISO();
+  if (!days[today]) {
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  for (let i = 0; i < 365; i++) {
+    const iso = isoFromDate(cursor);
+    if (!days[iso]) break;
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
+
+function neonCityArtHtml() {
+  // Abstract neon city + palms + anonymous silhouette — no faces, names, lore, or TG branding
+  return '<div class="hubGlow" aria-hidden="true"></div>' +
+    '<div class="hubArt" aria-hidden="true">' +
+    '<svg viewBox="0 0 440 140" preserveAspectRatio="xMidYMax meet" xmlns="http://www.w3.org/2000/svg">' +
+    '<defs>' +
+    '<linearGradient id="skylineGrad" x1="0" y1="0" x2="0" y2="1">' +
+    '<stop offset="0%" stop-color="#ff00aa" stop-opacity=".55"/>' +
+    '<stop offset="55%" stop-color="#00e5ff" stop-opacity=".35"/>' +
+    '<stop offset="100%" stop-color="#0a0e14" stop-opacity=".9"/>' +
+    '</linearGradient>' +
+    '<linearGradient id="palmGrad" x1="0" y1="0" x2="0" y2="1">' +
+    '<stop offset="0%" stop-color="#00e5ff" stop-opacity=".5"/>' +
+    '<stop offset="100%" stop-color="#ff00aa" stop-opacity=".15"/>' +
+    '</linearGradient>' +
+    '</defs>' +
+    // far skyline
+    '<path fill="url(#skylineGrad)" d="M0 140 L0 88 L18 88 L18 62 L28 62 L28 78 L42 78 L42 48 L58 48 L58 70 L72 70 L72 40 L88 40 L94 52 L110 52 L110 28 L128 28 L128 56 L146 56 L146 36 L162 36 L162 68 L178 68 L178 44 L196 44 L196 72 L214 72 L214 30 L232 30 L232 58 L250 58 L250 42 L268 42 L268 76 L286 76 L286 50 L304 50 L304 66 L322 66 L322 38 L340 38 L340 74 L358 74 L358 54 L376 54 L376 80 L394 80 L394 60 L412 60 L412 86 L440 86 L440 140 Z"/>' +
+    // palm left
+    '<g fill="url(#palmGrad)" opacity=".85">' +
+    '<path d="M36 140 L40 78 Q28 70 12 74 Q30 78 36 88 Q22 84 10 92 Q28 90 38 98 Q24 98 14 110 Q32 102 40 108 Z"/>' +
+    '<path d="M40 140 L42 78 Q52 68 70 70 Q52 76 46 86 Q60 80 72 88 Q54 88 46 96 Q62 94 74 106 Q54 100 44 108 Z"/>' +
+    '</g>' +
+    // palm right
+    '<g fill="url(#palmGrad)" opacity=".8">' +
+    '<path d="M400 140 L396 82 Q408 72 426 76 Q408 80 402 90 Q416 84 428 94 Q410 92 400 100 Q416 98 426 112 Q408 104 398 110 Z"/>' +
+    '<path d="M396 140 L394 82 Q384 70 366 74 Q384 78 390 88 Q376 82 364 90 Q382 90 390 98 Q374 96 362 108 Q382 102 392 110 Z"/>' +
+    '</g>' +
+    // anonymous silhouette (no face detail)
+    '<path fill="#05070c" opacity=".92" d="M220 140 C208 140 200 128 200 114 C200 104 206 96 214 92 C210 86 208 78 212 70 C216 60 226 56 232 62 C238 56 248 60 250 70 C254 78 252 86 248 92 C256 96 262 104 262 114 C262 128 254 140 242 140 Z"/>' +
+    '<circle cx="78" cy="58" r="1.4" fill="#00e5ff" opacity=".7"/>' +
+    '<circle cx="190" cy="36" r="1.2" fill="#ff00aa" opacity=".65"/>' +
+    '<circle cx="310" cy="48" r="1.3" fill="#b8ff2e" opacity=".55"/>' +
+    '<circle cx="360" cy="64" r="1.1" fill="#00e5ff" opacity=".5"/>' +
+    '</svg></div>';
+}
+
+function macroRingHtml(label, current, target, color) {
+  const t = Math.max(1, Number(target) || 1);
+  const c = Math.max(0, Number(current) || 0);
+  const pct = Math.max(0, Math.min(100, Math.round((c / t) * 100)));
+  return '<div class="macroRing">' +
+    '<div class="mdisc" style="--mpct:' + pct + ';--mcolor:' + color + '">' +
+    '<div class="mval">' + Math.round(c) + '<br><span style="opacity:.55;font-size:9px">/' + Math.round(t) + '</span></div>' +
+    '</div><div class="mlbl">' + label + "</div></div>";
 }
 
 function clearLiveStorage() {
@@ -1087,6 +1302,8 @@ function load() {
       data = Object.assign(defaults(), parsed);
       if (!data.stats) data.stats = defaults().stats;
       if (data.stats.lbm == null) data.stats.lbm = 175;
+      if (data.stats.bf == null || data.stats.bf === "") data.stats.bf = null;
+      else data.stats.bf = Number(data.stats.bf);
       if (!data.lastWeights) data.lastWeights = {};
       if (!Array.isArray(data.sessions)) data.sessions = [];
       if (!Array.isArray(data.bodyweights)) data.bodyweights = [];
@@ -1124,6 +1341,9 @@ function load() {
   if (!data.dayNotes || typeof data.dayNotes !== "object" || Array.isArray(data.dayNotes)) data.dayNotes = {};
   data.pet = normalizePet(data.pet);
   data.cosmetics = normalizeCosmetics(data.cosmetics);
+  state = data;
+  ensureMacros();
+  data.macros = state.macros;
   data.live = null;
   state = data;
   const resumed = loadLive();
@@ -2680,6 +2900,11 @@ function screenMore() {
   html += '<button type="button" data-env-pref="night" class="' + (pref === "night" ? "on" : "") + '">Night</button>';
   html += "</div>";
   html += '<p class="shopMeta" style="margin:10px 0 0">Resolved · ' + resolveEnvironment() + " · Verde Monte day · Midnight Violet night</p></div>";
+  html += '<div class="card mt"><h2>Body fat %</h2>';
+  html += '<p class="sub" style="margin-top:0">Optional stub for Command metrics. No photos.</p>';
+  const bfNow = (state.stats && state.stats.bf != null && !isNaN(Number(state.stats.bf))) ? Number(state.stats.bf) : "";
+  html += '<div class="stack" style="margin-top:8px"><input type="number" id="bfInput" placeholder="Body fat %" min="3" max="60" step="0.1" value="' + (bfNow !== "" ? bfNow : "") + '"/>';
+  html += '<button class="btn pri" id="bfSave">Save body fat</button></div></div>';
   html += '<div class="card mt">';
   html += '<div class="toggle ' + (c.reactive ? "on" : "") + '" id="reactiveToggle"><div><b>Reactive interface</b><span>Glow during lift · master OFF keeps day/night</span></div><div class="sw"></div></div>';
   html += '<div class="toggle ' + (state.sound ? "on" : "") + '" id="soundToggle"><div><b>Sound FX</b><span>Blips on confirm / rest / done</span></div><div class="sw"></div></div>';
@@ -2695,7 +2920,7 @@ function screenMore() {
 }
 
 function screenBoot() {
-  return '<div class="boot">' +
+  return '<div class="boot bootArt">' +
     '<div class="boottitle">PF//TRACK</div>' +
     '<p class="sub" style="margin-bottom:22px">Marathon edition · v' + APP_VERSION + ' · local only</p>' +
     '<div class="bootline">Loading…</div>' +
@@ -2704,6 +2929,7 @@ function screenBoot() {
     '<div class="bootline" style="animation-delay:.45s">Week · Sat → Fri</div>' +
     '<div class="bootline dim" style="animation-delay:.6s">No cloud · no account · no excuses</div>' +
     '<div class="bar mt" style="margin-top:28px"><i style="animation:bootfill 1.4s ease forwards"></i></div>' +
+    neonCityArtHtml() +
   '</div>';
 }
 
@@ -2719,9 +2945,14 @@ function bubbleDefs() {
   ];
 }
 
-function bubbleMapHtml() {
-  let html = '<div class="bubbleSection"><div class="lbl">Where to</div><div class="bubbleMap">';
-  bubbleDefs().forEach(function(b) {
+function bubbleMapHtml(opts) {
+  opts = opts || {};
+  const hub = !!opts.hub;
+  const defs = hub
+    ? bubbleDefs().filter(function(b) { return b.go === "more" || b.go === "pet" || b.go === "recovery"; })
+    : bubbleDefs();
+  let html = '<div class="bubbleSection' + (hub ? " hubBubbles" : "") + '"><div class="lbl">' + (hub ? "More" : "Where to") + '</div><div class="bubbleMap">';
+  defs.forEach(function(b) {
     html += '<button type="button" class="bubble" data-bubble="' + b.go + '" data-note="' + esc(b.note) + '" aria-label="' + esc(b.label) + ': ' + esc(b.note) + '">';
     html += '<span class="bico" aria-hidden="true">' + b.ico + '</span>';
     html += '<span class="blabel">' + esc(b.label) + "</span></button>";
@@ -2812,14 +3043,26 @@ function screenHome() {
   const plan = todayPlan();
   const prog = plan.key && PROGRAMS[plan.key];
   const lastW = state.bodyweights[0];
-  const title = plan.key ? prog.name : (isWorkDay(plan.d) ? "Work Walk Protocol" : "Rest Cycle");
   const full = liftKeysClearedThisWeek() >= 4;
   const hour = new Date().getHours();
   const deployFirst = !!(plan.key && hour >= 5);
+  const greet = greetingForHour(hour);
+  const bf = (state.stats && state.stats.bf != null && !isNaN(Number(state.stats.bf))) ? Number(state.stats.bf) : null;
+  const streak = activityStreak();
+  const wtLabel = lastW ? (String(lastW.lb)) : (state.stats.wt != null ? String(state.stats.wt) : "—");
+
   let html = statusbar();
+  html += '<div class="hubWrap">';
+  html += neonCityArtHtml();
+  html += '<div class="hubContent">';
   html += '<div class="lbl">' + esc(plan.short) + " · LBM ~" + state.stats.lbm + " LB · LV " + level() + "</div>";
-  html += "<h1>" + esc(title) + "</h1>";
-  html += '<p class="sub">' + esc(plan.note) + "</p>";
+  html += '<div class="hubGreet">' + esc(greet) + "</div>";
+  html += '<p class="hubTag">Discipline builds freedom.</p>';
+  html += '<div class="hubMetrics">';
+  html += '<div class="hubMetric"><div class="lbl">Weight</div><div class="val">' + esc(wtLabel) + (wtLabel !== "—" ? "<small>lb</small>" : "") + "</div></div>";
+  html += '<div class="hubMetric"><div class="lbl">Body fat</div><div class="val">' + (bf != null ? (bf + "<small>%</small>") : "—") + "</div></div>";
+  html += '<div class="hubMetric"><div class="lbl">Streak</div><div class="val">' + streak + "<small>d</small></div></div>";
+  html += "</div>";
 
   // Sticky Resume — first Home action whenever a live session exists
   if (state.live) {
@@ -2831,11 +3074,9 @@ function screenHome() {
     html += '<p class="sub" style="margin-top:8px">' + esc(lowerDayOneLiner(plan.key)) + "</p>";
   }
   html += sleepCueHtml(plan);
-  // Heat one-liner: never before Deploy — placed after walk block on work days only
 
   function deployBlock() {
     let out = "";
-    // Deploy first, then compact one-line pin strip (never bury Deploy under full pin card)
     out += '<div class="stack">';
     if (full) {
       out += '<button class="btn pri big" data-go="start:' + plan.key + '">Override deploy</button>';
@@ -2853,8 +3094,19 @@ function screenHome() {
     html += deployBlock();
   }
 
-  // Glanceable destination map — after Resume/Deploy, before Body
-  html += bubbleMapHtml();
+  // Vision hub tiles — Training + Nutrition big; Recovery / Progress / Shop mini
+  html += '<div class="hubTiles">';
+  html += '<button type="button" class="hubTile" data-go="week"><span class="tico" aria-hidden="true">▦</span><span class="tlabel">Training</span><span class="tnote">Week · Sat→Fri</span></button>';
+  html += '<button type="button" class="hubTile nut" data-go="fuel"><span class="tico" aria-hidden="true">⇪</span><span class="tlabel">Nutrition</span><span class="tnote">Fuel · macros</span></button>';
+  html += "</div>";
+  html += '<div class="hubMini">';
+  html += '<button type="button" class="hubTile" data-go="recovery"><span class="tico" aria-hidden="true">❋</span><span class="tlabel">Recovery</span></button>';
+  html += '<button type="button" class="hubTile" data-go="log"><span class="tico" aria-hidden="true">≡</span><span class="tlabel">Progress</span></button>';
+  html += '<button type="button" class="hubTile" data-go="shop"><span class="tico" aria-hidden="true">◈</span><span class="tlabel">Shop</span></button>';
+  html += "</div>";
+
+  // Compact bubbles below hub tiles
+  html += bubbleMapHtml({hub: true});
 
   html += '<div class="card' + (plan.key && deployFirst ? " mt" : "") + '"><div class="row" style="border:0;padding:0 0 4px">';
   html += '<div><div class="lbl">Sessions this week</div><div class="stat">' + liftKeysClearedThisWeek() + "<small>/4</small></div></div>";
@@ -2883,12 +3135,10 @@ function screenHome() {
     html += '<div class="stack"><button class="btn gho" data-day="' + plan.d + '">Why today is dark</button></div>';
   }
 
-  // Heat one-liner on work days (after Deploy / walk — never before Deploy)
   if (!plan.key && isWorkDay(plan.d)) {
     html += heatBannerHtml(plan);
   }
 
-  // Body card — collapsed when Deploy is above-fold (lift day after 5)
   const bodyOpen = !(plan.key && deployFirst);
   html += '<div class="card mt"><details class="bodyFold"' + (bodyOpen ? " open" : "") + '>';
   html += '<summary>Body · feet · ham · sleep</summary>';
@@ -2900,6 +3150,7 @@ function screenHome() {
 
   html += '<p class="sub" style="margin-top:14px;margin-bottom:0">2×10–15 · same pin until 15 twice · cramp = leave</p>';
   html += installHintHtml();
+  html += "</div></div>"; // hubContent + hubWrap
   html += nav("home");
   return html;
 }
@@ -3057,11 +3308,37 @@ function screenFuel() {
   const lastW = state.bodyweights[0];
   const isWed = new Date().getDay() === 3;
   const win = fuelWindowMeta();
-  const plan = todayPlan();
+  const m = ensureMacros();
   let html = statusbar();
   html += '<div class="lbl">Nutrition</div><h1>Fuel window</h1>';
-  html += '<p class="sub">2pm–8pm. Protein ' + esc(proteinRange()) + " g (from LBM). Three locks. That’s the whole system.</p>";
-  html += '<div class="card"><div class="lbl">Window · 2pm–8pm</div>';
+  html += '<p class="sub">2pm–8pm. Protein ' + esc(proteinRange()) + " g (from LBM). Macro rings + three locks.</p>";
+
+  html += '<div class="macroRings">';
+  html += macroRingHtml("CAL", m.cal, m.calTarget, "var(--amber)");
+  html += macroRingHtml("PRO", m.protein, m.proteinTarget, "var(--neon)");
+  html += macroRingHtml("CARB", m.carbs, m.carbsTarget, "var(--cyan)");
+  html += macroRingHtml("FAT", m.fat, m.fatTarget, "#ff4ec8");
+  html += "</div>";
+
+  html += '<div class="card"><div class="lbl">Manual targets &amp; today</div><div class="macroTargets">';
+  [
+    {k: "cal", tk: "calTarget", label: "Calories", step: 50},
+    {k: "protein", tk: "proteinTarget", label: "Protein", step: 5},
+    {k: "carbs", tk: "carbsTarget", label: "Carbs", step: 5},
+    {k: "fat", tk: "fatTarget", label: "Fat", step: 2}
+  ].forEach(function(row) {
+    html += '<div class="macroRow"><b>' + row.label + '</b><div class="macroSteps">';
+    html += '<div class="step"><button class="mini" data-macro="' + row.k + '" data-dir="-1" data-step="' + row.step + '">−</button>';
+    html += '<b>' + Math.round(m[row.k]) + '</b>';
+    html += '<button class="mini" data-macro="' + row.k + '" data-dir="1" data-step="' + row.step + '">+</button></div>';
+    html += '<div class="step" title="Target"><button class="mini" data-macro="' + row.tk + '" data-dir="-1" data-step="' + row.step + '">−</button>';
+    html += '<b style="opacity:.75">tgt ' + Math.round(m[row.tk]) + '</b>';
+    html += '<button class="mini" data-macro="' + row.tk + '" data-dir="1" data-step="' + row.step + '">+</button></div>';
+    html += "</div></div>";
+  });
+  html += '</div><p class="sub" style="margin:8px 0 0">Left = logged today · Right = target. No food DB yet.</p></div>';
+
+  html += '<div class="card mt"><div class="lbl">Window · 2pm–8pm</div>';
   html += '<div class="fuelBar"><i style="width:' + win.pct + '%"></i></div>';
   if (win.phase === "before") html += '<div class="lbl">Opens at 2pm</div>';
   else if (win.phase === "open") html += '<div class="lbl" style="color:var(--ok)">Open · eat in the window</div>';
@@ -3095,7 +3372,9 @@ function screenFuel() {
   html += weightDeltaHtml();
   html += '<div class="stack" style="margin-top:10px"><input type="number" id="bwInput" placeholder="Weight today (lb)" min="100" max="500" step="0.1"/>';
   html += '<button class="btn pri" id="bwSave">Log Scale</button></div></div>';
-  html += '<div class="card cue mt"><b>Stats lock</b><br>HT ' + esc(state.stats.ht) + " · WT ~" + state.stats.wt + " · LBM ~" + state.stats.lbm + " · Protein " + esc(proteinRange()) + "</div>";
+  html += '<div class="card cue mt"><b>Stats lock</b><br>HT ' + esc(state.stats.ht) + " · WT ~" + state.stats.wt + " · LBM ~" + state.stats.lbm +
+    (state.stats.bf != null ? " · BF " + state.stats.bf + "%" : " · BF —") +
+    " · Protein " + esc(proteinRange()) + "</div>";
   html += nav("fuel");
   return html;
 }
@@ -3929,6 +4208,31 @@ function bind() {
     sfxTap();
     render();
   };
+  if ($("bfSave")) $("bfSave").onclick = function() {
+    const inp = $("bfInput");
+    const v = parseFloat(inp && inp.value);
+    if (!v || v < 3 || v > 60) { toast("Enter body fat 3–60%"); return; }
+    state.stats.bf = Math.round(v * 10) / 10;
+    sfxConfirm();
+    persist();
+    toast("Body fat · " + state.stats.bf + "%");
+    render();
+  };
+  document.querySelectorAll("[data-macro]").forEach(function(btn) {
+    btn.onclick = function() {
+      const m = ensureMacros();
+      const key = btn.getAttribute("data-macro");
+      const dir = parseInt(btn.getAttribute("data-dir"), 10) || 1;
+      const step = parseFloat(btn.getAttribute("data-step")) || 1;
+      let next = Number(m[key]) + dir * step;
+      if (key.indexOf("Target") >= 0) next = Math.max(1, next);
+      else next = Math.max(0, next);
+      m[key] = Math.round(next * 10) / 10;
+      sfxTap();
+      persist();
+      render();
+    };
+  });
   document.querySelectorAll("[data-env-pref]").forEach(function(btn) {
     btn.onclick = function() {
       sfxTap();
