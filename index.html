@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5, user-scalable=yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
@@ -372,7 +372,31 @@ nav.hud button.on .ico{opacity:1}
   color:#ffb0c0;
 }
 .heat b{color:#ffd0da}
+.heatLine{margin:8px 0 0;font-size:13px;color:var(--muted)}
 .crowdTag{display:inline-block;margin-top:6px}
+.chip{
+  display:inline-block;font-size:11px;font-weight:600;
+  padding:2px 8px;border-radius:999px;margin-left:6px;
+  background:rgba(255,176,32,.12);color:var(--amber);
+  border:1px solid rgba(255,176,32,.3);vertical-align:middle;
+}
+details.bodyFold,details.pet-cosmetics{
+  margin:0;border:0;padding:0;
+}
+details.bodyFold > summary,details.pet-cosmetics > summary{
+  cursor:pointer;list-style:none;
+  font:600 14px/1.35 var(--font);color:var(--dim);
+  padding:2px 0 8px;-webkit-user-select:none;user-select:none;
+}
+details.bodyFold > summary::-webkit-details-marker,
+details.pet-cosmetics > summary::-webkit-details-marker{display:none}
+details.bodyFold > summary::before,
+details.pet-cosmetics > summary::before{content:"▸ ";color:var(--neon)}
+details.bodyFold[open] > summary::before,
+details.pet-cosmetics[open] > summary::before{content:"▾ "}
+details.bodyFold .toggle{margin-top:4px}
+details.pet-cosmetics{margin-top:4px}
+details.pet-cosmetics > summary{margin-bottom:4px;color:var(--text)}
 .preSkip{opacity:.45}
 .preSkip .n{color:var(--amber)}
 .shame{border-style:dashed}
@@ -387,10 +411,12 @@ nav.hud button.on .ico{opacity:1}
 
 /* Companion dragon */
 #pet-root{
-  position:fixed;left:max(12px,env(safe-area-inset-left,0px));
-  bottom:calc(78px + env(safe-area-inset-bottom,0px));
-  z-index:42;width:72px;height:72px;
-  border-radius:18px;border:1px solid var(--line2);
+  position:fixed;
+  top:calc(8px + env(safe-area-inset-top,0px));
+  right:max(12px,env(safe-area-inset-right,0px));
+  left:auto;bottom:auto;
+  z-index:42;width:60px;height:60px;
+  border-radius:16px;border:1px solid var(--line2);
   background:rgba(20,27,36,.94);
   box-shadow:0 8px 28px rgba(0,0,0,.4);
   display:flex;align-items:center;justify-content:center;
@@ -399,8 +425,8 @@ nav.hud button.on .ico{opacity:1}
 }
 #pet-root.hidden{display:none}
 #pet-root .pet-badge{
-  position:absolute;top:-6px;right:-6px;min-width:22px;height:20px;
-  padding:0 6px;border-radius:999px;font:700 11px/20px var(--mono);
+  position:absolute;top:-6px;right:-6px;min-width:20px;height:18px;
+  padding:0 5px;border-radius:999px;font:700 10px/18px var(--mono);
   background:var(--amber);color:#1a1004;border:1px solid #ffd080;
 }
 #pet-root.celebrate{
@@ -413,7 +439,7 @@ nav.hud button.on .ico{opacity:1}
   40%{transform:scale(1.02)}
   60%{transform:scale(1.06)}
 }
-#pet-root svg{display:block;width:56px;height:56px}
+#pet-root svg{display:block;width:46px;height:46px}
 .pet-art{
   --pet-body:#6a9e5a;--pet-belly:#a8d48a;--pet-accent:#b8ff2e;
   --pet-horn:#b8ff2e;--pet-eye:#0a0e14;--pet-wing:#4a7a3a;
@@ -537,7 +563,7 @@ nav.hud button.on .ico{opacity:1}
 
 const STORAGE_KEY = "pftrack_v3";
 const LIVE_KEY = "pftrack_live";
-const APP_VERSION = "3.5";
+const APP_VERSION = "3.6";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -672,7 +698,7 @@ function defaults() {
     readyUp: {},
     walks: [],
     feetCookedWeek: "",
-    hamWeird: false,
+    hamWeirdWeek: "",
     sleepHours: null,
     pet: {
       ember: 0,
@@ -739,7 +765,14 @@ function load() {
       if (!data.readyUp || typeof data.readyUp !== "object") data.readyUp = {};
       if (!Array.isArray(data.walks)) data.walks = [];
       if (typeof data.feetCookedWeek !== "string") data.feetCookedWeek = "";
-      if (typeof data.hamWeird !== "boolean") data.hamWeird = false;
+      if (typeof data.hamWeirdWeek === "string") {
+        /* already week-scoped */
+      } else if (data.hamWeird === true) {
+        data.hamWeirdWeek = weekStartISO();
+      } else {
+        data.hamWeirdWeek = "";
+      }
+      try { delete data.hamWeird; } catch (e) {}
       if (data.sleepHours != null) data.sleepHours = Number(data.sleepHours);
       else data.sleepHours = null;
       if (typeof data.haptics !== "boolean") data.haptics = true;
@@ -986,6 +1019,14 @@ function setFeetCooked(on) {
   }
 }
 
+function isHamWeird() {
+  return !!(state.hamWeirdWeek && state.hamWeirdWeek === weekStartISO());
+}
+
+function setHamWeird(on) {
+  state.hamWeirdWeek = on ? weekStartISO() : "";
+}
+
 function lastRepsFor(id) {
   for (let i = 0; i < (state.sessions || []).length; i++) {
     const s = state.sessions[i];
@@ -1009,7 +1050,7 @@ function pinCardHtml(prog, opts) {
     const reps = lastRepsFor(ex.id);
     const preSkip = (opts.key === "lower-b") && (
       (ex.id === "calf" && isFeetCooked()) ||
-      (ex.id === "curl" && state.hamWeird)
+      (ex.id === "curl" && isHamWeird())
     );
     return '<div class="row' + (preSkip ? " preSkip" : "") + '"><div><b>' + esc(ex.name) +
       '</b>' + (preSkip ? '<div class="n">pre-skip · lock on</div>' : '') +
@@ -1029,7 +1070,7 @@ function pinStripHtml(prog, opts) {
     const reps = lastRepsFor(ex.id);
     const preSkip = (opts.key === "lower-b") && (
       (ex.id === "calf" && isFeetCooked()) ||
-      (ex.id === "curl" && state.hamWeird)
+      (ex.id === "curl" && isHamWeird())
     );
     const short = ex.name;
     return '<div class="pinLine' + (preSkip ? " preSkip" : "") + '"><b>' + esc(short) +
@@ -1067,7 +1108,7 @@ function sleepCueHtml(plan) {
 
 function heatBannerHtml(plan) {
   if (!plan || !isWorkDay(plan.d)) return "";
-  return '<div class="card cue heat mt"><b>Heat protocol</b><br>Salt · water · no incline · no quick PF stop.</div>';
+  return '<p class="sub heatLine">Heat · salt · water · no incline · no quick PF</p>';
 }
 
 function fuelWindowMeta() {
@@ -1378,13 +1419,21 @@ function dragonSVG(size) {
   }
   let wisps = "";
   if (hasWisps) {
-    wisps =
-      '<circle cx="12" cy="28" r="2" fill="var(--pet-accent)" opacity=".7">' +
-      '<animate attributeName="cy" values="28;22;28" dur="2.4s" repeatCount="indefinite"/></circle>' +
-      '<circle cx="52" cy="24" r="1.6" fill="var(--pet-accent)" opacity=".55">' +
-      '<animate attributeName="cy" values="24;18;24" dur="2.8s" repeatCount="indefinite"/></circle>' +
-      '<circle cx="48" cy="42" r="1.4" fill="var(--cyan)" opacity=".5">' +
-      '<animate attributeName="cy" values="42;36;42" dur="3s" repeatCount="indefinite"/></circle>';
+    const reduceMotion = (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches);
+    if (reduceMotion) {
+      wisps =
+        '<circle cx="12" cy="28" r="2" fill="var(--pet-accent)" opacity=".7"/>' +
+        '<circle cx="52" cy="24" r="1.6" fill="var(--pet-accent)" opacity=".55"/>' +
+        '<circle cx="48" cy="42" r="1.4" fill="var(--cyan)" opacity=".5"/>';
+    } else {
+      wisps =
+        '<circle cx="12" cy="28" r="2" fill="var(--pet-accent)" opacity=".7">' +
+        '<animate attributeName="cy" values="28;22;28" dur="2.4s" repeatCount="indefinite"/></circle>' +
+        '<circle cx="52" cy="24" r="1.6" fill="var(--pet-accent)" opacity=".55">' +
+        '<animate attributeName="cy" values="24;18;24" dur="2.8s" repeatCount="indefinite"/></circle>' +
+        '<circle cx="48" cy="42" r="1.4" fill="var(--cyan)" opacity=".5">' +
+        '<animate attributeName="cy" values="42;36;42" dur="3s" repeatCount="indefinite"/></circle>';
+    }
   }
   let tail =
     '<path d="M44 46 Q58 48 56 38 Q52 46 44 44 Z" fill="var(--pet-body)"/>';
@@ -1417,7 +1466,7 @@ function dragonSVG(size) {
 
 function petVisible() {
   if (!booted || view === "boot") return false;
-  if (view === "lift" && state.live && !(state.live.restUntil && restRemaining() > 0)) return false;
+  if (view === "lift") return false;
   return true;
 }
 
@@ -1459,7 +1508,7 @@ function renderPetWidget() {
   const pet = state.pet;
   const celebrating = pet.celebrateUntil && Date.now() < pet.celebrateUntil;
   root.classList.toggle("celebrate", !!celebrating);
-  root.innerHTML = dragonSVG(56) + '<span class="pet-badge">' + pet.ember + "</span>";
+  root.innerHTML = dragonSVG(46) + '<span class="pet-badge">' + pet.ember + "</span>";
   applyPetPalette(root);
   if (celebrating) {
     const left = pet.celebrateUntil - Date.now();
@@ -1481,7 +1530,7 @@ function petPanelHtml() {
   html += '<div class="lbl">' + pet.ember + " embers</div></div></div>";
   html += '<p class="contract">Never hungry. Never sad. Never nags. Grows with sessions you already logged. Embers are earned, not owed.</p>';
   html += '<div class="ember-flow"><span>Session <b>+' + EMBER_PER_SESSION + "</b></span><span>Full week <b>+" + EMBER_FULL_WEEK_BONUS + "</b></span><span>Week <b>" + liftKeysClearedThisWeek() + "/4</b></span></div>";
-  html += '<div class="lbl" style="margin-bottom:8px">Store</div><div class="pet-store">';
+  html += '<details class="pet-cosmetics"><summary>Cosmetics</summary><div class="pet-store">';
   PET_ITEMS.forEach(function(it) {
     const owned = pet.owned.indexOf(it.id) >= 0;
     let equipped = false;
@@ -1498,7 +1547,7 @@ function petPanelHtml() {
     html += "<div><b>" + esc(it.name) + "</b><div class=\"meta\">" + esc(it.slot) + (equipped ? " · equipped" : owned ? " · owned" : "") + "</div></div>";
     html += '<span class="cost">' + costLabel + "</span></button>";
   });
-  html += '</div><button type="button" class="btn gho pet-close" id="petClose">Close</button>';
+  html += '</div></details><button type="button" class="btn gho pet-close" id="petClose">Close</button>';
   return html;
 }
 
@@ -1806,7 +1855,7 @@ function doStartWorkout(key) {
       if (ex.id === "calf" && isFeetCooked()) {
         sets[idx].forEach(function(s) { s.skipped = true; s.done = false; });
       }
-      if (ex.id === "curl" && state.hamWeird) {
+      if (ex.id === "curl" && isHamWeird()) {
         sets[idx].forEach(function(s) { s.skipped = true; s.done = false; });
       }
     });
@@ -2127,7 +2176,9 @@ function nav(active) {
     {id: "log", ico: "≡", label: "Stats", go: "log"}
   ];
   return '<nav class="hud">' + items.map(function(it) {
-    return '<button data-nav="' + it.go + '" class="' + (active === it.id ? "on" : "") + '"><span class="ico">' + it.ico + "</span>" + it.label + "</button>";
+    return '<button data-nav="' + it.go + '" class="' + (active === it.id ? "on" : "") + '"' +
+      (active === it.id ? ' aria-current="page"' : "") +
+      '><span class="ico">' + it.ico + "</span>" + it.label + "</button>";
   }).join("") + "</nav>";
 }
 
@@ -2233,7 +2284,6 @@ function screenBoot() {
 function screenHome() {
   const plan = todayPlan();
   const prog = plan.key && PROGRAMS[plan.key];
-  const week = sessionsThisWeek();
   const lastW = state.bodyweights[0];
   const title = plan.key ? prog.name : (isWorkDay(plan.d) ? "Work Walk Protocol" : "Rest Cycle");
   const full = liftKeysClearedThisWeek() >= 4;
@@ -2254,7 +2304,7 @@ function screenHome() {
     html += '<p class="sub" style="margin-top:8px">' + esc(lowerDayOneLiner(plan.key)) + "</p>";
   }
   html += sleepCueHtml(plan);
-  html += heatBannerHtml(plan);
+  // Heat one-liner: never before Deploy — placed after walk block on work days only
 
   function deployBlock() {
     let out = "";
@@ -2277,7 +2327,7 @@ function screenHome() {
   }
 
   html += '<div class="card' + (plan.key && deployFirst ? " mt" : "") + '"><div class="row" style="border:0;padding:0 0 4px">';
-  html += '<div><div class="lbl">Sessions this week</div><div class="stat">' + week.length + "<small>/4</small></div></div>";
+  html += '<div><div class="lbl">Sessions this week</div><div class="stat">' + liftKeysClearedThisWeek() + "<small>/4</small></div></div>";
   html += '<div class="r"><div class="lbl">Total XP</div><div class="stat" style="font-size:22px">' + xp() + "</div></div>";
   html += "</div>";
   html += weekDots();
@@ -2303,17 +2353,22 @@ function screenHome() {
     html += '<div class="stack"><button class="btn gho" data-day="' + plan.d + '">Why today is dark</button></div>';
   }
 
-  // locks + sleep on home
-  html += '<div class="card mt"><div class="lbl">Locks & recovery</div>';
-  html += '<div class="toggle ' + (isFeetCooked() ? "on" : "") + '" id="feetLockToggle"><div><b>Feet cooked</b><span>Pre-skips Lower B calf · no guilt</span></div><div class="sw"></div></div>';
-  html += '<div class="toggle ' + (state.hamWeird ? "on" : "") + '" id="hamWeirdToggle"><div><b>Ham weird</b><span>Pre-skips Lower B seated curl</span></div><div class="sw"></div></div>';
+  // Heat one-liner on work days (after Deploy / walk — never before Deploy)
+  if (!plan.key && isWorkDay(plan.d)) {
+    html += heatBannerHtml(plan);
+  }
+
+  // Body card — collapsed when Deploy is above-fold (lift day after 5)
+  const bodyOpen = !(plan.key && deployFirst);
+  html += '<div class="card mt"><details class="bodyFold"' + (bodyOpen ? " open" : "") + '>';
+  html += '<summary>Body · feet · ham · sleep</summary>';
+  html += '<div class="toggle ' + (isFeetCooked() ? "on" : "") + '" id="feetLockToggle"><div><b>Feet cooked</b><span>Pre-skips Lower B calf · no guilt' + (isFeetCooked() ? ' <span class="chip">clears next Sat</span>' : "") + '</span></div><div class="sw"></div></div>';
+  html += '<div class="toggle ' + (isHamWeird() ? "on" : "") + '" id="hamWeirdToggle"><div><b>Ham weird</b><span>Pre-skips Lower B seated curl' + (isHamWeird() ? ' <span class="chip">clears next Sat</span>' : "") + '</span></div><div class="sw"></div></div>';
   html += '<div class="lbl" style="margin-top:12px">Last night sleep (hours)</div>';
   html += '<div class="step"><button class="mini" id="sleepMinus">−</button><b id="sleepVal">' + (state.sleepHours != null ? state.sleepHours : "—") + '</b><button class="mini" id="sleepPlus">+</button></div>';
-  html += "</div>";
+  html += "</details></div>";
 
-  html += '<div class="card cue mt"><b>2×10–15 · 3–4 reps left · same pin until 15 is easy twice.</b><br>';
-  if (isWorkDay(plan.d)) html += "High-walk day: no incline. Friday is not a lift.<br>";
-  html += "Cramp = leave. No kickbacks. Laterals on both uppers.</div>";
+  html += '<p class="sub" style="margin-top:14px;margin-bottom:0">2×10–15 · same pin until 15 twice · cramp = leave</p>';
   html += installHintHtml();
   html += nav("home");
   return html;
@@ -2359,7 +2414,7 @@ function screenDay() {
     html += '<div class="card mt">' + prog.items.map(function(ex) {
       const preSkip = (w.key === "lower-b") && (
         (ex.id === "calf" && isFeetCooked()) ||
-        (ex.id === "curl" && state.hamWeird)
+        (ex.id === "curl" && isHamWeird())
       );
       return '<div class="row' + (preSkip ? " preSkip" : "") + '"><div><b>' + esc(ex.name) + '</b><div class="n">' +
         (preSkip ? "Pre-skip · lock on" : esc(ex.cue)) +
@@ -2367,7 +2422,7 @@ function screenDay() {
         '</b><div class="n">pin ' + pin(ex.id) + " · reps " + esc(lastRepsFor(ex.id)) + "</div></div></div>";
     }).join("") + "</div>";
     if (w.key === "lower-a" || w.key === "lower-b") {
-      html += '<div class="card mt"><div class="toggle ' + (state.hamWeird ? "on" : "") + '" id="hamWeirdToggle"><div><b>Ham weird</b><span>Sticky · pre-skips Lower B curl</span></div><div class="sw"></div></div>';
+      html += '<div class="card mt"><div class="toggle ' + (isHamWeird() ? "on" : "") + '" id="hamWeirdToggle"><div><b>Ham weird</b><span>Week-scoped · pre-skips Lower B curl' + (isHamWeird() ? ' <span class="chip">clears next Sat</span>' : "") + '</span></div><div class="sw"></div></div>';
       html += '<div class="toggle ' + (isFeetCooked() ? "on" : "") + '" id="feetLockToggle"><div><b>Feet cooked</b><span>Sticky this week · pre-skips Lower B calf</span></div><div class="sw"></div></div></div>';
     }
     const full = liftKeysClearedThisWeek() >= 4;
@@ -2422,7 +2477,7 @@ function screenLift() {
   html += "<h1>" + esc(ex.name) + "</h1>";
   let liftCue = ex.cue;
   if (live.key === "lower-b" && ex.id === "calf" && isFeetCooked()) liftCue = "Pre-skip · feet cooked. No guilt.";
-  if (live.key === "lower-b" && ex.id === "curl" && state.hamWeird) liftCue = "Pre-skip · ham weird. No guilt.";
+  if (live.key === "lower-b" && ex.id === "curl" && isHamWeird()) liftCue = "Pre-skip · ham weird. No guilt.";
   html += '<div class="card cue">' + esc(liftCue) + "</div>";
   html += '<div class="setbox"><div><div class="lbl">Pin (lb)</div><div class="step">';
   html += '<button class="mini" data-act="w-" type="button">−</button><b>' + s.w + '</b><button class="mini" data-act="w+" type="button">+</button>';
@@ -2453,7 +2508,14 @@ function screenDone() {
     html += '<div class="card"><div class="row" style="border:0;padding:0"><div><div class="lbl">Session</div><b>' + esc(last.name) +
       '</b><div class="n">reason · ' + esc(last.reason || reason) + '</div></div><div class="r"><div class="lbl">Time</div><b>' + last.minutes + " min</b></div></div></div>";
   }
-  html += '<div class="stack"><button class="btn pri big" data-go="home">Back to today</button>';
+  html += '<div class="stack">';
+  if (last) {
+    html += '<button class="btn pri big" id="copyPFTRACK">Copy PFTRACK</button>';
+    if (typeof navigator !== "undefined" && navigator.share) {
+      html += '<button class="btn gho" id="sharePFTRACK">Share</button>';
+    }
+  }
+  html += '<button class="btn ' + (last ? "gho" : "pri") + ' big" data-go="home">Back to today</button>';
   html += '<button class="btn gho" data-go="log">Open Stats</button></div>';
   html += nav("home");
   return html;
@@ -2882,12 +2944,24 @@ function bind() {
     btn.onclick = function() {
       sfxTap();
       const v = btn.getAttribute("data-nav");
-      if (v === "home") go("home");
-      else if (v === "week") go("week");
-      else if (v === "cal") go("cal");
-      else if (v === "fuel") go("fuel");
-      else if (v === "link") go("link");
-      else if (v === "log") go("log");
+      const doNav = function() {
+        if (v === "home") go("home");
+        else if (v === "week") go("week");
+        else if (v === "cal") go("cal");
+        else if (v === "fuel") go("fuel");
+        else if (v === "link") go("link");
+        else if (v === "log") go("log");
+      };
+      if (view === "lift" && state.live) {
+        showModal({
+          title: "Leave floor?",
+          body: "Session stays live — Resume on Home.",
+          okLabel: "OK",
+          onOk: doNav
+        });
+        return;
+      }
+      doNav();
     };
   });
   document.querySelectorAll("[data-go]").forEach(function(btn) {
@@ -2898,7 +2972,17 @@ function bind() {
         return;
       }
       sfxTap();
-      go(g);
+      const doGo = function() { go(g); };
+      if (view === "lift" && state.live && g !== "lift") {
+        showModal({
+          title: "Leave floor?",
+          body: "Session stays live — Resume on Home.",
+          okLabel: "OK",
+          onOk: doGo
+        });
+        return;
+      }
+      doGo();
     };
   });
   document.querySelectorAll("[data-day]").forEach(function(btn) {
@@ -3072,7 +3156,7 @@ function bind() {
     render();
   };
   if ($("hamWeirdToggle")) $("hamWeirdToggle").onclick = function() {
-    state.hamWeird = !state.hamWeird;
+    setHamWeird(!isHamWeird());
     sfxTap();
     persist();
     render();
@@ -3086,7 +3170,7 @@ function bind() {
     render();
   };
   if ($("sleepPlus")) $("sleepPlus").onclick = function() {
-    let h = state.sleepHours == null ? 6 : state.sleepHours;
+    let h = state.sleepHours == null ? 7 : state.sleepHours;
     h = Math.min(14, Math.round((h + 0.5) * 2) / 2);
     state.sleepHours = h;
     sfxTap();
