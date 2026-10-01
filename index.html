@@ -246,17 +246,17 @@ input:focus{border-color:var(--neon)}
 nav.hud{
   position:fixed;left:50%;bottom:0;transform:translateX(-50%);
   width:100%;max-width:430px;z-index:45;
-  display:grid;grid-template-columns:repeat(5,1fr);
+  display:grid;grid-template-columns:repeat(6,1fr);
   background:rgba(10,14,20,.96);
   backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
   border-top:1px solid var(--line);
-  padding:6px 4px calc(8px + env(safe-area-inset-bottom,0px));
-  gap:4px;
+  padding:6px 2px calc(8px + env(safe-area-inset-bottom,0px));
+  gap:2px;
 }
 nav.hud button{
   background:0;border:0;color:var(--dim);
-  font:600 11px/1.2 var(--font);
-  min-height:56px;padding:8px 4px;
+  font:600 10px/1.2 var(--font);
+  min-height:56px;padding:8px 2px;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:4px;cursor:pointer;border-radius:10px;
 }
@@ -484,6 +484,47 @@ nav.hud button.on .ico{opacity:1}
   #pet-root.celebrate{animation:none}
   .pet-backdrop,.pet-panel{transition:none}
 }
+
+/* Calendar */
+.calHead{
+  display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:12px 0 16px;
+}
+.calHead .btn{min-height:48px;padding:10px 8px;font-size:14px}
+.calDow{
+  display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:6px;
+}
+.calDow span{
+  text-align:center;font-size:11px;font-weight:600;color:var(--muted);
+  letter-spacing:0.02em;padding:4px 0;
+}
+.calGrid{
+  display:grid;grid-template-columns:repeat(7,1fr);gap:6px;
+}
+.calCell{
+  min-height:52px;padding:6px 4px 8px;
+  background:var(--panel);border:1px solid var(--line);
+  border-radius:12px;color:var(--text);
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+  gap:4px;cursor:pointer;font:600 14px/1 var(--font);
+}
+.calCell:active{filter:brightness(1.08)}
+.calCell .n{font-variant-numeric:tabular-nums}
+.calCell.today{
+  border-color:rgba(184,255,46,.7);
+  box-shadow:0 0 0 1px rgba(184,255,46,.35);
+  background:rgba(184,255,46,.08);
+}
+.calCell.mute{color:var(--muted);background:transparent;border-color:transparent}
+.calCell.mute .n{opacity:.55}
+.calDots{display:flex;gap:3px;min-height:6px;align-items:center;justify-content:center}
+.calDots i{
+  width:5px;height:5px;border-radius:50%;background:transparent;display:inline-block;
+}
+.calDots i.lift{background:var(--neon)}
+.calDots i.food{background:var(--amber)}
+.calDots i.walk{background:var(--cyan)}
+.calDots i.note{background:var(--dim)}
+
 </style>
 </head>
 <body>
@@ -495,7 +536,7 @@ nav.hud button.on .ico{opacity:1}
 
 const STORAGE_KEY = "pftrack_v3";
 const LIVE_KEY = "pftrack_live";
-const APP_VERSION = "3.3";
+const APP_VERSION = "3.4";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -585,6 +626,10 @@ let view = "boot";
 let tab = "home";
 let openDay = null;
 let openSession = null;
+let calCursor = null;
+let openCalISO = null;
+let calCatchupPick = false;
+let sessionBack = "log";
 let toastMsg = "";
 let tapLock = false;
 let booted = false;
@@ -613,6 +658,7 @@ function defaults() {
     stats: {wt: 270, ht: "6'2\"", lbm: 175},
     food: null,
     foodHistory: [],
+    dayNotes: {},
     live: null,
     exitReason: "",
     sound: true,
@@ -703,10 +749,12 @@ function load() {
           rice: !!data.food.rice
         });
       }
-      data.foodHistory = data.foodHistory.slice(0, 7);
+      data.foodHistory = data.foodHistory.slice(0, 120);
+      if (!data.dayNotes || typeof data.dayNotes !== "object" || Array.isArray(data.dayNotes)) data.dayNotes = {};
       data.pet = normalizePet(data.pet);
     } catch (e) {}
   }
+  if (!data.dayNotes || typeof data.dayNotes !== "object" || Array.isArray(data.dayNotes)) data.dayNotes = {};
   data.pet = normalizePet(data.pet);
   data.live = null;
   state = data;
@@ -783,6 +831,91 @@ function parseLocalDate(iso) {
   const parts = String(iso || "").split("-");
   if (parts.length < 3) return new Date(NaN);
   return new Date(+parts[0], +parts[1] - 1, +parts[2]);
+}
+
+function isoFromDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return y + "-" + m + "-" + day;
+}
+
+function addMonths(date, n) {
+  const d = new Date(date.getFullYear(), date.getMonth(), 1);
+  d.setMonth(d.getMonth() + n);
+  return d;
+}
+
+function planForISO(iso) {
+  const dt = parseLocalDate(iso);
+  if (isNaN(dt.getTime())) return null;
+  const day = dt.getDay();
+  return WEEK.find(function(w) { return w.d === day; }) || null;
+}
+
+function ensureFoodFor(iso) {
+  if (!iso) return ensureFood();
+  if (!Array.isArray(state.foodHistory)) state.foodHistory = [];
+  let entry = state.foodHistory.find(function(f) { return f.date === iso; });
+  if (!entry) {
+    entry = {date: iso, work: false, home: false, after: false, rice: false};
+    state.foodHistory.unshift(entry);
+  }
+  if (entry.rice == null) entry.rice = false;
+  state.foodHistory = state.foodHistory
+    .sort(function(a, b) { return a.date < b.date ? 1 : -1; })
+    .slice(0, 120);
+  if (iso === todayISO()) state.food = entry;
+  return entry;
+}
+
+function sessionsForISO(iso) {
+  return (state.sessions || []).filter(function(s) { return s.date === iso; });
+}
+
+function bodyweightForISO(iso) {
+  return (state.bodyweights || []).find(function(w) { return w.date === iso; }) || null;
+}
+
+function foodForISO(iso) {
+  return (state.foodHistory || []).find(function(f) { return f.date === iso; }) || null;
+}
+
+function dayMarks(iso) {
+  const sessions = sessionsForISO(iso);
+  const lift = sessions.some(function(s) {
+    return s.key && PROGRAMS[s.key];
+  });
+  const food = foodForISO(iso);
+  const foodN = food ? ((food.work ? 1 : 0) + (food.home ? 1 : 0) + (food.after ? 1 : 0)) : 0;
+  const walk = !!walkForDate(iso);
+  const note = !!(state.dayNotes && state.dayNotes[iso] && String(state.dayNotes[iso]).trim());
+  return {lift: lift, foodN: foodN, walk: walk, note: note};
+}
+
+function formatCalTitle(d) {
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return months[d.getMonth()] + " " + d.getFullYear();
+}
+
+function ensureCalCursor() {
+  if (!calCursor || isNaN(calCursor.getTime())) {
+    const t = new Date();
+    calCursor = new Date(t.getFullYear(), t.getMonth(), 1);
+  }
+}
+
+function isFutureISO(iso) {
+  return iso > todayISO();
+}
+
+function isoInCurrentWeek(iso) {
+  const start = weekStart();
+  const dt = parseLocalDate(iso);
+  if (isNaN(dt.getTime())) return false;
+  const end = new Date(start);
+  end.setDate(start.getDate() + 7);
+  return dt >= start && dt < end;
 }
 
 function sessionsThisWeek() {
@@ -1577,9 +1710,11 @@ function go(v) {
   view = v;
   if (v === "home") tab = "home";
   if (v === "week" || v === "day") tab = "week";
+  if (v === "cal" || v === "calday") tab = "cal";
   if (v === "fuel") tab = "fuel";
   if (v === "log" || v === "session") tab = "log";
   if (v === "link") tab = "link";
+  if (v !== "calday") calCatchupPick = false;
   render();
 }
 
@@ -1978,6 +2113,7 @@ function nav(active) {
   const items = [
     {id: "home", ico: "◉", label: "Today", go: "home"},
     {id: "week", ico: "▦", label: "Plan", go: "week"},
+    {id: "cal", ico: "▣", label: "Cal", go: "cal"},
     {id: "fuel", ico: "⇪", label: "Fuel", go: "fuel"},
     {id: "link", ico: "⇄", label: "Link", go: "link"},
     {id: "log", ico: "≡", label: "Stats", go: "log"}
@@ -2003,7 +2139,7 @@ function ensureFood() {
   }
   state.foodHistory = state.foodHistory
     .sort(function(a, b) { return a.date < b.date ? 1 : -1; })
-    .slice(0, 7);
+    .slice(0, 120);
   state.food = entry;
   return entry;
 }
@@ -2434,7 +2570,9 @@ function screenSession() {
   const s = state.sessions[openSession];
   if (!s) { view = "log"; return screenLog(); }
   let html = statusbar();
-  html += '<button class="btn gho" data-go="log" style="margin-bottom:14px">← Stats</button>';
+  const backTo = sessionBack || "log";
+  const backLabel = backTo === "calday" ? "← Day" : "← Stats";
+  html += '<button class="btn gho" data-go="' + backTo + '" style="margin-bottom:14px">' + backLabel + "</button>";
   html += '<span class="pill on">' + esc(s.date) + "</span>";
   if (s.reason) html += ' <span class="pill ' + (s.reason === "complete" ? "on" : "hot") + '">' + esc(s.reason) + "</span>";
   html += "<h1>" + esc(s.name) + "</h1>";
@@ -2451,6 +2589,172 @@ function screenSession() {
   return html;
 }
 
+
+function screenCal() {
+  ensureCalCursor();
+  const title = formatCalTitle(calCursor);
+  const today = todayISO();
+  const year = calCursor.getFullYear();
+  const month = calCursor.getMonth();
+  const first = new Date(year, month, 1);
+  const firstDow = first.getDay(); // 0=Sun
+  // Grid starts Saturday (WEEK_ORDER[0]=6)
+  const lead = (firstDow + 1) % 7; // Sat=0
+  const start = new Date(year, month, 1 - lead);
+  let html = statusbar();
+  html += '<div class="lbl">Calendar</div><h1>' + esc(title) + "</h1>";
+  html += '<div class="calHead">';
+  html += '<button class="btn gho" id="calPrev">Prev</button>';
+  html += '<button class="btn pri" id="calToday">Today</button>';
+  html += '<button class="btn gho" id="calNext">Next</button>';
+  html += "</div>";
+  html += '<div class="calDow">';
+  WEEK_ORDER.forEach(function(di) {
+    const w = WEEK.find(function(x) { return x.d === di; });
+    html += "<span>" + esc(w ? w.short : "") + "</span>";
+  });
+  html += "</div>";
+  html += '<div class="calGrid">';
+  for (let i = 0; i < 42; i++) {
+    const cell = new Date(start);
+    cell.setDate(start.getDate() + i);
+    const iso = isoFromDate(cell);
+    const inMonth = cell.getMonth() === month;
+    const marks = dayMarks(iso);
+    const cls = ["calCell"];
+    if (!inMonth) cls.push("mute");
+    if (iso === today) cls.push("today");
+    html += '<button type="button" class="' + cls.join(" ") + '" data-cal-iso="' + iso + '">';
+    html += '<span class="n">' + cell.getDate() + "</span>";
+    html += '<span class="calDots">';
+    let dots = 0;
+    if (marks.lift && dots < 3) { html += '<i class="lift"></i>'; dots++; }
+    if (marks.foodN > 0 && dots < 3) { html += '<i class="food"></i>'; dots++; }
+    if (marks.walk && dots < 3) { html += '<i class="walk"></i>'; dots++; }
+    html += "</span></button>";
+  }
+  html += "</div>";
+  html += '<p class="sub mt">Tap a day to edit lifts, food, walk.</p>';
+  html += nav("cal");
+  return html;
+}
+
+function screenCalDay() {
+  if (!openCalISO) { view = "cal"; return screenCal(); }
+  const iso = openCalISO;
+  const plan = planForISO(iso);
+  const future = isFutureISO(iso);
+  const past = iso < todayISO();
+  const sessions = sessionsForISO(iso);
+  const food = future ? (foodForISO(iso) || {date: iso, work: false, home: false, after: false, rice: false}) : ensureFoodFor(iso);
+  const walk = walkForDate(iso);
+  if (walk && walk.minutes) walkMinutes = walk.minutes;
+  const bw = bodyweightForISO(iso);
+  const note = (state.dayNotes && state.dayNotes[iso]) || "";
+  const prog = plan && plan.key && PROGRAMS[plan.key];
+  const planName = plan
+    ? (plan.key ? PROGRAMS[plan.key].name : (isWorkDay(plan.d) ? "Work Walk Protocol" : "Rest Cycle"))
+    : "—";
+
+  let html = statusbar();
+  html += '<button class="btn gho" data-go="cal" style="margin-bottom:14px">← Calendar</button>';
+  html += '<div class="lbl">' + esc(plan ? plan.short : "") + " · " + esc(iso) + "</div>";
+  html += "<h1>" + esc(planName) + "</h1>";
+  if (future) {
+    html += '<div class="card cue"><b>Future · plan only</b><br>Notes are fine. Logging unlocks on or after this day.</div>';
+  }
+  html += '<div class="card"><div class="lbl">Doctrine</div><p class="sub" style="margin:0">' + esc(plan ? plan.note : "") + "</p></div>";
+
+  // Soft ADHD cues (past only)
+  if (past && plan && plan.key && !sessions.length) {
+    html += '<p class="sub mt">No session logged — catch-up if you trained.</p>';
+  }
+  if (past) {
+    const fn = food ? ((food.work ? 1 : 0) + (food.home ? 1 : 0) + (food.after ? 1 : 0)) : 0;
+    if (fn === 0) html += '<p class="sub">Food locks empty — tap if you ate.</p>';
+  }
+
+  // A. Sessions
+  html += '<div class="card mt"><h2>Sessions</h2>';
+  if (!sessions.length) {
+    html += '<p class="sub" style="margin:0">No sessions this day.</p>';
+  } else {
+    sessions.forEach(function(s) {
+      const idx = state.sessions.indexOf(s);
+      const sets = (s.work || []).reduce(function(a, w) {
+        return a + (w.sets || []).filter(function(x) { return x.done && !x.skipped; }).length;
+      }, 0);
+      html += '<button class="daybtn" data-cal-sess="' + idx + '"><div class="l"><b>' + esc(s.name) +
+        "</b><span>" + sets + " sets" +
+        (s.reason && s.reason !== "complete" ? " · " + esc(s.reason) : "") +
+        '</span></div><span class="pill on">view</span></button>';
+      html += '<button class="btn dan" data-cal-del-sess="' + idx + '" style="margin-top:8px;min-height:44px">Delete session</button>';
+    });
+  }
+  if (!future) {
+    if (calCatchupPick) {
+      html += '<div class="lbl" style="margin-top:14px">Pick program</div><div class="stack">';
+      ["upper-a", "lower-a", "upper-b", "lower-b"].forEach(function(k) {
+        html += '<button class="btn gho big" data-catchup-key="' + k + '">' + esc(PROGRAMS[k].name) + "</button>";
+      });
+      html += '<button class="btn pri" id="calCatchupCancel">Cancel</button></div>';
+    } else {
+      html += '<div class="stack" style="margin-top:12px"><button class="btn pri" id="calCatchup">Log catch-up</button></div>';
+      html += '<p class="sub" style="margin-bottom:0">Catch-up logs the day · no embers.</p>';
+    }
+  }
+  html += "</div>";
+
+  // B. Food
+  html += '<div class="card mt"><h2>Food locks</h2>';
+  [
+    {k: "work", label: "Work meal", hint: "Shift food — already counted"},
+    {k: "home", label: "Home meal", hint: "Main plate in the window"},
+    {k: "after", label: "After / snack", hint: "Only if still hungry"}
+  ].forEach(function(item) {
+    const dis = future ? " style=\"opacity:.45;pointer-events:none\"" : "";
+    html += '<div class="toggle ' + (food[item.k] ? "on" : "") + '" data-food="' + item.k + '" data-food-iso="' + iso + '"' + dis + ">";
+    html += "<div><b>" + item.label + "</b><span>" + item.hint + "</span></div>";
+    html += '<div class="sw"></div></div>';
+  });
+  html += '<div class="toggle shame ' + (food.rice ? "on" : "") + '" data-food="rice" data-food-iso="' + iso + '"' + (future ? ' style="opacity:.45;pointer-events:none"' : "") + ">";
+  html += "<div><b>Second rice mountain</b><span>Shame toggle only — not a lock</span></div>";
+  html += '<div class="sw"></div></div></div>';
+
+  // C. Walk (work days only)
+  if (plan && isWorkDay(plan.d)) {
+    const mins = walk ? walk.minutes : walkMinutes;
+    html += '<div class="card mt"><h2>Walk</h2>';
+    if (future) {
+      html += '<p class="sub" style="margin:0">Walk log unlocks on this day.</p>';
+    } else {
+      html += '<div class="step"><button class="mini" id="walkMinus">−</button><b id="walkVal">' + mins + ' min</b><button class="mini" id="walkPlus">+</button></div>';
+      html += '<div class="toggle ' + ((walk && walk.feetCooked) || (isoInCurrentWeek(iso) && isFeetCooked()) ? "on" : "") + '" id="feetCookedToggle" data-walk-iso="' + iso + '" style="margin-top:12px"><div><b>Feet cooked</b><span>Locks Lower B calf this week</span></div><div class="sw"></div></div>';
+      html += '<div class="stack" style="margin-top:12px"><button class="btn pri" id="walkLog" data-walk-iso="' + iso + '">' + (walk ? "Update walk" : "Log walk") + "</button></div>";
+      if (walk) html += '<div class="lbl" style="margin-top:10px;color:var(--amber)">Walk marked · ' + walk.minutes + " min" + (walk.feetCooked ? " · feet cooked" : "") + "</div>";
+    }
+    html += "</div>";
+  }
+
+  // D. Scale
+  html += '<div class="card mt"><h2>Scale</h2>';
+  html += '<div class="stat" style="font-size:28px;margin:6px 0">' + (bw ? bw.lb + "<small> LB</small>" : "—") + "</div>";
+  if (bw) html += '<div class="lbl">' + bw.date + "</div>";
+  if (!future) {
+    html += '<div class="stack" style="margin-top:10px"><input type="number" id="bwInput" placeholder="Weight (lb)" min="100" max="500" step="0.1"/>';
+    html += '<button class="btn pri" id="bwSave" data-bw-iso="' + iso + '">Save scale</button></div>';
+  }
+  html += "</div>";
+
+  // E. Day note
+  html += '<div class="card mt"><h2>Day note</h2>';
+  html += '<textarea id="calDayNote" placeholder="What mattered today — pins, feet, plate, mood." style="min-height:110px">' + esc(note) + "</textarea>";
+  html += '<div class="stack"><button class="btn pri" id="calNoteSave">Save note</button></div></div>';
+
+  html += nav("cal");
+  return html;
+}
+
 function render() {
   const app = document.getElementById("app");
   if (!app) return;
@@ -2459,6 +2763,8 @@ function render() {
   else if (view === "home") html = screenHome();
   else if (view === "week") html = screenWeek();
   else if (view === "day") html = screenDay();
+  else if (view === "cal") html = screenCal();
+  else if (view === "calday") html = screenCalDay();
   else if (view === "lift") html = screenLift();
   else if (view === "done") html = screenDone();
   else if (view === "fuel") html = screenFuel();
@@ -2489,25 +2795,33 @@ function bindWalkControls() {
     render();
   };
   if ($("feetCookedToggle")) $("feetCookedToggle").onclick = function() {
-    const on = !isFeetCooked();
-    setFeetCooked(on);
-    const t = todayISO();
-    const w = walkForDate(t);
+    const iso = $("feetCookedToggle").getAttribute("data-walk-iso") || todayISO();
+    const w = walkForDate(iso);
+    const currentlyOn = !!(w && w.feetCooked) || (isoInCurrentWeek(iso) && isFeetCooked());
+    const on = !currentlyOn;
+    if (isoInCurrentWeek(iso)) setFeetCooked(on);
     if (w) w.feetCooked = on;
+    else if (on) {
+      // mark intent on a stub walk only if one exists; otherwise wait for log
+    }
     sfxTap();
     persist();
     render();
   };
   if ($("walkLog")) $("walkLog").onclick = function() {
-    const t = todayISO();
+    const t = $("walkLog").getAttribute("data-walk-iso") || todayISO();
+    if (isFutureISO(t)) { toast("Future · plan only"); return; }
     const existing = (state.walks || []).findIndex(function(w) { return w.date === t; });
-    const cooked = isFeetCooked() || ($("feetCookedToggle") && $("feetCookedToggle").classList.contains("on"));
+    let cooked = false;
+    if ($("feetCookedToggle") && $("feetCookedToggle").classList.contains("on")) cooked = true;
+    else if (existing >= 0 && state.walks[existing].feetCooked) cooked = true;
+    else if (isoInCurrentWeek(t) && isFeetCooked()) cooked = true;
     const entry = {date: t, minutes: walkMinutes, feetCooked: !!cooked};
-    if (cooked) setFeetCooked(true);
+    if (cooked && isoInCurrentWeek(t)) setFeetCooked(true);
     if (existing >= 0) state.walks[existing] = entry;
     else {
       state.walks.unshift(entry);
-      if (state.walks.length > 60) state.walks.length = 60;
+      if (state.walks.length > 120) state.walks.length = 120;
     }
     sfxConfirm();
     buzz(25);
@@ -2554,6 +2868,7 @@ function bind() {
       const v = btn.getAttribute("data-nav");
       if (v === "home") go("home");
       else if (v === "week") go("week");
+      else if (v === "cal") go("cal");
       else if (v === "fuel") go("fuel");
       else if (v === "link") go("link");
       else if (v === "log") go("log");
@@ -2581,6 +2896,7 @@ function bind() {
     btn.onclick = function() {
       sfxTap();
       openSession = +btn.getAttribute("data-sess");
+      sessionBack = "log";
       go("session");
     };
   });
@@ -2598,7 +2914,9 @@ function bind() {
   });
   document.querySelectorAll("[data-food]").forEach(function(el) {
     el.onclick = function() {
-      const food = ensureFood();
+      const iso = el.getAttribute("data-food-iso");
+      if (iso && isFutureISO(iso)) { toast("Future · plan only"); return; }
+      const food = iso ? ensureFoodFor(iso) : ensureFood();
       const k = el.getAttribute("data-food");
       food[k] = !food[k];
       sfxTap();
@@ -2639,12 +2957,18 @@ function bind() {
     const inp = $("bwInput");
     const v = parseFloat(inp && inp.value);
     if (!v || v < 50 || v > 600) { toast("Enter a valid weight"); return; }
-    state.bodyweights.unshift({date: todayISO(), lb: Math.round(v * 10) / 10});
+    const iso = $("bwSave").getAttribute("data-bw-iso") || todayISO();
+    if (isFutureISO(iso)) { toast("Future · plan only"); return; }
+    const lb = Math.round(v * 10) / 10;
+    const idx = (state.bodyweights || []).findIndex(function(w) { return w.date === iso; });
+    if (idx >= 0) state.bodyweights[idx] = {date: iso, lb: lb};
+    else state.bodyweights.unshift({date: iso, lb: lb});
+    state.bodyweights.sort(function(a, b) { return a.date < b.date ? 1 : -1; });
     if (state.bodyweights.length > 90) state.bodyweights.length = 90;
-    state.stats.wt = state.bodyweights[0].lb;
+    if (iso === todayISO() || !state.stats.wt) state.stats.wt = state.bodyweights[0].lb;
     sfxConfirm();
     persist();
-    toast("Scale logged · " + state.bodyweights[0].lb + " LB");
+    toast("Scale logged · " + lb + " LB");
     render();
   };
   if ($("soundToggle")) $("soundToggle").onclick = function() {
@@ -2796,6 +3120,121 @@ function bind() {
     const res = applyPFTRACK(parsed);
     sfxConfirm();
     toast("Applied " + res.updated + " pins · session logged");
+    render();
+  };
+
+  // Calendar month nav + day cells
+  if ($("calPrev")) $("calPrev").onclick = function() {
+    ensureCalCursor();
+    calCursor = addMonths(calCursor, -1);
+    sfxTap();
+    render();
+  };
+  if ($("calNext")) $("calNext").onclick = function() {
+    ensureCalCursor();
+    calCursor = addMonths(calCursor, 1);
+    sfxTap();
+    render();
+  };
+  if ($("calToday")) $("calToday").onclick = function() {
+    const t = new Date();
+    calCursor = new Date(t.getFullYear(), t.getMonth(), 1);
+    openCalISO = todayISO();
+    sfxTap();
+    go("calday");
+  };
+  document.querySelectorAll("[data-cal-iso]").forEach(function(btn) {
+    btn.onclick = function() {
+      sfxTap();
+      openCalISO = btn.getAttribute("data-cal-iso");
+      calCatchupPick = false;
+      const w = walkForDate(openCalISO);
+      if (w && w.minutes) walkMinutes = w.minutes;
+      go("calday");
+    };
+  });
+  document.querySelectorAll("[data-cal-sess]").forEach(function(btn) {
+    btn.onclick = function() {
+      sfxTap();
+      openSession = +btn.getAttribute("data-cal-sess");
+      sessionBack = "calday";
+      go("session");
+    };
+  });
+  document.querySelectorAll("[data-cal-del-sess]").forEach(function(btn) {
+    btn.onclick = function() {
+      const idx = +btn.getAttribute("data-cal-del-sess");
+      const s = state.sessions[idx];
+      if (!s) return;
+      showModal({
+        title: "Delete session?",
+        body: (s.name || "Session") + " · " + (s.date || "") + ". Embers already spent stay spent.",
+        okLabel: "Delete",
+        danger: true,
+        onOk: function() {
+          state.sessions.splice(idx, 1);
+          sfxWarn();
+          persist();
+          toast("Session deleted");
+          render();
+        }
+      });
+    };
+  });
+  if ($("calCatchup")) $("calCatchup").onclick = function() {
+    if (!openCalISO || isFutureISO(openCalISO)) { toast("Future · plan only"); return; }
+    calCatchupPick = true;
+    sfxTap();
+    render();
+  };
+  if ($("calCatchupCancel")) $("calCatchupCancel").onclick = function() {
+    calCatchupPick = false;
+    sfxTap();
+    render();
+  };
+  document.querySelectorAll("[data-catchup-key]").forEach(function(btn) {
+    btn.onclick = function() {
+      const key = btn.getAttribute("data-catchup-key");
+      if (!openCalISO || isFutureISO(openCalISO)) { toast("Future · plan only"); return; }
+      if (!PROGRAMS[key]) return;
+      const p = PROGRAMS[key];
+      const session = {
+        date: openCalISO,
+        key: key,
+        name: p.name,
+        minutes: 1,
+        reason: "catch-up",
+        work: p.items.map(function(ex) {
+          const w = state.lastWeights[ex.id] != null ? state.lastWeights[ex.id] : 10;
+          return {
+            id: ex.id,
+            name: ex.name,
+            sets: [
+              {w: w, r: 10, done: true, skipped: false},
+              {w: w, r: 10, done: true, skipped: false}
+            ]
+          };
+        })
+      };
+      state.sessions.unshift(session);
+      if (state.sessions.length > 60) state.sessions.length = 60;
+      calCatchupPick = false;
+      // Do NOT award embers for catch-up / backfill
+      sfxConfirm();
+      persist();
+      toast("Catch-up logged · no embers");
+      render();
+    };
+  });
+  if ($("calNoteSave")) $("calNoteSave").onclick = function() {
+    if (!openCalISO) return;
+    if (!state.dayNotes || typeof state.dayNotes !== "object") state.dayNotes = {};
+    const ta = $("calDayNote");
+    state.dayNotes[openCalISO] = ta ? String(ta.value || "") : "";
+    if (!String(state.dayNotes[openCalISO]).trim()) delete state.dayNotes[openCalISO];
+    sfxConfirm();
+    persist();
+    toast("Note saved");
     render();
   };
 
