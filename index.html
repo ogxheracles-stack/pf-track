@@ -11,6 +11,7 @@
 <title>PF//TRACK</title>
 <style>
 :root{
+  /* token aliases — env engine remaps these */
   --bg:#0a0e14;
   --panel:#141b24;
   --panel2:#1a2330;
@@ -26,6 +27,11 @@
   --amber:#ffb020;
   --ok:#3dff9e;
   --ok-bg:rgba(61,255,158,.12);
+  --env-glow-a:rgba(94,200,216,.08);
+  --env-glow-b:rgba(184,255,46,.04);
+  --reactive-glow:rgba(184,255,46,.14);
+  --sb-bg:rgba(10,14,20,.98);
+  --hud-bg:rgba(10,14,20,.96);
   --radius:14px;
   --radius-sm:12px;
   --font:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
@@ -33,9 +39,99 @@
   --tap:52px;
   --gap:13px;
   --card-pad:19px;
+  --env-fade:450ms;
 }
+html[data-env="day"]{
+  --bg:#0c1410;
+  --panel:#152018;
+  --panel2:#1a2820;
+  --line:#2a3a30;
+  --line2:#3a4e42;
+  --text:#e8f4ec;
+  --dim:#8ba898;
+  --muted:#6b8a78;
+  --neon:#b8ff2e;
+  --neon-dim:rgba(184,255,46,.18);
+  --cyan:#5ec8a0;
+  --hot:#ff6b8a;
+  --amber:#ffb020;
+  --ok:#3dff9e;
+  --ok-bg:rgba(61,255,158,.12);
+  --env-glow-a:rgba(184,255,46,.11);
+  --env-glow-b:rgba(94,200,160,.07);
+  --reactive-glow:rgba(184,255,46,.18);
+  --sb-bg:rgba(12,20,16,.98);
+  --hud-bg:rgba(12,20,16,.96);
+}
+html[data-env="night"]{
+  --bg:#0a0614;
+  --panel:#14101e;
+  --panel2:#1a1528;
+  --line:#2a2438;
+  --line2:#3a3450;
+  --text:#ece8f4;
+  --dim:#9a8bab;
+  --muted:#7a6b8c;
+  --neon:#c4a0ff;
+  --neon-dim:rgba(196,160,255,.2);
+  --cyan:#8a7cff;
+  --hot:#ff6b8a;
+  --amber:#ffb020;
+  --ok:#b89cff;
+  --ok-bg:rgba(184,156,255,.14);
+  --env-glow-a:rgba(168,140,255,.13);
+  --env-glow-b:rgba(94,80,180,.09);
+  --reactive-glow:rgba(196,160,255,.2);
+  --sb-bg:rgba(10,6,20,.98);
+  --hud-bg:rgba(10,6,20,.96);
+}
+/* Camo accent overlays (cosmetic-only) */
+html[data-camo="verde"]{--neon:#b8ff2e;--neon-dim:rgba(184,255,46,.2);--cyan:#6ad4a0;--reactive-glow:rgba(184,255,46,.2)}
+html[data-camo="midnight"]{--neon:#c4a0ff;--neon-dim:rgba(196,160,255,.22);--cyan:#8a7cff;--reactive-glow:rgba(196,160,255,.22)}
+html[data-camo="glacial"]{--neon:#9ef0ff;--neon-dim:rgba(158,240,255,.2);--cyan:#7ad4e8;--reactive-glow:rgba(158,240,255,.2)}
+html[data-camo="royal"]{--neon:#ffd060;--neon-dim:rgba(255,208,96,.2);--cyan:#c4a0ff;--reactive-glow:rgba(255,208,96,.18)}
+html[data-camo="emerald"]{--neon:#3dff9e;--neon-dim:rgba(61,255,158,.2);--cyan:#5ec8a0;--reactive-glow:rgba(61,255,158,.2)}
+html[data-camo="afterglow"]{--neon:#ff9a6a;--neon-dim:rgba(255,154,106,.22);--cyan:#ffb020;--reactive-glow:rgba(255,154,106,.2)}
+html{
+  transition:background-color var(--env-fade) ease, color var(--env-fade) ease;
+}
+html,body{background:var(--bg)}
+.btn.pri{
+  transition:box-shadow var(--env-fade) ease, filter .15s ease, transform .1s ease;
+}
+html.reactive-hot .card{
+  box-shadow:0 0 28px var(--reactive-glow);
+  border-color:var(--neon);
+}
+html.reactive-hot .btn.pri{
+  box-shadow:0 4px 28px var(--reactive-glow);
+}
+html.reactive-low .card{box-shadow:none}
+.shopGrid{display:grid;gap:10px;margin-top:12px}
+.shopItem{
+  display:flex;flex-direction:column;gap:8px;padding:14px;
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-sm);
+}
+.shopItem.eq{border-color:rgba(184,255,46,.45);box-shadow:inset 3px 0 0 var(--neon)}
+.shopSwatch{
+  height:36px;border-radius:10px;border:1px solid var(--line2);
+  background:linear-gradient(135deg,var(--neon),var(--cyan));
+}
+.shopRow{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.shopMeta{font-size:12px;color:var(--dim)}
+.seg{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px;
+}
+.seg button{
+  min-height:44px;border-radius:10px;border:1px solid var(--line2);
+  background:var(--panel2);color:var(--dim);font:600 13px/1 var(--font);cursor:pointer;
+}
+.seg button.on{background:var(--neon-dim);border-color:var(--neon);color:var(--neon)}
+.moreList{display:grid;gap:10px;margin-top:8px}
+.moreList .btn{justify-content:flex-start;gap:12px;padding-left:16px;text-align:left}
+.moreList .btn .ico{opacity:.85;width:22px;text-align:center}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;height:100%;-webkit-text-size-adjust:100%;background:#04060a}
+html,body{margin:0;height:100%;-webkit-text-size-adjust:100%;background:var(--bg)}
 body{
   background:var(--bg);
   color:var(--text);
@@ -44,9 +140,10 @@ body{
   line-height:1.45;
   overflow-x:hidden;
   background-image:
-    radial-gradient(100% 55% at 50% -8%,rgba(94,200,216,.08),transparent 55%),
-    radial-gradient(80% 45% at 50% 105%,rgba(184,255,46,.04),transparent 55%);
+    radial-gradient(100% 55% at 50% -8%,var(--env-glow-a),transparent 55%),
+    radial-gradient(80% 45% at 50% 105%,var(--env-glow-b),transparent 55%);
   background-attachment:fixed;
+  transition:background-color var(--env-fade) ease, background-image var(--env-fade) ease, color var(--env-fade) ease;
 }
 #app{
   max-width:440px;
@@ -60,7 +157,7 @@ body{
   padding:calc(12px + env(safe-area-inset-top,0px)) 16px 12px;
   display:flex;justify-content:space-between;align-items:center;
   font-size:12px;font-weight:600;color:var(--dim);
-  background:linear-gradient(180deg,rgba(10,14,20,.98) 70%,transparent);
+  background:linear-gradient(180deg,var(--sb-bg) 70%,transparent);
   backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
 }
 .sb b{color:var(--neon);font-weight:700;letter-spacing:0.02em}
@@ -117,7 +214,7 @@ h2{
   min-height:56px;font-size:17px;font-weight:700;
   background:linear-gradient(180deg,#d4ff6a,#a8e820);
   color:#0a1408;border-color:#e0ff9a;
-  box-shadow:0 4px 20px rgba(184,255,46,.25);
+  box-shadow:0 4px 18px var(--reactive-glow);
 }
 .btn.ok{
   min-height:56px;font-size:17px;font-weight:700;
@@ -248,7 +345,7 @@ nav.hud{
   position:fixed;left:50%;bottom:0;transform:translateX(-50%);
   width:100%;max-width:440px;z-index:45;
   display:grid;grid-template-columns:repeat(6,1fr);
-  background:rgba(10,14,20,.96);
+  background:var(--hud-bg);
   backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
   border-top:1px solid var(--line);
   padding:6px 2px calc(8px + env(safe-area-inset-bottom,0px));
@@ -256,8 +353,8 @@ nav.hud{
 }
 nav.hud button{
   background:0;border:0;color:var(--dim);
-  font:600 10px/1.2 var(--font);
-  min-height:56px;padding:8px 2px;
+  font:600 10.5px/1.15 var(--font);
+  min-height:56px;min-width:44px;padding:8px 1px;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:4px;cursor:pointer;border-radius:10px;
 }
@@ -625,7 +722,7 @@ details.pet-cosmetics > summary{margin-bottom:4px;color:var(--text)}
 
 const STORAGE_KEY = "pftrack_v3";
 const LIVE_KEY = "pftrack_live";
-const APP_VERSION = "3.7";
+const APP_VERSION = "4.0";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -651,6 +748,167 @@ const PET_ITEMS = [
   {id:"extra_wisps", slot:"extra", name:"Spirit Wisps", cost:60},
   {id:"extra_crown", slot:"extra", name:"Wyrm Crown", cost:150}
 ];
+
+const CAMO_ITEMS = [
+  {id:"default", name:"Default", price:0, free:true, swatch:"linear-gradient(135deg,#b8ff2e,#5ec8d8)", blurb:"Stock operator look"},
+  {id:"verde", name:"Verde Monte", price:0, free:true, swatch:"linear-gradient(135deg,#b8ff2e,#3dff9e)", blurb:"Day-leaning green"},
+  {id:"midnight", name:"Midnight Violet", price:120, free:false, swatch:"linear-gradient(135deg,#c4a0ff,#8a7cff)", blurb:"Night violet accents"},
+  {id:"glacial", name:"Glacial", price:150, free:false, swatch:"linear-gradient(135deg,#9ef0ff,#7ad4e8)", blurb:"Ice cyan accents"},
+  {id:"royal", name:"Royal", price:180, free:false, swatch:"linear-gradient(135deg,#ffd060,#c4a0ff)", blurb:"Gold + violet"},
+  {id:"emerald", name:"Emerald", price:160, free:false, swatch:"linear-gradient(135deg,#3dff9e,#5ec8a0)", blurb:"Deep emerald neon"},
+  {id:"afterglow", name:"Afterglow", price:200, free:false, swatch:"linear-gradient(135deg,#ff9a6a,#ffb020)", blurb:"Warm dusk accents"}
+];
+
+let batteryLevel = 1;
+let batteryWatching = false;
+
+function normalizeCosmetics(raw) {
+  const d = defaults().cosmetics;
+  const c = (raw && typeof raw === "object") ? raw : {};
+  const pref = c.environmentPreference;
+  const out = {
+    environmentPreference: (pref === "day" || pref === "night" || pref === "auto") ? pref : "auto",
+    camo: typeof c.camo === "string" ? c.camo : "default",
+    reactive: typeof c.reactive === "boolean" ? c.reactive : true,
+    owned: Array.isArray(c.owned) ? c.owned.slice() : d.owned.slice(),
+    equipped: (c.equipped && typeof c.equipped === "object") ? Object.assign({}, d.equipped, c.equipped) : Object.assign({}, d.equipped),
+    earned: (c.earned && typeof c.earned === "object") ? Object.assign({}, c.earned) : {}
+  };
+  // Offline personalization: grant all listed camos as owned (prices = future reference)
+  CAMO_ITEMS.forEach(function(it) {
+    if (out.owned.indexOf(it.id) < 0) out.owned.push(it.id);
+  });
+  if (out.owned.indexOf("default") < 0) out.owned.unshift("default");
+  if (!out.camo || out.owned.indexOf(out.camo) < 0) out.camo = "default";
+  if (!out.equipped.camo) out.equipped.camo = out.camo;
+  return out;
+}
+
+function ensureCosmetics() {
+  if (!state) return defaults().cosmetics;
+  state.cosmetics = normalizeCosmetics(state.cosmetics);
+  return state.cosmetics;
+}
+
+function resolveEnvironment() {
+  const c = ensureCosmetics();
+  const pref = c.environmentPreference || "auto";
+  if (pref === "day" || pref === "night") return pref;
+  const h = new Date().getHours();
+  return (h >= 7 && h < 18) ? "day" : "night";
+}
+
+function prefersReducedMotion() {
+  try {
+    return !!(typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches);
+  } catch (e) { return false; }
+}
+
+function applyEnvironment() {
+  const env = resolveEnvironment();
+  try {
+    document.documentElement.setAttribute("data-env", env);
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) {
+      meta.setAttribute("content", env === "day" ? "#0c1410" : "#0a0614");
+    }
+  } catch (e) {}
+  applyCamoClass();
+  applyReactiveClass();
+  return env;
+}
+
+function applyCamoClass() {
+  const c = ensureCosmetics();
+  const camo = c.camo || "default";
+  try {
+    if (camo && camo !== "default") document.documentElement.setAttribute("data-camo", camo);
+    else document.documentElement.removeAttribute("data-camo");
+  } catch (e) {}
+}
+
+function reactiveAllowed() {
+  const c = ensureCosmetics();
+  if (!c.reactive) return false;
+  if (prefersReducedMotion()) return false;
+  if (batteryLevel < 0.2) return false;
+  return true;
+}
+
+function applyReactiveClass() {
+  const root = document.documentElement;
+  root.classList.remove("reactive-hot", "reactive-low");
+  if (!reactiveAllowed()) {
+    root.classList.add("reactive-low");
+    return;
+  }
+  const hot = (view === "lift") || !!(state && state.live);
+  if (hot) root.classList.add("reactive-hot");
+}
+
+function watchBattery() {
+  if (batteryWatching) return;
+  batteryWatching = true;
+  try {
+    if (navigator.getBattery) {
+      navigator.getBattery().then(function(b) {
+        batteryLevel = typeof b.level === "number" ? b.level : 1;
+        applyReactiveClass();
+        b.addEventListener("levelchange", function() {
+          batteryLevel = typeof b.level === "number" ? b.level : 1;
+          applyReactiveClass();
+        });
+      }).catch(function() {});
+    }
+  } catch (e) {}
+}
+
+/* Health stubs — web build has no HealthKit / Face ID; degrade gracefully */
+function getHeartRate() { return null; }
+function getSleepSample() { return null; }
+function getStepsSample() { return null; }
+function getHealthMetric() { return null; }
+
+function setEnvironmentPreference(pref) {
+  const c = ensureCosmetics();
+  if (pref !== "auto" && pref !== "day" && pref !== "night") return;
+  c.environmentPreference = pref;
+  persist();
+  applyEnvironment();
+}
+
+function setReactive(on) {
+  const c = ensureCosmetics();
+  c.reactive = !!on;
+  persist();
+  applyReactiveClass();
+}
+
+function equipCamo(id) {
+  const c = ensureCosmetics();
+  const item = CAMO_ITEMS.find(function(x) { return x.id === id; });
+  if (!item) return;
+  if (c.owned.indexOf(id) < 0) c.owned.push(id);
+  c.camo = id;
+  c.equipped.camo = id;
+  persist();
+  applyCamoClass();
+  toast("Equipped · " + item.name + " · cosmetic only · no IAP yet");
+}
+
+function maybeEarnWeekCamo() {
+  const c = ensureCosmetics();
+  const ws = weekStartISO();
+  if (liftKeysClearedThisWeek() < 4) return;
+  if (c.earned && c.earned.week4 === ws) return;
+  c.earned = c.earned || {};
+  c.earned.week4 = ws;
+  // Milestone stub: afterglow flagged as earned (already owned offline)
+  if (c.owned.indexOf("afterglow") < 0) c.owned.push("afterglow");
+  toast("Milestone · 4/4 week · Afterglow unlocked");
+}
+
+
 
 const PROGRAMS = {
   "upper-a": {
@@ -769,6 +1027,14 @@ function defaults() {
       lastSeenLevel: 1,
       celebrateUntil: 0,
       fullWeekAwarded: ""
+    },
+    cosmetics: {
+      environmentPreference: "auto",
+      camo: "default",
+      reactive: true,
+      owned: ["default","verde","midnight","glacial","royal","emerald","afterglow"],
+      equipped: {camo: "default"},
+      earned: {}
     }
   };
 }
@@ -852,10 +1118,12 @@ function load() {
       data.foodHistory = data.foodHistory.slice(0, 120);
       if (!data.dayNotes || typeof data.dayNotes !== "object" || Array.isArray(data.dayNotes)) data.dayNotes = {};
       data.pet = normalizePet(data.pet);
+      data.cosmetics = normalizeCosmetics(data.cosmetics);
     } catch (e) {}
   }
   if (!data.dayNotes || typeof data.dayNotes !== "object" || Array.isArray(data.dayNotes)) data.dayNotes = {};
   data.pet = normalizePet(data.pet);
+  data.cosmetics = normalizeCosmetics(data.cosmetics);
   data.live = null;
   state = data;
   const resumed = loadLive();
@@ -1555,6 +1823,7 @@ function awardSessionEmbers() {
   }
   pet.ember += gained + bonus;
   maybeFlagCelebration();
+  try { maybeEarnWeekCamo(); } catch (e) {}
   return {gained: gained, bonus: bonus, total: pet.ember};
 }
 
@@ -1827,10 +2096,11 @@ function go(v) {
   view = v;
   if (v === "home") tab = "home";
   if (v === "week" || v === "day") tab = "week";
-  if (v === "cal" || v === "calday") tab = "cal";
   if (v === "fuel") tab = "fuel";
-  if (v === "log" || v === "session") tab = "log";
-  if (v === "link") tab = "link";
+  if (v === "recovery") tab = "recovery";
+  if (v === "shop") tab = "shop";
+  if (v === "more" || v === "link" || v === "log" || v === "session") tab = "more";
+  if (v === "cal" || v === "calday") tab = "recovery";
   if (v !== "calday") calCatchupPick = false;
   render();
   syncWakeLock();
@@ -2230,12 +2500,12 @@ function statusbar() {
 
 function nav(active) {
   const items = [
-    {id: "home", ico: "◉", label: "Today", go: "home"},
-    {id: "week", ico: "▦", label: "Plan", go: "week"},
-    {id: "cal", ico: "▣", label: "Cal", go: "cal"},
-    {id: "fuel", ico: "⇪", label: "Fuel", go: "fuel"},
-    {id: "link", ico: "⇄", label: "Link", go: "link"},
-    {id: "log", ico: "≡", label: "Stats", go: "log"}
+    {id: "home", ico: "◉", label: "Command", go: "home"},
+    {id: "week", ico: "▦", label: "Training", go: "week"},
+    {id: "fuel", ico: "⇪", label: "Nutrition", go: "fuel"},
+    {id: "recovery", ico: "❋", label: "Recovery", go: "recovery"},
+    {id: "shop", ico: "◈", label: "Shop", go: "shop"},
+    {id: "more", ico: "⋯", label: "More", go: "more"}
   ];
   return '<nav class="hud">' + items.map(function(it) {
     return '<button data-nav="' + it.go + '" class="' + (active === it.id ? "on" : "") + '"' +
@@ -2330,6 +2600,100 @@ function lastPinsLine(prog) {
   return '<p class="pinsLine"><b>Last pins</b> · ' + bits.join(" · ") + "</p>";
 }
 
+
+function screenRecovery() {
+  const plan = todayPlan();
+  let html = statusbar();
+  html += '<div class="lbl">Body cues</div><h1>Recovery</h1>';
+  html += '<p class="sub">Sleep · feet · ham · heat. Cal edits the day grid.</p>';
+  if (!plan.key && isWorkDay(plan.d)) {
+    html += heatBannerHtml(plan);
+  }
+  html += '<div class="card"><div class="lbl">Last night sleep (hours)</div>';
+  html += '<div class="step"><button class="mini" id="sleepMinus">−</button><b id="sleepVal">' + (state.sleepHours != null ? state.sleepHours : "—") + '</b><button class="mini" id="sleepPlus">+</button></div></div>';
+  html += '<div class="card mt">';
+  html += '<div class="toggle ' + (isFeetCooked() ? "on" : "") + '" id="feetLockToggle"><div><b>Feet cooked</b><span>Pre-skips Lower B calf · no guilt' + (isFeetCooked() ? ' <span class="chip">clears next Sat</span>' : "") + '</span></div><div class="sw"></div></div>';
+  html += '<div class="toggle ' + (isHamWeird() ? "on" : "") + '" id="hamWeirdToggle"><div><b>Ham weird</b><span>Pre-skips Lower B seated curl' + (isHamWeird() ? ' <span class="chip">clears next Sat</span>' : "") + '</span></div><div class="sw"></div></div>';
+  html += "</div>";
+  html += '<div class="stack mt"><button class="btn pri" data-go="cal">Open calendar</button></div>';
+  html += '<p class="sub mt" style="margin-bottom:0">HealthKit stubs return null on web · cues stay manual.</p>';
+  html += nav("recovery");
+  return html;
+}
+
+function screenShop() {
+  const c = ensureCosmetics();
+  const env = resolveEnvironment();
+  let html = statusbar();
+  html += '<div class="lbl">Cosmetic only</div><h1>Shop</h1>';
+  html += '<p class="sub">Camos · no pay-to-win · no loot boxes. Prices = future reference. All listed owned offline.</p>';
+  html += '<div class="card"><div class="lbl">Preview environment</div>';
+  html += '<div class="seg" id="shopEnvPreview">';
+  html += '<button type="button" data-shop-env="day" class="' + (env === "day" ? "on" : "") + '">Day</button>';
+  html += '<button type="button" data-shop-env="night" class="' + (env === "night" ? "on" : "") + '">Night</button>';
+  html += '<button type="button" data-shop-env="auto" class="' + ((c.environmentPreference || "auto") === "auto" ? "on" : "") + '">Auto</button>';
+  html += "</div>";
+  html += '<p class="shopMeta" style="margin:10px 0 0">Live env · ' + env + " · camo · " + esc(c.camo) + "</p></div>";
+  html += '<div class="shopGrid">';
+  CAMO_ITEMS.forEach(function(it) {
+    const owned = c.owned.indexOf(it.id) >= 0;
+    const eq = c.camo === it.id;
+    html += '<div class="shopItem' + (eq ? " eq" : "") + '">';
+    html += '<div class="shopSwatch" style="background:' + it.swatch + '"></div>';
+    html += '<div class="shopRow"><div><b>' + esc(it.name) + "</b>";
+    html += '<div class="shopMeta">' + esc(it.blurb);
+    if (it.free) html += " · free";
+    else html += " · " + it.price + " · placeholder";
+    html += "</div></div>";
+    if (eq) {
+      html += '<span class="pill on">equipped</span>';
+    } else if (owned) {
+      html += '<button class="btn gho" style="width:auto;min-height:44px;padding:10px 14px" data-equip-camo="' + it.id + '">Equip</button>';
+    } else {
+      html += '<button class="btn gho" style="width:auto;min-height:44px;padding:10px 14px" data-earn-camo="' + it.id + '">Earn</button>';
+    }
+    html += "</div></div>";
+  });
+  html += "</div>";
+  html += '<div class="card mt cue"><b>Earn stub</b><br>Clear 4/4 lift sectors this week → Afterglow milestone toast. No gambling.</div>';
+  html += nav("shop");
+  return html;
+}
+
+function screenMore() {
+  const c = ensureCosmetics();
+  const pref = c.environmentPreference || "auto";
+  let html = statusbar();
+  html += '<div class="lbl">Hub</div><h1>More</h1>';
+  html += '<p class="sub">Link · Stats · Settings · Companion · Export</p>';
+  html += '<div class="moreList">';
+  html += '<button class="btn" data-go="link"><span class="ico">⇄</span> Link · PFTRACK uplink</button>';
+  html += '<button class="btn" data-go="log"><span class="ico">≡</span> Stats · XP · sessions</button>';
+  html += '<button class="btn" id="openPetFromMore"><span class="ico">✦</span> Companion</button>';
+  html += '<button class="btn" id="dumpLogMore"><span class="ico">⇪</span> Export backup</button>';
+  html += '<button class="btn" id="loadDumpMore"><span class="ico">⇩</span> Import backup</button>';
+  html += "</div>";
+  html += '<div class="card mt"><h2>Environment</h2>';
+  html += '<div class="seg" id="envSeg">';
+  html += '<button type="button" data-env-pref="auto" class="' + (pref === "auto" ? "on" : "") + '">Auto</button>';
+  html += '<button type="button" data-env-pref="day" class="' + (pref === "day" ? "on" : "") + '">Day</button>';
+  html += '<button type="button" data-env-pref="night" class="' + (pref === "night" ? "on" : "") + '">Night</button>';
+  html += "</div>";
+  html += '<p class="shopMeta" style="margin:10px 0 0">Resolved · ' + resolveEnvironment() + " · Verde Monte day · Midnight Violet night</p></div>";
+  html += '<div class="card mt">';
+  html += '<div class="toggle ' + (c.reactive ? "on" : "") + '" id="reactiveToggle"><div><b>Reactive interface</b><span>Glow during lift · master OFF keeps day/night</span></div><div class="sw"></div></div>';
+  html += '<div class="toggle ' + (state.sound ? "on" : "") + '" id="soundToggle"><div><b>Sound FX</b><span>Blips on confirm / rest / done</span></div><div class="sw"></div></div>';
+  if (navigator.vibrate) {
+    html += '<div class="toggle ' + (state.haptics ? "on" : "") + '" id="hapticsToggle"><div><b>Haptics</b><span>Buzz on tap / rest / done</span></div><div class="sw"></div></div>';
+  } else {
+    html += '<div class="toggle" id="hapticsToggle" style="opacity:.55;pointer-events:none"><div><b>Haptics: unsupported on Safari</b><span>Visual + SFX only</span></div><div class="sw"></div></div>';
+  }
+  html += "</div>";
+  html += '<p class="sub mt" style="margin-bottom:0">Storage · ' + STORAGE_KEY + " · v" + APP_VERSION + "</p>";
+  html += nav("more");
+  return html;
+}
+
 function screenBoot() {
   return '<div class="boot">' +
     '<div class="boottitle">PF//TRACK</div>' +
@@ -2346,12 +2710,12 @@ function screenBoot() {
 
 function bubbleDefs() {
   return [
-    {go: "week", ico: "▦", label: "Plan", note: "Week rotation · Sat→Fri · tap a day for the manifest."},
-    {go: "cal", ico: "▣", label: "Cal", note: "Month grid · edit that day's lifts, food, walk, notes."},
-    {go: "fuel", ico: "⇪", label: "Fuel", note: "2pm–8pm window · meal locks · scale."},
-    {go: "link", ico: "⇄", label: "Link", note: "Copy / Share PFTRACK · paste pins."},
-    {go: "log", ico: "≡", label: "Stats", note: "XP · sessions · backup · companion."},
-    {go: "pet", ico: "✦", label: "Pet", note: "Embers & cosmetics · reflective only."}
+    {go: "week", ico: "▦", label: "Training", note: "Week rotation · Sat→Fri · Deploy from Command."},
+    {go: "fuel", ico: "⇪", label: "Nutrition", note: "2pm–8pm window · meal locks · scale."},
+    {go: "recovery", ico: "❋", label: "Recovery", note: "Sleep · feet · ham · heat · Cal shortcut."},
+    {go: "shop", ico: "◈", label: "Shop", note: "Cosmetic camos only · no pay-to-win."},
+    {go: "more", ico: "⋯", label: "More", note: "Link · Stats · Settings · Companion · Export."},
+    {go: "pet", ico: "✦", label: "Pet", note: "Embers & companion cosmetics · reflective only."}
   ];
 }
 
@@ -2755,7 +3119,7 @@ function screenLink() {
   html += '<button class="btn gho" id="applyPinsLog">Apply pins + log session</button></div>';
   html += '<p class="sub" style="margin-bottom:0">Pins update lastWeights. Session log only if you tap “+ log” or the block has log: 1.</p></div>';
   html += '<div class="card cue mt"><b>Aliases</b><br>prensa → lpress · jalón → lat · remo → row · aperturas → raise · curl de bíceps → curlbi · press hombro → press · gemelos → calf</div>';
-  html += nav("link");
+  html += nav("more");
   return html;
 }
 
@@ -2806,7 +3170,7 @@ function screenLog() {
   html += '<button class="btn dan" id="wipeData">Wipe Local Data</button>';
   html += "</div>";
   html += '<p class="sub mt" style="margin-bottom:0">Storage · ' + STORAGE_KEY + " · live → sessionStorage · v" + APP_VERSION + "</p></div>";
-  html += nav("log");
+  html += nav("more");
   return html;
 }
 
@@ -2829,7 +3193,7 @@ function screenSession() {
     }).join(" · ");
     return '<div class="row"><div><b>' + esc(w.name) + '</b><div class="n">' + esc(sets) + "</div></div></div>";
   }).join("") + "</div>";
-  html += nav("log");
+  html += nav("more");
   return html;
 }
 
@@ -2879,7 +3243,7 @@ function screenCal() {
   }
   html += "</div>";
   html += '<p class="sub mt">Tap a day to edit lifts, food, walk.</p>';
-  html += nav("cal");
+  html += nav("recovery");
   return html;
 }
 
@@ -2994,13 +3358,14 @@ function screenCalDay() {
   html += '<textarea id="calDayNote" placeholder="What mattered today — pins, feet, plate, mood." style="min-height:110px">' + esc(note) + "</textarea>";
   html += '<div class="stack"><button class="btn pri" id="calNoteSave">Save note</button></div></div>';
 
-  html += nav("cal");
+  html += nav("recovery");
   return html;
 }
 
 function render() {
   const app = document.getElementById("app");
   if (!app) return;
+  applyEnvironment();
   let html = "";
   if (view === "boot") html = screenBoot();
   else if (view === "home") html = screenHome();
@@ -3014,6 +3379,9 @@ function render() {
   else if (view === "link") html = screenLink();
   else if (view === "log") html = screenLog();
   else if (view === "session") html = screenSession();
+  else if (view === "recovery") html = screenRecovery();
+  else if (view === "shop") html = screenShop();
+  else if (view === "more") html = screenMore();
   else html = screenHome();
   app.innerHTML = html;
   if (undoSnapshot && view === "lift") showUndoGhost();
@@ -3023,6 +3391,7 @@ function render() {
   if (view === "lift" && restRemaining() > 0) ensureRestTick();
   else if (!(state.live && state.live.restUntil && restRemaining() > 0)) stopRestTick();
   syncWakeLock();
+  applyReactiveClass();
 }
 
 function $(id) { return document.getElementById(id); }
@@ -3093,6 +3462,57 @@ function copyText(text) {
   });
 }
 
+function exportBackup() {
+  let raw = "";
+  try { raw = localStorage.getItem(STORAGE_KEY) || "{}"; } catch (e) { raw = "{}"; }
+  copyText(raw).then(function(ok) {
+    if (ok) toast("Backup copied");
+    else {
+      showModal({
+        title: "Export backup",
+        body: "Copy this JSON manually.",
+        textarea: true,
+        placeholder: "",
+        okLabel: "Done",
+        onOk: function() {}
+      });
+      setTimeout(function() {
+        const ta = document.getElementById("modalTextarea");
+        if (ta) { ta.value = raw; ta.select(); }
+      }, 60);
+    }
+  });
+}
+
+function importBackup() {
+  showModal({
+    title: "Import backup",
+    body: "Paste a PF//TRACK JSON backup. This replaces local storage.",
+    textarea: true,
+    placeholder: '{ "sessions": [] … }',
+    okLabel: "Preview…",
+    onOk: function(val) {
+      let parsed = null;
+      try { parsed = JSON.parse(val); } catch (e) { toast("Invalid JSON"); return; }
+      if (!parsed || typeof parsed !== "object") { toast("Invalid backup"); return; }
+      showModal({
+        title: "Replace storage?",
+        body: "This overwrites " + STORAGE_KEY + " and reloads state.",
+        okLabel: "Replace & reload",
+        danger: true,
+        onOk: function() {
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed)); } catch (e) {}
+          clearLiveStorage();
+          load();
+          applyEnvironment();
+          toast("Backup loaded · v" + APP_VERSION);
+          go("home");
+        }
+      });
+    }
+  });
+}
+
 function wipeAll() {
   try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
   try { sessionStorage.removeItem("pftrack_booted"); } catch (e) {}
@@ -3113,8 +3533,11 @@ function bind() {
       const doNav = function() {
         if (v === "home") go("home");
         else if (v === "week") go("week");
-        else if (v === "cal") go("cal");
         else if (v === "fuel") go("fuel");
+        else if (v === "recovery") go("recovery");
+        else if (v === "shop") go("shop");
+        else if (v === "more") go("more");
+        else if (v === "cal") go("cal");
         else if (v === "link") go("link");
         else if (v === "log") go("log");
       };
@@ -3260,54 +3683,10 @@ function bind() {
     persist();
     render();
   };
-  if ($("dumpLog")) $("dumpLog").onclick = function() {
-    let raw = "";
-    try { raw = localStorage.getItem(STORAGE_KEY) || "{}"; } catch (e) { raw = "{}"; }
-    copyText(raw).then(function(ok) {
-      if (ok) toast("Backup copied");
-      else {
-        showModal({
-          title: "Export backup",
-          body: "Copy this JSON manually.",
-          textarea: true,
-          placeholder: "",
-          okLabel: "Done",
-          onOk: function() {}
-        });
-        setTimeout(function() {
-          const ta = document.getElementById("modalTextarea");
-          if (ta) { ta.value = raw; ta.select(); }
-        }, 60);
-      }
-    });
-  };
-  if ($("loadDump")) $("loadDump").onclick = function() {
-    showModal({
-      title: "Import backup",
-      body: "Paste a PF//TRACK JSON backup. This replaces local storage.",
-      textarea: true,
-      placeholder: '{ "sessions": [] … }',
-      okLabel: "Preview…",
-      onOk: function(val) {
-        let parsed = null;
-        try { parsed = JSON.parse(val); } catch (e) { toast("Invalid JSON"); return; }
-        if (!parsed || typeof parsed !== "object") { toast("Invalid backup"); return; }
-        showModal({
-          title: "Replace storage?",
-          body: "This overwrites " + STORAGE_KEY + " and reloads state.",
-          okLabel: "Replace & reload",
-          danger: true,
-          onOk: function() {
-            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed)); } catch (e) {}
-            clearLiveStorage();
-            load();
-            toast("Backup loaded · v" + APP_VERSION);
-            go("home");
-          }
-        });
-      }
-    });
-  };
+  if ($("dumpLog")) $("dumpLog").onclick = exportBackup;
+  if ($("loadDump")) $("loadDump").onclick = importBackup;
+  if ($("dumpLogMore")) $("dumpLogMore").onclick = exportBackup;
+  if ($("loadDumpMore")) $("loadDumpMore").onclick = importBackup;
   if ($("wipeData")) $("wipeData").onclick = function() {
     showModal({
       title: "Wipe local data",
@@ -3542,6 +3921,48 @@ function bind() {
   if ($("openPetFromLog")) $("openPetFromLog").onclick = function() {
     openPetPanel();
   };
+  if ($("openPetFromMore")) $("openPetFromMore").onclick = function() {
+    openPetPanel();
+  };
+  if ($("reactiveToggle")) $("reactiveToggle").onclick = function() {
+    setReactive(!ensureCosmetics().reactive);
+    sfxTap();
+    render();
+  };
+  document.querySelectorAll("[data-env-pref]").forEach(function(btn) {
+    btn.onclick = function() {
+      sfxTap();
+      setEnvironmentPreference(btn.getAttribute("data-env-pref"));
+      render();
+    };
+  });
+  document.querySelectorAll("[data-shop-env]").forEach(function(btn) {
+    btn.onclick = function() {
+      sfxTap();
+      const p = btn.getAttribute("data-shop-env");
+      if (p === "auto") setEnvironmentPreference("auto");
+      else setEnvironmentPreference(p);
+      render();
+    };
+  });
+  document.querySelectorAll("[data-equip-camo]").forEach(function(btn) {
+    btn.onclick = function() {
+      sfxConfirm();
+      equipCamo(btn.getAttribute("data-equip-camo"));
+      render();
+    };
+  });
+  document.querySelectorAll("[data-earn-camo]").forEach(function(btn) {
+    btn.onclick = function() {
+      sfxTap();
+      const id = btn.getAttribute("data-earn-camo");
+      const c = ensureCosmetics();
+      if (c.owned.indexOf(id) < 0) c.owned.push(id);
+      persist();
+      toast("Cosmetic only · no IAP yet · granted for offline use");
+      render();
+    };
+  });
 }
 
 function tickClock() {
@@ -3554,6 +3975,13 @@ function tickClock() {
   const ss = String(now.getSeconds()).padStart(2, "0");
   const live = state.live ? '<span class="dotlive"></span>LIVE' : "OFFLINE";
   el.innerHTML = live + " · " + hh + ":" + mm + ":" + ss;
+  // Re-apply env when auto crosses day/night boundary
+  try {
+    const want = resolveEnvironment();
+    const have = document.documentElement.getAttribute("data-env");
+    if (want !== have) applyEnvironment();
+    else applyReactiveClass();
+  } catch (e) {}
 }
 
 function startClock() {
@@ -3712,7 +4140,7 @@ function registerOfflineSW() {
     const pageUrl = (location.href || "./").split("#")[0];
     const swCode = [
       "const PAGE = " + JSON.stringify(pageUrl) + ";",
-      "const CACHE = 'pftrack-v37';",
+      "const CACHE = 'pftrack-v40';",
       "self.addEventListener('install', function(e) {",
       "  e.waitUntil(caches.open(CACHE).then(function(c) { return c.addAll([PAGE, './']).catch(function(){}); }).then(function(){ return self.skipWaiting(); }));",
       "});",
@@ -3790,6 +4218,9 @@ function onVisibility() {
 
 function bootSequence() {
   load();
+  ensureCosmetics();
+  applyEnvironment();
+  watchBattery();
   setupPwaChrome();
   setupVisualViewportPad();
   registerOfflineSW();
