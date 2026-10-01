@@ -552,6 +552,68 @@ details.pet-cosmetics > summary{margin-bottom:4px;color:var(--text)}
 .calDots i.walk{background:var(--cyan)}
 .calDots i.note{background:var(--dim)}
 
+
+/* Home bubble map v3.7 */
+.bubbleSection{margin-top:18px}
+.bubbleSection > .lbl{margin-bottom:10px}
+.bubbleMap{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+}
+.bubble{
+  aspect-ratio:1;
+  min-width:0;
+  min-height:72px;
+  width:100%;
+  border-radius:50%;
+  border:1px solid var(--line2);
+  background:radial-gradient(circle at 35% 28%,rgba(94,200,216,.16),transparent 55%),var(--panel);
+  color:var(--text);
+  font-family:var(--font);
+  cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:6px;padding:10px 6px;
+  -webkit-user-select:none;user-select:none;
+  -webkit-touch-callout:none;
+  touch-action:manipulation;
+  box-shadow:inset 0 0 0 1px rgba(94,200,216,.08);
+}
+.bubble:active{filter:brightness(1.1);border-color:rgba(94,200,216,.55)}
+.bubble .bico{
+  font-size:22px;line-height:1;color:var(--cyan);
+  text-shadow:0 0 12px rgba(94,200,216,.35);
+}
+.bubble .blabel{
+  font-size:12px;font-weight:700;letter-spacing:0.02em;
+  color:var(--text);line-height:1.1;
+}
+.bubbleNote{
+  position:fixed;z-index:60;
+  max-width:min(280px,78vw);
+  padding:12px 14px;
+  background:rgba(14,20,28,.97);
+  border:1px solid rgba(94,200,216,.45);
+  border-radius:14px;
+  color:var(--text);
+  font:600 14px/1.4 var(--font);
+  box-shadow:0 10px 28px rgba(0,0,0,.45),0 0 0 1px rgba(184,255,46,.08);
+  pointer-events:none;
+}
+.bubbleNote::after{
+  content:"";position:absolute;left:50%;bottom:-6px;
+  width:10px;height:10px;transform:translateX(-50%) rotate(45deg);
+  background:rgba(14,20,28,.97);
+  border-right:1px solid rgba(94,200,216,.45);
+  border-bottom:1px solid rgba(94,200,216,.45);
+}
+.bubbleNote.below::after{
+  bottom:auto;top:-6px;
+  border:0;
+  border-left:1px solid rgba(94,200,216,.45);
+  border-top:1px solid rgba(94,200,216,.45);
+}
+
 </style>
 </head>
 <body>
@@ -563,7 +625,7 @@ details.pet-cosmetics > summary{margin-bottom:4px;color:var(--text)}
 
 const STORAGE_KEY = "pftrack_v3";
 const LIVE_KEY = "pftrack_live";
-const APP_VERSION = "3.6";
+const APP_VERSION = "3.7";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -2281,6 +2343,107 @@ function screenBoot() {
   '</div>';
 }
 
+
+function bubbleDefs() {
+  return [
+    {go: "week", ico: "▦", label: "Plan", note: "Week rotation · Sat→Fri · tap a day for the manifest."},
+    {go: "cal", ico: "▣", label: "Cal", note: "Month grid · edit that day's lifts, food, walk, notes."},
+    {go: "fuel", ico: "⇪", label: "Fuel", note: "2pm–8pm window · meal locks · scale."},
+    {go: "link", ico: "⇄", label: "Link", note: "Copy / Share PFTRACK · paste pins."},
+    {go: "log", ico: "≡", label: "Stats", note: "XP · sessions · backup · companion."},
+    {go: "pet", ico: "✦", label: "Pet", note: "Embers & cosmetics · reflective only."}
+  ];
+}
+
+function bubbleMapHtml() {
+  let html = '<div class="bubbleSection"><div class="lbl">Where to</div><div class="bubbleMap">';
+  bubbleDefs().forEach(function(b) {
+    html += '<button type="button" class="bubble" data-bubble="' + b.go + '" data-note="' + esc(b.note) + '" aria-label="' + esc(b.label) + ': ' + esc(b.note) + '">';
+    html += '<span class="bico" aria-hidden="true">' + b.ico + '</span>';
+    html += '<span class="blabel">' + esc(b.label) + "</span></button>";
+  });
+  html += "</div></div>";
+  return html;
+}
+
+function dismissBubbleNote() {
+  const n = document.getElementById("bubbleNote");
+  if (n) n.remove();
+}
+
+function showBubbleNote(btn, text) {
+  dismissBubbleNote();
+  if (!text) return;
+  const note = document.createElement("div");
+  note.id = "bubbleNote";
+  note.className = "bubbleNote";
+  note.setAttribute("role", "tooltip");
+  note.textContent = text;
+  document.body.appendChild(note);
+  const r = btn.getBoundingClientRect();
+  const nw = note.offsetWidth;
+  const nh = note.offsetHeight;
+  let left = r.left + r.width / 2 - nw / 2;
+  left = Math.max(12, Math.min(left, window.innerWidth - nw - 12));
+  let top = r.top - nh - 12;
+  let below = false;
+  if (top < 10) {
+    top = r.bottom + 12;
+    below = true;
+  }
+  if (below) note.classList.add("below");
+  note.style.left = Math.round(left) + "px";
+  note.style.top = Math.round(top) + "px";
+}
+
+function bindBubblePress(btn) {
+  let holdTimer = null;
+  let noteShown = false;
+  function clearHold() {
+    if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+  }
+  function onDown(e) {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    noteShown = false;
+    longPressFired = false;
+    clearHold();
+    holdTimer = setTimeout(function() {
+      holdTimer = null;
+      noteShown = true;
+      longPressFired = true;
+      showBubbleNote(btn, btn.getAttribute("data-note") || "");
+      try { if (state.haptics && navigator.vibrate) navigator.vibrate(10); } catch (err) {}
+    }, 450);
+  }
+  function onUp() {
+    clearHold();
+  }
+  function onCancel() {
+    clearHold();
+    noteShown = false;
+    longPressFired = false;
+  }
+  btn.addEventListener("pointerdown", onDown);
+  btn.addEventListener("pointerup", onUp);
+  btn.addEventListener("pointercancel", onCancel);
+  btn.addEventListener("pointerleave", function() { clearHold(); });
+  btn.addEventListener("contextmenu", function(e) { e.preventDefault(); });
+  btn.addEventListener("click", function(e) {
+    if (noteShown || longPressFired) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      noteShown = false;
+      longPressFired = false;
+      return;
+    }
+    dismissBubbleNote();
+    const g = btn.getAttribute("data-bubble");
+    sfxTap();
+    if (g === "pet") { openPetPanel(); return; }
+    go(g);
+  });
+}
+
 function screenHome() {
   const plan = todayPlan();
   const prog = plan.key && PROGRAMS[plan.key];
@@ -2325,6 +2488,9 @@ function screenHome() {
   if (plan.key && deployFirst) {
     html += deployBlock();
   }
+
+  // Glanceable destination map — after Resume/Deploy, before Body
+  html += bubbleMapHtml();
 
   html += '<div class="card' + (plan.key && deployFirst ? " mt" : "") + '"><div class="row" style="border:0;padding:0 0 4px">';
   html += '<div><div class="lbl">Sessions this week</div><div class="stat">' + liftKeysClearedThisWeek() + "<small>/4</small></div></div>";
@@ -2964,6 +3130,17 @@ function bind() {
       doNav();
     };
   });
+  document.querySelectorAll("[data-bubble]").forEach(function(btn) {
+    bindBubblePress(btn);
+  });
+  if (!window._bubbleNoteDismissBound) {
+    window._bubbleNoteDismissBound = true;
+    document.addEventListener("pointerdown", function(e) {
+      const t = e.target;
+      if (t && t.closest && t.closest(".bubble")) return;
+      dismissBubbleNote();
+    }, true);
+  }
   document.querySelectorAll("[data-go]").forEach(function(btn) {
     btn.onclick = function() {
       const g = btn.getAttribute("data-go");
@@ -3535,7 +3712,7 @@ function registerOfflineSW() {
     const pageUrl = (location.href || "./").split("#")[0];
     const swCode = [
       "const PAGE = " + JSON.stringify(pageUrl) + ";",
-      "const CACHE = 'pftrack-v35';",
+      "const CACHE = 'pftrack-v37';",
       "self.addEventListener('install', function(e) {",
       "  e.waitUntil(caches.open(CACHE).then(function(c) { return c.addAll([PAGE, './']).catch(function(){}); }).then(function(){ return self.skipWaiting(); }));",
       "});",
