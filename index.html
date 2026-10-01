@@ -957,7 +957,7 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
 
 const STORAGE_KEY = "pftrack_v3";
 const LIVE_KEY = "pftrack_live";
-const APP_VERSION = "4.2";
+const APP_VERSION = "4.3";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -1117,11 +1117,126 @@ function watchBattery() {
   } catch (e) {}
 }
 
-/* Health stubs — web build has no HealthKit / Face ID; degrade gracefully */
-function getHeartRate() { return null; }
-function getSleepSample() { return null; }
-function getStepsSample() { return null; }
-function getHealthMetric() { return null; }
+/* Apple Health bridge — real when WKWebView injects PFHealth / pfHealth; null on Safari */
+var healthSummaryCache = null;
+var healthSummaryAt = 0;
+var healthAuthAsked = false;
+
+function hasHealthBridge() {
+  try {
+    if (window.PFHealth && window.PFHealth.available) return true;
+    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.pfHealth) return true;
+  } catch (e) {}
+  return false;
+}
+
+function healthPost(action, payload) {
+  if (!hasHealthBridge()) {
+    return Promise.resolve(null);
+  }
+  try {
+    if (window.PFHealth && typeof window.PFHealth.post === "function") {
+      return window.PFHealth.post(action, payload || {}).catch(function() { return null; });
+    }
+  } catch (e) {}
+  return Promise.resolve(null);
+}
+
+function requestHealthAuth() {
+  return healthPost("health.requestAuth", {}).then(function(r) {
+    healthAuthAsked = true;
+    if (r && r.ok) {
+      try { state.healthConnected = true; persist(); } catch (e) {}
+    }
+    return r;
+  });
+}
+
+function refreshHealthSummary(force) {
+  if (!hasHealthBridge()) return Promise.resolve(null);
+  var age = Date.now() - (healthSummaryAt || 0);
+  if (!force && healthSummaryCache && age < 60000) return Promise.resolve(healthSummaryCache);
+  return healthPost("health.getSummary", {}).then(function(r) {
+    if (r && r.ok !== false) {
+      healthSummaryCache = r;
+      healthSummaryAt = Date.now();
+      if (r.sleepHours != null && state.sleepHours == null) {
+        state.sleepHours = Number(r.sleepHours);
+        try { persist(); } catch (e) {}
+      }
+    }
+    return healthSummaryCache;
+  });
+}
+
+function writeWeightToHealth(lb, iso) {
+  if (!hasHealthBridge()) return Promise.resolve(null);
+  if (!state || !state.healthWriteWeight) return Promise.resolve(null);
+  var n = Number(lb);
+  if (!n || n < 50 || n > 600) return Promise.resolve(null);
+  return healthPost("health.writeWeight", { lb: n, date: iso || null }).then(function(r) {
+    return r;
+  }).catch(function() { return null; });
+}
+
+function getHeartRate() {
+  return healthSummaryCache && healthSummaryCache.heartRate != null ? healthSummaryCache.heartRate : null;
+}
+function getRestingHR() {
+  return healthSummaryCache && healthSummaryCache.restingHR != null ? healthSummaryCache.restingHR : null;
+}
+function getHRV() {
+  return healthSummaryCache && healthSummaryCache.hrv != null ? healthSummaryCache.hrv : null;
+}
+function getSleepSample() {
+  if (healthSummaryCache && healthSummaryCache.sleepHours != null) return healthSummaryCache.sleepHours;
+  return null;
+}
+function getStepsSample() {
+  return healthSummaryCache && healthSummaryCache.steps != null ? healthSummaryCache.steps : null;
+}
+function getHealthMetric(key) {
+  if (!healthSummaryCache) return null;
+  return healthSummaryCache[key] != null ? healthSummaryCache[key] : null;
+}
+
+function healthMetricsCardHtml() {
+  if (!hasHealthBridge() && !healthSummaryCache) return "";
+  var hr = getHeartRate();
+  var rhr = getRestingHR();
+  var hrv = getHRV();
+  var sleep = getSleepSample();
+  var steps = getStepsSample();
+  var energy = getHealthMetric("activeEnergy");
+  var bits = [];
+  if (hr != null) bits.push('<div><div class="lbl">HR</div><b>' + hr + '</b><small> bpm</small></div>');
+  if (rhr != null) bits.push('<div><div class="lbl">Resting</div><b>' + rhr + '</b><small> bpm</small></div>');
+  if (hrv != null) bits.push('<div><div class="lbl">HRV</div><b>' + hrv + '</b><small> ms</small></div>');
+  if (sleep != null) bits.push('<div><div class="lbl">Sleep</div><b>' + sleep + '</b><small> h</small></div>');
+  if (steps != null) bits.push('<div><div class="lbl">Steps</div><b>' + steps + '</b></div>');
+  if (energy != null) bits.push('<div><div class="lbl">Active</div><b>' + energy + '</b><small> kcal</small></div>');
+  if (!bits.length) {
+    return '<div class="card mt"><div class="lbl">Apple Health</div><p class="sub" style="margin:0">Connected · pull summary or wait for samples.</p></div>';
+  }
+  return '<div class="card mt"><div class="lbl">Apple Health</div><div class="row" style="border:0;padding:8px 0 0;flex-wrap:wrap;gap:14px">' + bits.join("") + "</div></div>";
+}
+
+function healthConnectHtml() {
+  var bridged = hasHealthBridge();
+  var connected = !!(state && state.healthConnected);
+  var html = '<div class="card mt">';
+  html += '<div class="lbl">Apple Health</div>';
+  if (bridged) {
+    html += '<p class="sub" style="margin-top:0">On-device only · no Face ID · no upload. Reads HR, HRV, sleep, steps, energy, weight.</p>';
+    html += '<div class="stack" style="margin-top:10px">';
+    html += '<button class="btn pri" id="healthConnectBtn">' + (connected ? "Refresh Health" : "Connect Apple Health") + "</button>";
+    html += '</div>';
+  } else {
+    html += '<p class="sub" style="margin:0">Requires PF//TRACK iOS app. Safari cannot reach HealthKit — manual cues stay available.</p>';
+  }
+  html += "</div>";
+  return html;
+}
 
 function setEnvironmentPreference(pref) {
   const c = ensureCosmetics();
@@ -1275,6 +1390,8 @@ function defaults() {
     feetCookedWeek: "",
     hamWeirdWeek: "",
     sleepHours: null,
+    healthConnected: false,
+    healthWriteWeight: false,
     pet: {
       ember: 0,
       owned: ["scale_moss", "horn_neon"],
@@ -1475,6 +1592,8 @@ function load() {
       try { delete data.hamWeird; } catch (e) {}
       if (data.sleepHours != null) data.sleepHours = Number(data.sleepHours);
       else data.sleepHours = null;
+      if (typeof data.healthConnected !== "boolean") data.healthConnected = false;
+      if (typeof data.healthWriteWeight !== "boolean") data.healthWriteWeight = false;
       if (typeof data.haptics !== "boolean") data.haptics = true;
       if (typeof data.sound !== "boolean") data.sound = true;
       if (!Array.isArray(data.foodHistory)) data.foodHistory = [];
@@ -2984,14 +3103,16 @@ function screenRecovery() {
   if (!plan.key && isWorkDay(plan.d)) {
     html += heatBannerHtml(plan);
   }
-  html += '<div class="card"><div class="lbl">Last night sleep (hours)</div>';
+  html += healthConnectHtml();
+  html += healthMetricsCardHtml();
+  html += '<div class="card mt"><div class="lbl">Last night sleep (hours)</div>';
+  html += '<p class="sub" style="margin-top:0">Manual override · Health fill when bridged + empty.</p>';
   html += '<div class="step"><button class="mini" id="sleepMinus">−</button><b id="sleepVal">' + (state.sleepHours != null ? state.sleepHours : "—") + '</b><button class="mini" id="sleepPlus">+</button></div></div>';
   html += '<div class="card mt">';
   html += '<div class="toggle ' + (isFeetCooked() ? "on" : "") + '" id="feetLockToggle"><div><b>Feet cooked</b><span>Pre-skips Lower B calf · no guilt' + (isFeetCooked() ? ' <span class="chip">clears next Sat</span>' : "") + '</span></div><div class="sw"></div></div>';
   html += '<div class="toggle ' + (isHamWeird() ? "on" : "") + '" id="hamWeirdToggle"><div><b>Ham weird</b><span>Pre-skips Lower B seated curl' + (isHamWeird() ? ' <span class="chip">clears next Sat</span>' : "") + '</span></div><div class="sw"></div></div>';
   html += "</div>";
   html += '<div class="stack mt"><button class="btn pri" data-go="cal">Open calendar</button></div>';
-  html += '<p class="sub mt" style="margin-bottom:0">HealthKit stubs return null on web · cues stay manual.</p>';
   html += nav("recovery");
   return html;
 }
@@ -3069,6 +3190,7 @@ function screenMore() {
     html += '<div class="toggle" id="hapticsToggle" style="opacity:.55;pointer-events:none"><div><b>Haptics: unsupported on Safari</b><span>Visual + SFX only</span></div><div class="sw"></div></div>';
   }
   html += "</div>";
+  html += healthConnectHtml();
   html += '<p class="sub mt" style="margin-bottom:0">Storage · ' + STORAGE_KEY + " · v" + APP_VERSION + "</p>";
   html += nav("more");
   return html;
@@ -3526,7 +3648,13 @@ function screenFuel() {
   if (lastW) html += '<div class="lbl">' + lastW.date + "</div>";
   html += weightDeltaHtml();
   html += '<div class="stack" style="margin-top:10px"><input type="number" id="bwInput" placeholder="Weight today (lb)" min="100" max="500" step="0.1"/>';
-  html += '<button class="btn pri" id="bwSave">Log Scale</button></div></div>';
+  html += '<button class="btn pri" id="bwSave">Log Scale</button></div>';
+  if (hasHealthBridge()) {
+    html += '<div class="toggle ' + (state.healthWriteWeight ? "on" : "") + '" id="healthWriteWeightToggle" style="margin-top:12px"><div><b>Write weight to Apple Health</b><span>Only when you log scale · on-device</span></div><div class="sw"></div></div>';
+  } else {
+    html += '<p class="sub" style="margin:10px 0 0">Apple Health write · requires PF//TRACK iOS app</p>';
+  }
+  html += "</div>";
   html += '<div class="card cue mt"><b>Stats lock</b><br>HT ' + esc(state.stats.ht) + " · WT ~" + state.stats.wt + " · LBM ~" + state.stats.lbm +
     (state.stats.bf != null ? " · BF " + state.stats.bf + "%" : " · BF —") +
     " · Protein " + esc(proteinRange()) + "</div>";
@@ -3784,6 +3912,9 @@ function screenCalDay() {
   if (!future) {
     html += '<div class="stack" style="margin-top:10px"><input type="number" id="bwInput" placeholder="Weight (lb)" min="100" max="500" step="0.1"/>';
     html += '<button class="btn pri" id="bwSave" data-bw-iso="' + iso + '">Save scale</button></div>';
+    if (hasHealthBridge()) {
+      html += '<div class="toggle ' + (state.healthWriteWeight ? "on" : "") + '" id="healthWriteWeightToggle" style="margin-top:12px"><div><b>Write weight to Apple Health</b><span>On-device when you save</span></div><div class="sw"></div></div>';
+    }
   }
   html += "</div>";
 
@@ -3826,6 +3957,14 @@ function render() {
   else if (!(state.live && state.live.restUntil && restRemaining() > 0)) stopRestTick();
   syncWakeLock();
   applyReactiveClass();
+  if (hasHealthBridge() && (view === "recovery" || view === "more") && state.healthConnected) {
+    var before = healthSummaryAt || 0;
+    refreshHealthSummary(false).then(function(r) {
+      if (!r || !healthSummaryCache) return;
+      if ((healthSummaryAt || 0) === before) return; /* cache hit — skip */
+      if (view === "recovery" || view === "more") render();
+    }).catch(function() {});
+  }
 }
 
 function $(id) { return document.getElementById(id); }
@@ -4102,7 +4241,11 @@ function bind() {
     if (iso === todayISO() || !state.stats.wt) state.stats.wt = state.bodyweights[0].lb;
     sfxConfirm();
     persist();
-    toast("Scale logged · " + lb + " LB");
+    var msg = "Scale logged · " + lb + " LB";
+    writeWeightToHealth(lb, iso).then(function(r) {
+      if (r && r.ok) toast(msg + " · Health");
+      else toast(msg);
+    }).catch(function() { toast(msg); });
     render();
   };
   if ($("soundToggle")) $("soundToggle").onclick = function() {
@@ -4163,6 +4306,43 @@ function bind() {
     let h = state.sleepHours == null ? 7 : state.sleepHours;
     h = Math.min(14, Math.round((h + 0.5) * 2) / 2);
     state.sleepHours = h;
+    sfxTap();
+    persist();
+    render();
+  };
+  if ($("healthConnectBtn")) $("healthConnectBtn").onclick = function() {
+    if (!hasHealthBridge()) return;
+    sfxTap();
+    var btn = $("healthConnectBtn");
+    if (btn) { btn.disabled = true; btn.textContent = "Working…"; }
+    var op = state.healthConnected ? refreshHealthSummary(true) : requestHealthAuth().then(function(r) {
+      if (r && r.ok) return refreshHealthSummary(true);
+      return r;
+    });
+    op.then(function(r) {
+      if (r && r.ok === false && r.error) {
+        /* single calm toast — never spam */
+        toast("Health · " + String(r.error).slice(0, 48));
+      } else if (r && (r.ok || r.heartRate != null || r.sleepHours != null || r.steps != null || state.healthConnected)) {
+        state.healthConnected = true;
+        persist();
+        toast(state.healthConnected && healthSummaryCache ? "Health updated" : "Apple Health connected");
+      } else if (!r) {
+        /* bridge quiet — no toast */
+      } else {
+        state.healthConnected = true;
+        persist();
+        toast("Apple Health ready");
+      }
+      render();
+    }).catch(function() {
+      if (btn) { btn.disabled = false; }
+      render();
+    });
+  };
+  if ($("healthWriteWeightToggle")) $("healthWriteWeightToggle").onclick = function() {
+    if (!hasHealthBridge()) return;
+    state.healthWriteWeight = !state.healthWriteWeight;
     sfxTap();
     persist();
     render();
