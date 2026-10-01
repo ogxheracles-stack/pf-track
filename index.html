@@ -32,6 +32,17 @@
   --reactive-glow:rgba(184,255,46,.14);
   --sb-bg:rgba(10,14,20,.98);
   --hud-bg:rgba(10,14,20,.96);
+  --vice-sky-top:#050a12;
+  --vice-sky-mid:#120820;
+  --vice-sky-bot:#020306;
+  --aurora-a:rgba(255,0,170,.1);
+  --aurora-b:rgba(0,229,255,.08);
+  --aurora-c:rgba(184,255,46,.06);
+  --grid-line:rgba(0,229,255,.16);
+  --grid-opacity:.16;
+  --skyline-pink:#ff00aa;
+  --skyline-cyan:#00e5ff;
+  --tint-wash:transparent;
   --radius:14px;
   --radius-sm:12px;
   --font:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
@@ -42,9 +53,9 @@
   --env-fade:450ms;
 }
 html[data-env="day"]{
-  --bg:#0c1410;
-  --panel:#152018;
-  --panel2:#1a2820;
+  --bg:#06120e;
+  --panel:#122018;
+  --panel2:#182820;
   --line:#2a3a30;
   --line2:#3a4e42;
   --text:#e8f4ec;
@@ -52,21 +63,31 @@ html[data-env="day"]{
   --muted:#6b8a78;
   --neon:#b8ff2e;
   --neon-dim:rgba(184,255,46,.18);
-  --cyan:#5ec8a0;
+  --cyan:#5ec8d8;
   --hot:#ff6b8a;
   --amber:#ffb020;
   --ok:#3dff9e;
   --ok-bg:rgba(61,255,158,.12);
-  --env-glow-a:rgba(184,255,46,.11);
-  --env-glow-b:rgba(94,200,160,.07);
+  --env-glow-a:rgba(94,200,216,.14);
+  --env-glow-b:rgba(80,120,220,.1);
   --reactive-glow:rgba(184,255,46,.18);
-  --sb-bg:rgba(12,20,16,.98);
-  --hud-bg:rgba(12,20,16,.96);
+  --sb-bg:rgba(6,18,14,.98);
+  --hud-bg:rgba(6,18,14,.96);
+  --vice-sky-top:#04140f;
+  --vice-sky-mid:#0a1c2e;
+  --vice-sky-bot:#020806;
+  --aurora-a:rgba(61,255,158,.13);
+  --aurora-b:rgba(70,120,255,.12);
+  --aurora-c:rgba(94,200,216,.11);
+  --grid-line:rgba(94,200,216,.2);
+  --grid-opacity:.15;
+  --skyline-pink:#3dff9e;
+  --skyline-cyan:#5ec8d8;
 }
 html[data-env="night"]{
-  --bg:#0a0614;
-  --panel:#14101e;
-  --panel2:#1a1528;
+  --bg:#050218;
+  --panel:#120e1c;
+  --panel2:#1a1428;
   --line:#2a2438;
   --line2:#3a3450;
   --text:#ece8f4;
@@ -74,16 +95,26 @@ html[data-env="night"]{
   --muted:#7a6b8c;
   --neon:#c4a0ff;
   --neon-dim:rgba(196,160,255,.2);
-  --cyan:#8a7cff;
+  --cyan:#00e5ff;
   --hot:#ff6b8a;
   --amber:#ffb020;
-  --ok:#b89cff;
-  --ok-bg:rgba(184,156,255,.14);
-  --env-glow-a:rgba(168,140,255,.13);
-  --env-glow-b:rgba(94,80,180,.09);
-  --reactive-glow:rgba(196,160,255,.2);
-  --sb-bg:rgba(10,6,20,.98);
-  --hud-bg:rgba(10,6,20,.96);
+  --ok:#3dff9e;
+  --ok-bg:rgba(61,255,158,.12);
+  --env-glow-a:rgba(255,0,170,.16);
+  --env-glow-b:rgba(0,229,255,.1);
+  --reactive-glow:rgba(255,0,170,.18);
+  --sb-bg:rgba(5,2,24,.98);
+  --hud-bg:rgba(5,2,24,.96);
+  --vice-sky-top:#040218;
+  --vice-sky-mid:#1a0532;
+  --vice-sky-bot:#010104;
+  --aurora-a:rgba(255,0,170,.18);
+  --aurora-b:rgba(0,229,255,.15);
+  --aurora-c:rgba(61,255,158,.1);
+  --grid-line:rgba(255,0,170,.28);
+  --grid-opacity:.22;
+  --skyline-pink:#ff00aa;
+  --skyline-cyan:#00e5ff;
 }
 /* Camo accent overlays (cosmetic-only) */
 html[data-camo="verde"]{--neon:#b8ff2e;--neon-dim:rgba(184,255,46,.2);--cyan:#6ad4a0;--reactive-glow:rgba(184,255,46,.2)}
@@ -139,18 +170,103 @@ body{
   font-size:16px;
   line-height:1.45;
   overflow-x:hidden;
-  background-image:
-    radial-gradient(100% 55% at 50% -8%,var(--env-glow-a),transparent 55%),
-    radial-gradient(80% 45% at 50% 105%,var(--env-glow-b),transparent 55%);
-  background-attachment:fixed;
-  transition:background-color var(--env-fade) ease, background-image var(--env-fade) ease, color var(--env-fade) ease;
+  position:relative;
+  transition:background-color var(--env-fade) ease, color var(--env-fade) ease;
 }
 #app{
+  position:relative;z-index:1;
   max-width:440px;
   margin:0 auto;
   min-height:100vh;
   min-height:100dvh;
   padding:0 16px calc(72px + env(safe-area-inset-bottom,0px));
+}
+
+/* Neo-Vice City global ambient — navy→magenta→black / Verde Monte day */
+#envBg{
+  position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;
+}
+#envBg .envGrad{
+  position:absolute;inset:0;
+  background:
+    linear-gradient(180deg,var(--vice-sky-top) 0%,var(--vice-sky-mid) 46%,var(--vice-sky-bot) 100%),
+    radial-gradient(120% 70% at 50% -5%,var(--env-glow-a),transparent 58%),
+    radial-gradient(90% 50% at 50% 110%,var(--env-glow-b),transparent 60%);
+  transition:background var(--env-fade) ease, opacity var(--env-fade) ease;
+}
+#envBg .envAurora{
+  position:absolute;inset:-12% -18%;
+  background:
+    radial-gradient(ellipse 52% 38% at 18% 28%,var(--aurora-a),transparent 70%),
+    radial-gradient(ellipse 48% 34% at 82% 22%,var(--aurora-b),transparent 70%),
+    radial-gradient(ellipse 58% 42% at 50% 88%,var(--aurora-c),transparent 72%),
+    radial-gradient(ellipse 40% 30% at 50% 40%,var(--tint-wash),transparent 75%);
+  opacity:.9;
+  filter:blur(1.5px);
+  animation:auroraDrift 32s ease-in-out infinite alternate;
+}
+#envBg .envGrid{
+  position:absolute;left:-25%;right:-25%;bottom:-8%;height:58%;
+  background-image:
+    linear-gradient(to bottom,transparent 0%,transparent 94%,var(--grid-line) 95%,transparent 100%),
+    linear-gradient(to right,transparent 0%,transparent 94%,var(--grid-line) 95%,transparent 100%);
+  background-size:56px 56px;
+  background-position:0 0;
+  transform:perspective(480px) rotateX(60deg) translateY(8%);
+  transform-origin:50% 100%;
+  opacity:var(--grid-opacity);
+  -webkit-mask-image:linear-gradient(180deg,transparent 0%,rgba(0,0,0,.55) 35%,rgba(0,0,0,.95) 100%);
+  mask-image:linear-gradient(180deg,transparent 0%,rgba(0,0,0,.55) 35%,rgba(0,0,0,.95) 100%);
+  animation:gridCrawl 22s linear infinite;
+}
+#envBg .envSkyline{
+  position:absolute;left:0;right:0;bottom:0;height:min(36vh,260px);
+  opacity:.48;
+}
+#envBg .envSkyline svg{display:block;width:100%;height:100%}
+#envBg .envHaze{
+  position:absolute;left:0;right:0;bottom:0;height:42%;
+  background:
+    linear-gradient(180deg,transparent 0%,rgba(255,0,170,.06) 55%,rgba(0,229,255,.05) 100%);
+  opacity:.7;
+  mix-blend-mode:screen;
+}
+html[data-env="day"] #envBg .envHaze{
+  background:linear-gradient(180deg,transparent 0%,rgba(61,255,158,.05) 50%,rgba(70,120,255,.07) 100%);
+}
+#envBg .envScan{
+  position:absolute;inset:0;
+  background:repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0,0,0,.035) 3px,
+    rgba(0,0,0,.035) 4px
+  );
+  opacity:.4;pointer-events:none;
+}
+@keyframes auroraDrift{
+  from{transform:translate3d(-2%,1%,0) scale(1)}
+  to{transform:translate3d(2%,-1.5%,0) scale(1.04)}
+}
+@keyframes gridCrawl{
+  from{background-position:0 0}
+  to{background-position:0 56px}
+}
+html.reactive-low #envBg .envAurora,
+html.reactive-low #envBg .envGrid{
+  animation:none;
+}
+html.reactive-low #envBg .envAurora{opacity:.55}
+html.reactive-low #envBg .envGrid{opacity:calc(var(--grid-opacity) * .7)}
+html.reactive-low #envBg .envSkyline{opacity:.38}
+html[data-tint="lime"]{--tint-wash:rgba(184,255,46,.14)}
+html[data-tint="amber"]{--tint-wash:rgba(255,176,32,.14)}
+html[data-tint="navy"]{--tint-wash:rgba(40,70,180,.16)}
+html[data-tint="cyan"]{--tint-wash:rgba(0,229,255,.1)}
+html[data-tint="none"]{--tint-wash:transparent}
+@media (prefers-reduced-motion: reduce){
+  #envBg .envAurora,#envBg .envGrid{animation:none !important}
 }
 .sb{
   position:sticky;top:0;z-index:40;margin:0 -16px 16px;
@@ -187,11 +303,12 @@ h2{
 }
 .stat small{font-size:15px;color:var(--dim);font-weight:600}
 .card{
-  position:relative;padding:var(--card-pad);
+  position:relative;z-index:1;padding:var(--card-pad);
   background:var(--panel);
   border:1px solid var(--line);
   border-radius:var(--radius);
   margin-top:var(--gap);
+  box-shadow:0 8px 28px rgba(0,0,0,.28);
 }
 .card:first-of-type{margin-top:0}
 .cue{
@@ -658,13 +775,19 @@ details.pet-cosmetics > summary{margin-bottom:4px;color:var(--text)}
 }
 .hubArt svg{display:block;width:100%;height:100%}
 .hubGlow{
-  position:absolute;inset:auto -20% -40px -20%;height:160px;pointer-events:none;z-index:0;
+  position:absolute;inset:auto -20% -40px -20%;height:180px;pointer-events:none;z-index:0;
   background:
-    radial-gradient(ellipse 50% 60% at 30% 80%,rgba(255,0,170,.22),transparent 70%),
-    radial-gradient(ellipse 45% 55% at 70% 85%,rgba(0,229,255,.2),transparent 70%),
-    radial-gradient(ellipse 40% 50% at 50% 100%,rgba(184,255,46,.1),transparent 70%);
+    radial-gradient(ellipse 50% 60% at 30% 80%,rgba(255,0,170,.28),transparent 70%),
+    radial-gradient(ellipse 45% 55% at 70% 85%,rgba(0,229,255,.24),transparent 70%),
+    radial-gradient(ellipse 40% 50% at 50% 100%,rgba(61,255,158,.12),transparent 70%);
 }
-html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.28}
+html[data-env="day"] .hubGlow{
+  background:
+    radial-gradient(ellipse 50% 60% at 28% 80%,rgba(61,255,158,.2),transparent 70%),
+    radial-gradient(ellipse 45% 55% at 72% 85%,rgba(70,120,255,.18),transparent 70%),
+    radial-gradient(ellipse 40% 50% at 50% 100%,rgba(94,200,216,.12),transparent 70%);
+}
+html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
 .hubContent{position:relative;z-index:1}
 .hubGreet{font-size:28px;font-weight:700;letter-spacing:-0.02em;margin:4px 0 4px;color:var(--text)}
 .hubTag{font-size:14px;color:var(--dim);margin:0 0 14px;font-weight:500}
@@ -818,6 +941,14 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.28}
 </style>
 </head>
 <body>
+<div id="envBg" aria-hidden="true">
+  <div class="envGrad"></div>
+  <div class="envAurora"></div>
+  <div class="envGrid"></div>
+  <div class="envSkyline"><svg viewBox="0 0 440 160" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"> <defs> <linearGradient id="gSky" x1="0" y1="0" x2="0" y2="1"> <stop offset="0%" stop-color="var(--skyline-pink,#ff00aa)" stop-opacity=".5"/> <stop offset="55%" stop-color="var(--skyline-cyan,#00e5ff)" stop-opacity=".32"/> <stop offset="100%" stop-color="#020306" stop-opacity=".95"/> </linearGradient> <linearGradient id="gPalm" x1="0" y1="0" x2="0" y2="1"> <stop offset="0%" stop-color="var(--skyline-cyan,#00e5ff)" stop-opacity=".55"/> <stop offset="100%" stop-color="var(--skyline-pink,#ff00aa)" stop-opacity=".18"/> </linearGradient> </defs> <path fill="url(#gSky)" d="M0 160 L0 98 L12 98 L12 72 L22 72 L22 88 L36 88 L36 54 L48 54 L48 78 L62 78 L62 42 L78 42 L84 56 L98 56 L98 30 L118 30 L118 60 L136 60 L136 38 L154 38 L154 74 L172 74 L172 48 L190 48 L190 80 L208 80 L208 34 L226 34 L226 64 L244 64 L244 46 L262 46 L262 84 L280 84 L280 52 L298 52 L298 70 L316 70 L316 40 L334 40 L334 76 L352 76 L352 58 L370 58 L370 88 L388 88 L388 66 L406 66 L406 94 L440 94 L440 160 Z"/> <path fill="#05070e" opacity=".72" d="M0 160 L0 112 L20 112 L20 96 L34 96 L34 108 L50 108 L50 82 L66 82 L66 100 L82 100 L82 90 L98 90 L98 118 L120 118 L120 86 L140 86 L140 104 L160 104 L160 78 L180 78 L180 110 L200 110 L200 92 L220 92 L220 70 L240 70 L240 100 L260 100 L260 84 L280 84 L280 112 L300 112 L300 88 L320 88 L320 104 L340 104 L340 76 L360 76 L360 98 L380 98 L380 114 L400 114 L400 96 L420 96 L420 120 L440 120 L440 160 Z"/> <g fill="url(#gPalm)" opacity=".9"> <path d="M28 160 L32 92 Q18 82 2 86 Q22 90 28 102 Q12 96 0 108 Q20 104 30 114 Q14 114 4 128 Q24 118 32 126 Z"/> <path d="M32 160 L34 92 Q46 80 66 84 Q46 90 40 100 Q56 94 70 104 Q50 104 40 114 Q58 110 72 124 Q50 118 36 126 Z"/> </g> <g fill="url(#gPalm)" opacity=".85"> <path d="M408 160 L404 96 Q418 84 438 88 Q418 94 412 106 Q428 98 440 110 Q420 108 410 118 Q428 114 438 130 Q418 122 406 128 Z"/> <path d="M404 160 L402 96 Q390 82 370 86 Q390 92 396 104 Q380 96 366 106 Q386 106 396 116 Q378 112 364 126 Q386 120 400 128 Z"/> </g> <rect x="54" y="70" width="3" height="4" fill="#00e5ff" opacity=".55"/><rect x="72" y="58" width="3" height="4" fill="#ff00aa" opacity=".5"/> <rect x="130" y="48" width="3" height="4" fill="#b8ff2e" opacity=".45"/><rect x="210" y="42" width="3" height="4" fill="#00e5ff" opacity=".5"/> <rect x="268" y="56" width="3" height="4" fill="#ff00aa" opacity=".45"/><rect x="330" y="50" width="3" height="4" fill="#00e5ff" opacity=".4"/> <rect x="372" y="68" width="3" height="4" fill="#3dff9e" opacity=".4"/> <ellipse cx="220" cy="18" rx="34" ry="10" fill="#ff00aa" opacity=".12"/> <ellipse cx="120" cy="28" rx="22" ry="7" fill="#00e5ff" opacity=".1"/> </svg></div>
+  <div class="envHaze"></div>
+  <div class="envScan"></div>
+</div>
 <div id="app"></div>
 <div id="pet-root" class="hidden" aria-label="Companion" role="button" tabindex="0"></div>
 <div id="pet-backdrop" class="pet-backdrop" hidden></div>
@@ -826,7 +957,7 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.28}
 
 const STORAGE_KEY = "pftrack_v3";
 const LIVE_KEY = "pftrack_live";
-const APP_VERSION = "4.1";
+const APP_VERSION = "4.2";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -908,15 +1039,34 @@ function prefersReducedMotion() {
   } catch (e) { return false; }
 }
 
+function applyDayTint() {
+  // Light wash from todayPlan() — Sat lime / Fri amber / Thu navy; else none
+  let tint = "none";
+  try {
+    const plan = todayPlan();
+    if (plan) {
+      if (plan.d === 6) tint = "lime";
+      else if (plan.d === 5) tint = "amber";
+      else if (plan.d === 4) tint = "navy";
+      else if (plan.key) tint = "cyan";
+    }
+  } catch (e) {}
+  try {
+    document.documentElement.setAttribute("data-tint", tint);
+  } catch (e) {}
+  return tint;
+}
+
 function applyEnvironment() {
   const env = resolveEnvironment();
   try {
     document.documentElement.setAttribute("data-env", env);
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) {
-      meta.setAttribute("content", env === "day" ? "#0c1410" : "#0a0614");
+      meta.setAttribute("content", env === "day" ? "#06120e" : "#050218");
     }
   } catch (e) {}
+  applyDayTint();
   applyCamoClass();
   applyReactiveClass();
   return env;
@@ -1213,39 +1363,44 @@ function activityStreak() {
 }
 
 function neonCityArtHtml() {
-  // Abstract neon city + palms + anonymous silhouette — no faces, names, lore, or TG branding
+  // Abstract neon city + palms + anonymous silhouette — no faces, names, lore, or branded IP
   return '<div class="hubGlow" aria-hidden="true"></div>' +
     '<div class="hubArt" aria-hidden="true">' +
     '<svg viewBox="0 0 440 140" preserveAspectRatio="xMidYMax meet" xmlns="http://www.w3.org/2000/svg">' +
     '<defs>' +
     '<linearGradient id="skylineGrad" x1="0" y1="0" x2="0" y2="1">' +
-    '<stop offset="0%" stop-color="#ff00aa" stop-opacity=".55"/>' +
-    '<stop offset="55%" stop-color="#00e5ff" stop-opacity=".35"/>' +
-    '<stop offset="100%" stop-color="#0a0e14" stop-opacity=".9"/>' +
+    '<stop offset="0%" stop-color="#ff00aa" stop-opacity=".62"/>' +
+    '<stop offset="45%" stop-color="#00e5ff" stop-opacity=".4"/>' +
+    '<stop offset="100%" stop-color="#050218" stop-opacity=".95"/>' +
     '</linearGradient>' +
     '<linearGradient id="palmGrad" x1="0" y1="0" x2="0" y2="1">' +
-    '<stop offset="0%" stop-color="#00e5ff" stop-opacity=".5"/>' +
-    '<stop offset="100%" stop-color="#ff00aa" stop-opacity=".15"/>' +
+    '<stop offset="0%" stop-color="#00e5ff" stop-opacity=".58"/>' +
+    '<stop offset="100%" stop-color="#ff00aa" stop-opacity=".2"/>' +
+    '</linearGradient>' +
+    '<linearGradient id="nearGrad" x1="0" y1="0" x2="0" y2="1">' +
+    '<stop offset="0%" stop-color="#1a0a28" stop-opacity=".9"/>' +
+    '<stop offset="100%" stop-color="#020104" stop-opacity="1"/>' +
     '</linearGradient>' +
     '</defs>' +
-    // far skyline
-    '<path fill="url(#skylineGrad)" d="M0 140 L0 88 L18 88 L18 62 L28 62 L28 78 L42 78 L42 48 L58 48 L58 70 L72 70 L72 40 L88 40 L94 52 L110 52 L110 28 L128 28 L128 56 L146 56 L146 36 L162 36 L162 68 L178 68 L178 44 L196 44 L196 72 L214 72 L214 30 L232 30 L232 58 L250 58 L250 42 L268 42 L268 76 L286 76 L286 50 L304 50 L304 66 L322 66 L322 38 L340 38 L340 74 L358 74 L358 54 L376 54 L376 80 L394 80 L394 60 L412 60 L412 86 L440 86 L440 140 Z"/>' +
-    // palm left
+    '<ellipse cx="220" cy="22" rx="48" ry="14" fill="#ff00aa" opacity=".14"/>' +
+    '<ellipse cx="110" cy="36" rx="28" ry="9" fill="#00e5ff" opacity=".1"/>' +
+    '<path fill="url(#skylineGrad)" d="M0 140 L0 88 L14 88 L14 64 L24 64 L24 80 L38 80 L38 48 L52 48 L52 70 L66 70 L66 38 L82 38 L88 52 L104 52 L104 26 L122 26 L122 54 L140 54 L140 34 L156 34 L156 66 L172 66 L172 42 L190 42 L190 70 L208 70 L208 28 L226 28 L226 56 L244 56 L244 40 L262 40 L262 74 L280 74 L280 48 L298 48 L298 64 L316 64 L316 36 L334 36 L334 72 L352 72 L352 52 L370 52 L370 78 L388 78 L388 58 L406 58 L406 84 L440 84 L440 140 Z"/>' +
+    '<path fill="url(#nearGrad)" opacity=".85" d="M0 140 L0 108 L22 108 L22 94 L40 94 L40 104 L58 104 L58 86 L78 86 L78 100 L98 100 L98 90 L118 90 L118 112 L140 112 L140 88 L162 88 L162 98 L184 98 L184 80 L206 80 L206 102 L228 102 L228 86 L250 86 L250 74 L272 74 L272 96 L294 96 L294 84 L316 84 L316 100 L338 100 L338 82 L360 82 L360 104 L382 104 L382 92 L404 92 L404 110 L440 110 L440 140 Z"/>' +
+    '<g fill="url(#palmGrad)" opacity=".9">' +
+    '<path d="M34 140 L38 76 Q24 66 6 70 Q26 76 32 88 Q16 82 4 94 Q24 90 36 100 Q18 100 8 114 Q28 104 38 112 Z"/>' +
+    '<path d="M38 140 L40 76 Q52 64 72 68 Q52 74 46 86 Q62 78 76 90 Q56 88 46 98 Q64 94 78 110 Q56 102 42 112 Z"/>' +
+    '</g>' +
     '<g fill="url(#palmGrad)" opacity=".85">' +
-    '<path d="M36 140 L40 78 Q28 70 12 74 Q30 78 36 88 Q22 84 10 92 Q28 90 38 98 Q24 98 14 110 Q32 102 40 108 Z"/>' +
-    '<path d="M40 140 L42 78 Q52 68 70 70 Q52 76 46 86 Q60 80 72 88 Q54 88 46 96 Q62 94 74 106 Q54 100 44 108 Z"/>' +
+    '<path d="M402 140 L398 80 Q412 68 432 72 Q412 78 406 90 Q422 82 436 96 Q416 92 404 102 Q422 98 434 116 Q412 106 400 112 Z"/>' +
+    '<path d="M398 140 L396 80 Q384 66 364 70 Q384 76 390 88 Q374 80 360 90 Q380 90 390 100 Q372 96 358 112 Q380 104 394 112 Z"/>' +
     '</g>' +
-    // palm right
-    '<g fill="url(#palmGrad)" opacity=".8">' +
-    '<path d="M400 140 L396 82 Q408 72 426 76 Q408 80 402 90 Q416 84 428 94 Q410 92 400 100 Q416 98 426 112 Q408 104 398 110 Z"/>' +
-    '<path d="M396 140 L394 82 Q384 70 366 74 Q384 78 390 88 Q376 82 364 90 Q382 90 390 98 Q374 96 362 108 Q382 102 392 110 Z"/>' +
-    '</g>' +
-    // anonymous silhouette (no face detail)
     '<path fill="#05070c" opacity=".92" d="M220 140 C208 140 200 128 200 114 C200 104 206 96 214 92 C210 86 208 78 212 70 C216 60 226 56 232 62 C238 56 248 60 250 70 C254 78 252 86 248 92 C256 96 262 104 262 114 C262 128 254 140 242 140 Z"/>' +
-    '<circle cx="78" cy="58" r="1.4" fill="#00e5ff" opacity=".7"/>' +
-    '<circle cx="190" cy="36" r="1.2" fill="#ff00aa" opacity=".65"/>' +
-    '<circle cx="310" cy="48" r="1.3" fill="#b8ff2e" opacity=".55"/>' +
-    '<circle cx="360" cy="64" r="1.1" fill="#00e5ff" opacity=".5"/>' +
+    '<rect x="70" y="58" width="2.5" height="3.5" fill="#00e5ff" opacity=".7"/>' +
+    '<rect x="118" y="40" width="2.5" height="3.5" fill="#ff00aa" opacity=".65"/>' +
+    '<rect x="188" y="36" width="2.5" height="3.5" fill="#b8ff2e" opacity=".55"/>' +
+    '<rect x="250" y="48" width="2.5" height="3.5" fill="#00e5ff" opacity=".55"/>' +
+    '<rect x="308" y="44" width="2.5" height="3.5" fill="#ff00aa" opacity=".5"/>' +
+    '<rect x="358" y="60" width="2.5" height="3.5" fill="#3dff9e" opacity=".5"/>' +
     '</svg></div>';
 }
 
