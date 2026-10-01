@@ -2648,7 +2648,6 @@ function screenCalDay() {
   const sessions = sessionsForISO(iso);
   const food = future ? (foodForISO(iso) || {date: iso, work: false, home: false, after: false, rice: false}) : ensureFoodFor(iso);
   const walk = walkForDate(iso);
-  if (walk && walk.minutes) walkMinutes = walk.minutes;
   const bw = bodyweightForISO(iso);
   const note = (state.dayNotes && state.dayNotes[iso]) || "";
   const prog = plan && plan.key && PROGRAMS[plan.key];
@@ -2723,7 +2722,7 @@ function screenCalDay() {
 
   // C. Walk (work days only)
   if (plan && isWorkDay(plan.d)) {
-    const mins = walk ? walk.minutes : walkMinutes;
+    const mins = walkMinutes;
     html += '<div class="card mt"><h2>Walk</h2>';
     if (future) {
       html += '<p class="sub" style="margin:0">Walk log unlocks on this day.</p>';
