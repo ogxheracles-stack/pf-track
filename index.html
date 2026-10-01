@@ -4,10 +4,11 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="PF//TRACK"/>
-<meta name="theme-color" content="#0a0e14"/>
-<title>PF//TRACK · Marathon</title>
+<meta name="theme-color" content="#04060a"/>
+<title>PF//TRACK</title>
 <style>
 :root{
   --bg:#0a0e14;
@@ -34,7 +35,7 @@
   --card-pad:19px;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;height:100%;-webkit-text-size-adjust:100%}
+html,body{margin:0;height:100%;-webkit-text-size-adjust:100%;background:#04060a}
 body{
   background:var(--bg);
   color:var(--text);
@@ -48,7 +49,7 @@ body{
   background-attachment:fixed;
 }
 #app{
-  max-width:430px;
+  max-width:440px;
   margin:0 auto;
   min-height:100vh;
   min-height:100dvh;
@@ -56,7 +57,7 @@ body{
 }
 .sb{
   position:sticky;top:0;z-index:40;margin:0 -16px 16px;
-  padding:calc(10px + env(safe-area-inset-top,0px)) 16px 12px;
+  padding:calc(12px + env(safe-area-inset-top,0px)) 16px 12px;
   display:flex;justify-content:space-between;align-items:center;
   font-size:12px;font-weight:600;color:var(--dim);
   background:linear-gradient(180deg,rgba(10,14,20,.98) 70%,transparent);
@@ -245,7 +246,7 @@ input:focus{border-color:var(--neon)}
 .toggle span{display:block;font-size:13px;color:var(--dim);margin-top:3px;line-height:1.35}
 nav.hud{
   position:fixed;left:50%;bottom:0;transform:translateX(-50%);
-  width:100%;max-width:430px;z-index:45;
+  width:100%;max-width:440px;z-index:45;
   display:grid;grid-template-columns:repeat(6,1fr);
   background:rgba(10,14,20,.96);
   backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
@@ -536,7 +537,7 @@ nav.hud button.on .ico{opacity:1}
 
 const STORAGE_KEY = "pftrack_v3";
 const LIVE_KEY = "pftrack_live";
-const APP_VERSION = "3.4";
+const APP_VERSION = "3.5";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -637,6 +638,10 @@ let AC = null;
 let toastTimer = null;
 let clockHandle = null;
 let restTickHandle = null;
+let wakeLockSentinel = null;
+let audioUnlocked = false;
+let persistAsked = false;
+let vvPadActive = false;
 let undoSnapshot = null;
 let undoTimer = null;
 let modal = null;
@@ -770,6 +775,7 @@ function persist() {
   copy.live = null;
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(copy)); } catch (e) {}
   saveLive();
+  try { updateAppBadge(); } catch (e) {}
 }
 
 function audio() {
@@ -1716,6 +1722,7 @@ function go(v) {
   if (v === "link") tab = "link";
   if (v !== "calday") calCatchupPick = false;
   render();
+  syncWakeLock();
 }
 
 function closeModal() {
@@ -2092,6 +2099,7 @@ function finishWorkout(reason) {
   else sfxWarn();
   buzz(60);
   persist();
+  updateAppBadge();
   go("done");
   if (doneSets > 0) {
     let emberMsg = "+" + emberAward.gained + " embers";
@@ -2183,15 +2191,18 @@ function weightDeltaHtml() {
   return '<div class="delta ' + cls + '">trend ' + sign + delta + " lb vs ~7d</div>";
 }
 
+function isStandalone() {
+  return !!(window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || !!navigator.standalone;
+}
+
 function installHintHtml() {
   if (!state.installHint) return "";
-  if (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) return "";
-  if (window.navigator.standalone) return "";
+  if (isStandalone()) return "";
   const ua = navigator.userAgent || "";
   const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   const isAndroid = /Android/i.test(ua);
   let copy = "";
-  if (isIOS) copy = "Safari → Share → Add to Home Screen.";
+  if (isIOS) copy = "Share (□↑) → Add to Home Screen → turn ON \"Open as Web App\" → Add.";
   else if (isAndroid) copy = "Browser menu → Install app / Add to Home screen.";
   else return "";
   return '<p class="sub mt" id="installHint">' + copy + ' <span style="color:var(--neon);font-weight:600">Dismiss</span></p>';
@@ -2508,7 +2519,8 @@ function screenLink() {
   } else {
     html += '<p class="sub" style="margin:0">No sessions yet.</p>';
   }
-  html += '<div class="stack" style="margin-top:12px"><button class="btn pri" id="copyPFTRACK"' + (last ? "" : " disabled") + '>Copy last session as PFTRACK</button></div></div>';
+  html += '<div class="stack" style="margin-top:12px"><button class="btn pri" id="copyPFTRACK"' + (last ? "" : " disabled") + '>Copy last session as PFTRACK</button>';
+  html += '<button class="btn gho" id="sharePFTRACK"' + (last ? "" : " disabled") + '>Share</button></div></div>';
   html += '<div class="card mt"><div class="lbl">Paste uplink</div>';
   html += '<textarea class="uplinkBox" id="uplinkPaste" placeholder="PFTRACK&#10;key: upper-a&#10;press 50x12 50x15&#10;raise 15x15 15x15"></textarea>';
   html += '<div class="stack"><button class="btn pri" id="applyPins">Apply pins</button>';
@@ -2555,7 +2567,11 @@ function screenLog() {
   html += "</div>";
   html += '<div class="card mt"><h2>System</h2>';
   html += '<div class="toggle ' + (state.sound ? "on" : "") + '" id="soundToggle"><div><b>Sound FX</b><span>Blips on confirm / rest / done</span></div><div class="sw"></div></div>';
-  html += '<div class="toggle ' + (state.haptics ? "on" : "") + '" id="hapticsToggle"><div><b>Haptics</b><span>Buzz on tap / rest / done</span></div><div class="sw"></div></div>';
+  if (navigator.vibrate) {
+    html += '<div class="toggle ' + (state.haptics ? "on" : "") + '" id="hapticsToggle"><div><b>Haptics</b><span>Buzz on tap / rest / done</span></div><div class="sw"></div></div>';
+  } else {
+    html += '<div class="toggle" id="hapticsToggle" style="opacity:.55;pointer-events:none"><div><b>Haptics: unsupported on Safari</b><span>Visual + SFX only · vibrate API missing</span></div><div class="sw"></div></div>';
+  }
   html += '<div class="stack mt">';
   html += '<button class="btn gho" id="dumpLog">Export backup</button>';
   html += '<button class="btn gho" id="loadDump">Import backup</button>';
@@ -2778,6 +2794,7 @@ function render() {
   renderPetWidget();
   if (view === "lift" && restRemaining() > 0) ensureRestTick();
   else if (!(state.live && state.live.restUntil && restRemaining() > 0)) stopRestTick();
+  syncWakeLock();
 }
 
 function $(id) { return document.getElementById(id); }
@@ -3097,6 +3114,25 @@ function bind() {
       }
     });
   };
+  if ($("sharePFTRACK")) $("sharePFTRACK").onclick = function() {
+    const last = state.sessions[0];
+    if (!last) { toast("No session"); return; }
+    const block = formatPFTRACK(last);
+    if (navigator.share) {
+      navigator.share({ title: "PF//TRACK", text: block }).then(function() {
+        toast("Shared");
+      }).catch(function() {
+        copyText(block).then(function(ok) {
+          toast(ok ? "PFTRACK copied" : "Share cancelled");
+        });
+      });
+    } else {
+      copyText(block).then(function(ok) {
+        if (ok) toast("PFTRACK copied");
+        else toast("Share unsupported");
+      });
+    }
+  };
   if ($("applyPins")) $("applyPins").onclick = function() {
     const ta = $("uplinkPaste");
     const parsed = parsePFTRACK(ta && ta.value);
@@ -3267,52 +3303,64 @@ function startClock() {
   tickClock();
 }
 
+function makeNeonIcon(size) {
+  const c = document.createElement("canvas");
+  c.width = size; c.height = size;
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#04060a";
+  ctx.fillRect(0, 0, size, size);
+  const pad = Math.round(size * 0.155);
+  const box = size - pad * 2;
+  const rad = Math.round(size * 0.155);
+  ctx.fillStyle = "#b8ff2e";
+  if (ctx.roundRect) {
+    ctx.beginPath();
+    ctx.roundRect(pad, pad, box, box, rad);
+    ctx.fill();
+  } else {
+    ctx.fillRect(pad, pad, box, box);
+  }
+  ctx.fillStyle = "#0a1408";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = "bold " + Math.round(size * 0.29) + "px system-ui,sans-serif";
+  ctx.fillText("PF", size / 2, size * 0.49);
+  ctx.font = "bold " + Math.round(size * 0.1) + "px system-ui,sans-serif";
+  ctx.fillText("TRACK", size / 2, size * 0.68);
+  return c.toDataURL("image/png");
+}
+
 function setupPwaChrome() {
   try {
-    const c = document.createElement("canvas");
-    c.width = 180; c.height = 180;
-    const ctx = c.getContext("2d");
-    ctx.fillStyle = "#0a0e14";
-    ctx.fillRect(0, 0, 180, 180);
-    ctx.fillStyle = "#b8ff2e";
-    if (ctx.roundRect) {
-      ctx.beginPath();
-      ctx.roundRect(28, 28, 124, 124, 28);
-      ctx.fill();
-    } else {
-      ctx.fillRect(28, 28, 124, 124);
-    }
-    ctx.fillStyle = "#0a1408";
-    ctx.font = "bold 52px system-ui,sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("PF", 90, 88);
-    ctx.font = "bold 18px system-ui,sans-serif";
-    ctx.fillText("TRACK", 90, 122);
-    const iconUrl = c.toDataURL("image/png");
+    const icon180 = makeNeonIcon(180);
+    const icon192 = makeNeonIcon(192);
     let link = document.querySelector('link[rel="apple-touch-icon"]');
     if (!link) {
       link = document.createElement("link");
       link.rel = "apple-touch-icon";
       document.head.appendChild(link);
     }
-    link.href = iconUrl;
+    link.href = icon180;
     let icon = document.querySelector('link[rel="icon"]');
     if (!icon) {
       icon = document.createElement("link");
       icon.rel = "icon";
       document.head.appendChild(icon);
     }
-    icon.href = iconUrl;
+    icon.href = icon180;
+    const startUrl = (location.href || "./").split("#")[0] || "./";
     const manifest = {
       name: "PF//TRACK",
       short_name: "PF//TRACK",
       display: "standalone",
       orientation: "portrait",
-      background_color: "#0a0e14",
-      theme_color: "#0a0e14",
-      start_url: "./",
-      icons: [{src: iconUrl, sizes: "180x180", type: "image/png"}]
+      background_color: "#04060a",
+      theme_color: "#04060a",
+      start_url: startUrl,
+      icons: [
+        {src: icon180, sizes: "180x180", type: "image/png"},
+        {src: icon192, sizes: "192x192", type: "image/png"}
+      ]
     };
     const blob = new Blob([JSON.stringify(manifest)], {type: "application/json"});
     const murl = URL.createObjectURL(blob);
@@ -3326,6 +3374,140 @@ function setupPwaChrome() {
   } catch (e) {}
 }
 
+function isHttps() {
+  return location.protocol === "https:";
+}
+
+async function requestWakeLock() {
+  if (!isHttps()) return;
+  if (!navigator.wakeLock || !navigator.wakeLock.request) return;
+  if (document.visibilityState !== "visible") return;
+  if (!(view === "lift" && state && state.live)) return;
+  try {
+    if (wakeLockSentinel) {
+      try { await wakeLockSentinel.release(); } catch (e) {}
+      wakeLockSentinel = null;
+    }
+    wakeLockSentinel = await navigator.wakeLock.request("screen");
+    wakeLockSentinel.addEventListener("release", function() {
+      wakeLockSentinel = null;
+    });
+  } catch (e) {}
+}
+
+async function releaseWakeLock() {
+  try {
+    if (wakeLockSentinel) {
+      await wakeLockSentinel.release();
+      wakeLockSentinel = null;
+    }
+  } catch (e) {
+    wakeLockSentinel = null;
+  }
+}
+
+function syncWakeLock() {
+  if (view === "lift" && state && state.live && document.visibilityState === "visible") {
+    requestWakeLock();
+  } else {
+    releaseWakeLock();
+  }
+}
+
+function updateAppBadge() {
+  if (!isHttps()) return;
+  if (!navigator.setAppBadge && !navigator.clearAppBadge) return;
+  try {
+    const plan = todayPlan();
+    const liftDay = !!(plan && plan.key);
+    let logged = false;
+    if (liftDay) {
+      logged = sessionsThisWeek().some(function(s) { return s.key === plan.key; }) ||
+        state.sessions.some(function(s) { return s.date === todayISO() && s.key === plan.key; });
+    }
+    if (liftDay && !logged) {
+      if (navigator.setAppBadge) navigator.setAppBadge(1).catch(function(){});
+    } else if (navigator.clearAppBadge) {
+      navigator.clearAppBadge().catch(function(){});
+    }
+  } catch (e) {}
+}
+
+function askPersistOnce() {
+  if (persistAsked) return;
+  persistAsked = true;
+  if (!isHttps()) return;
+  try {
+    if (navigator.storage && navigator.storage.persist) {
+      navigator.storage.persist().catch(function(){});
+    }
+  } catch (e) {}
+}
+
+function registerOfflineSW() {
+  if (!isHttps()) return;
+  if (!("serviceWorker" in navigator)) return;
+  try {
+    const pageUrl = (location.href || "./").split("#")[0];
+    const swCode = [
+      "const PAGE = " + JSON.stringify(pageUrl) + ";",
+      "const CACHE = 'pftrack-v35';",
+      "self.addEventListener('install', function(e) {",
+      "  e.waitUntil(caches.open(CACHE).then(function(c) { return c.addAll([PAGE, './']).catch(function(){}); }).then(function(){ return self.skipWaiting(); }));",
+      "});",
+      "self.addEventListener('activate', function(e) { e.waitUntil(self.clients.claim()); });",
+      "self.addEventListener('fetch', function(e) {",
+      "  if (e.request.method !== 'GET') return;",
+      "  e.respondWith(caches.match(e.request).then(function(hit) {",
+      "    return hit || fetch(e.request).then(function(res) {",
+      "      try { var copy = res.clone(); caches.open(CACHE).then(function(c){ c.put(e.request, copy); }); } catch (err) {}",
+      "      return res;",
+      "    }).catch(function(){ return hit || Response.error(); });",
+      "  }));",
+      "});"
+    ].join("\n");
+    const blob = new Blob([swCode], {type: "text/javascript"});
+    const url = URL.createObjectURL(blob);
+    navigator.serviceWorker.register(url, {scope: "./"}).catch(function(){});
+  } catch (e) {}
+}
+
+function setupVisualViewportPad() {
+  if (!window.visualViewport) return;
+  const apply = function() {
+    const app = document.getElementById("app");
+    if (!app) return;
+    const need = (view === "link" || view === "fuel");
+    const vv = window.visualViewport;
+    const keyboardOpen = need && vv && (window.innerHeight - vv.height > 80);
+    if (keyboardOpen) {
+      const pad = Math.max(0, Math.round(window.innerHeight - vv.height - (vv.offsetTop || 0))) + 24;
+      app.style.paddingBottom = pad + "px";
+      vvPadActive = true;
+      try {
+        const focus = document.activeElement;
+        if (focus && (focus.tagName === "TEXTAREA" || focus.tagName === "INPUT")) {
+          focus.scrollIntoView({block: "center", behavior: "smooth"});
+        }
+      } catch (e) {}
+    } else if (vvPadActive) {
+      app.style.paddingBottom = "";
+      vvPadActive = false;
+    }
+  };
+  window.visualViewport.addEventListener("resize", apply);
+  window.visualViewport.addEventListener("scroll", apply);
+  window.addEventListener("focusin", apply);
+  window.addEventListener("focusout", function() { setTimeout(apply, 80); });
+}
+
+function unlockAudioOnce() {
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+  try { audio(); } catch (e) {}
+  askPersistOnce();
+}
+
 function onVisibility() {
   if (document.visibilityState === "visible") {
     startClock();
@@ -3337,15 +3519,20 @@ function onVisibility() {
       ensureRestTick();
       if (view === "lift") render();
     }
+    syncWakeLock();
   } else {
     if (clockHandle) { clearInterval(clockHandle); clockHandle = null; }
     stopRestTick();
+    releaseWakeLock();
   }
 }
 
 function bootSequence() {
   load();
   setupPwaChrome();
+  setupVisualViewportPad();
+  registerOfflineSW();
+  updateAppBadge();
   let skip = false;
   try { skip = sessionStorage.getItem("pftrack_booted") === "1"; } catch (e) {}
   if (skip) {
@@ -3353,6 +3540,7 @@ function bootSequence() {
     view = state.live ? "lift" : "home";
     render();
     startClock();
+    syncWakeLock();
     return;
   }
   view = "boot";
@@ -3364,9 +3552,11 @@ function bootSequence() {
     sfxDone();
     render();
     startClock();
+    syncWakeLock();
   }, 1600);
 }
 
+document.addEventListener("pointerdown", unlockAudioOnce, {once: true, passive: true});
 document.addEventListener("visibilitychange", onVisibility);
 bootSequence();
 
