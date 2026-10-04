@@ -938,6 +938,74 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
   border-top:1px solid rgba(94,200,216,.45);
 }
 
+
+/* v4.4 — diary, remaining macros, path, goal ring */
+.mleft{font-size:11px;font-weight:600;color:var(--dim);text-align:center;line-height:1.2;min-height:14px}
+.plateGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.plateBtn{
+  min-height:64px;padding:12px;text-align:left;
+  background:var(--panel2);border:1px solid var(--line2);border-radius:12px;
+  color:var(--text);font:600 14px/1.25 var(--font);cursor:pointer;
+}
+.plateBtn small{display:block;font-weight:500;color:var(--dim);font-size:12px;margin-top:4px}
+.plateBtn:active{border-color:var(--neon);background:var(--neon-dim)}
+.recentRow{display:flex;gap:8px;overflow-x:auto;padding:2px 0 4px;-webkit-overflow-scrolling:touch}
+.recentRow button{
+  flex:0 0 auto;min-height:48px;padding:10px 14px;border-radius:999px;
+  border:1px solid var(--line2);background:var(--panel);color:var(--text);
+  font:600 14px/1 var(--font);cursor:pointer;
+}
+.diaryItem{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:10px 0;border-bottom:1px solid var(--line);
+}
+.diaryItem:last-child{border-bottom:0}
+.diaryItem button{
+  min-height:44px;min-width:76px;border-radius:10px;
+  border:1px solid var(--line2);background:var(--panel2);color:var(--dim);
+  font:600 13px/1 var(--font);cursor:pointer;
+}
+.codeRow{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:10px}
+.codeRow input{text-transform:uppercase;letter-spacing:.04em}
+.codeRow .btn{width:auto;min-width:88px;padding:0 16px}
+.goalCard{
+  display:flex;align-items:center;gap:14px;
+  margin:12px 0 6px;padding:12px 14px;
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+}
+.goalDisc{
+  width:68px;height:68px;border-radius:50%;flex-shrink:0;
+  display:grid;place-items:center;
+  background:conic-gradient(var(--neon) calc(var(--gpct) * 1%), rgba(255,255,255,.08) 0);
+  position:relative;
+}
+.goalDisc::before{
+  content:"";position:absolute;inset:7px;border-radius:50%;background:var(--panel);border:1px solid var(--line);
+}
+.goalDisc b{position:relative;z-index:1;font-family:var(--mono);font-size:13px;font-weight:700}
+.goalCard .gt{font-size:16px;font-weight:700}
+.goalCard .n{font-size:13px;color:var(--dim);margin-top:2px}
+.path{display:flex;gap:4px;margin:10px 0 8px}
+.path .node{
+  flex:1;min-height:52px;border-radius:10px;border:1px solid var(--line);
+  background:var(--panel);color:var(--dim);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font:700 10px/1.15 var(--font);padding:4px 1px;gap:2px;
+}
+.path .node.on{border-color:var(--neon);color:var(--neon);background:var(--neon-dim)}
+.path .node.now{box-shadow:inset 0 0 0 1px var(--cyan);color:var(--text)}
+.weekPath{display:flex;gap:6px;margin-top:10px}
+.weekPath i{flex:1;height:12px;border-radius:6px;background:#0c1218;border:1px solid var(--line)}
+.weekPath i.on{background:var(--cyan);border-color:var(--cyan)}
+.weekPath i.part{background:var(--amber);border-color:var(--amber)}
+.quietCue{margin:8px 0 0;color:var(--dim);font-size:14px}
+.sumGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.sumGrid div{background:var(--panel2);border-radius:12px;padding:12px 10px}
+.sumGrid b{display:block;font-family:var(--mono);font-size:18px;color:var(--neon);font-weight:700}
+.sumGrid span{font-size:12px;color:var(--dim)}
+.remainLine{margin:2px 0 10px;font-size:15px;font-weight:600;color:var(--text)}
+.remainLine span{color:var(--dim);font-weight:500}
+
 </style>
 </head>
 <body>
@@ -957,7 +1025,7 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
 
 const STORAGE_KEY = "pftrack_v3";
 const LIVE_KEY = "pftrack_live";
-const APP_VERSION = "4.3";
+const APP_VERSION = "4.4";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -1361,6 +1429,7 @@ let undoSnapshot = null;
 let undoTimer = null;
 let modal = null;
 let walkMinutes = 20;
+let lastAward = null;
 let longPressTimer = null;
 let longPressFired = false;
 
@@ -1392,6 +1461,10 @@ function defaults() {
     sleepHours: null,
     healthConnected: false,
     healthWriteWeight: false,
+    quietReminder: false,
+    shield: {held: 0, covered: ""},
+    recentPlates: [],
+    plateSlot: "home",
     pet: {
       ember: 0,
       owned: ["scale_moss", "horn_neon"],
@@ -1444,6 +1517,7 @@ function ensureMacros() {
       if (m[k] == null || isNaN(Number(m[k]))) m[k] = base[k];
       else m[k] = Number(m[k]);
     });
+    if (typeof m.date !== "string" || !m.date) m.date = todayISO();
   }
   return state.macros;
 }
@@ -1472,7 +1546,14 @@ function activityStreak() {
   }
   for (let i = 0; i < 365; i++) {
     const iso = isoFromDate(cursor);
-    if (!days[iso]) break;
+    if (!days[iso]) {
+      if (state.shield && state.shield.covered === iso) {
+        streak++;
+        cursor.setDate(cursor.getDate() - 1);
+        continue;
+      }
+      break;
+    }
     streak++;
     cursor.setDate(cursor.getDate() - 1);
   }
@@ -1525,10 +1606,12 @@ function macroRingHtml(label, current, target, color) {
   const t = Math.max(1, Number(target) || 1);
   const c = Math.max(0, Number(current) || 0);
   const pct = Math.max(0, Math.min(100, Math.round((c / t) * 100)));
+  const left = Math.round(t - c);
+  const remain = left > 0 ? (left + " left") : (left === 0 ? "met" : (Math.abs(left) + " past"));
   return '<div class="macroRing">' +
     '<div class="mdisc" style="--mpct:' + pct + ';--mcolor:' + color + '">' +
     '<div class="mval">' + Math.round(c) + '<br><span style="opacity:.55;font-size:9px">/' + Math.round(t) + '</span></div>' +
-    '</div><div class="mlbl">' + label + "</div></div>";
+    '</div><div class="mlbl">' + label + '</div><div class="mleft">' + remain + "</div></div>";
 }
 
 function clearLiveStorage() {
@@ -1594,6 +1677,14 @@ function load() {
       else data.sleepHours = null;
       if (typeof data.healthConnected !== "boolean") data.healthConnected = false;
       if (typeof data.healthWriteWeight !== "boolean") data.healthWriteWeight = false;
+      if (typeof data.quietReminder !== "boolean") data.quietReminder = false;
+      if (!data.shield || typeof data.shield !== "object") data.shield = {held: 0, covered: ""};
+      else {
+        data.shield.held = data.shield.held ? 1 : 0;
+        data.shield.covered = typeof data.shield.covered === "string" ? data.shield.covered.slice(0, 10) : "";
+      }
+      if (!Array.isArray(data.recentPlates)) data.recentPlates = [];
+      if (data.plateSlot !== "work" && data.plateSlot !== "home" && data.plateSlot !== "after") data.plateSlot = "home";
       if (typeof data.haptics !== "boolean") data.haptics = true;
       if (typeof data.sound !== "boolean") data.sound = true;
       if (!Array.isArray(data.foodHistory)) data.foodHistory = [];
@@ -1618,6 +1709,8 @@ function load() {
   state = data;
   ensureMacros();
   data.macros = state.macros;
+  try { rollMacrosIfNewDay(); } catch (e) {}
+  try { reconcileShield(); } catch (e) {}
   data.live = null;
   state = data;
   const resumed = loadLive();
@@ -1721,10 +1814,12 @@ function ensureFoodFor(iso) {
   if (!Array.isArray(state.foodHistory)) state.foodHistory = [];
   let entry = state.foodHistory.find(function(f) { return f.date === iso; });
   if (!entry) {
-    entry = {date: iso, work: false, home: false, after: false, rice: false};
+    entry = {date: iso, work: false, home: false, after: false, rice: false, items: [], waterOz: 0};
     state.foodHistory.unshift(entry);
   }
   if (entry.rice == null) entry.rice = false;
+  if (!Array.isArray(entry.items)) entry.items = [];
+  if (entry.waterOz == null || isNaN(Number(entry.waterOz))) entry.waterOz = 0;
   state.foodHistory = state.foodHistory
     .sort(function(a, b) { return a.date < b.date ? 1 : -1; })
     .slice(0, 120);
@@ -2316,9 +2411,15 @@ function awardSessionEmbers() {
     pet.fullWeekAwarded = ws;
   }
   pet.ember += gained + bonus;
+  if (!state.shield || typeof state.shield !== "object") state.shield = {held: 0, covered: ""};
+  let shield = false;
+  if (!state.shield.held) {
+    state.shield.held = 1;
+    shield = true;
+  }
   maybeFlagCelebration();
   try { maybeEarnWeekCamo(); } catch (e) {}
-  return {gained: gained, bonus: bonus, total: pet.ember};
+  return {gained: gained, bonus: bonus, total: pet.ember, shield: shield};
 }
 
 function renderPetWidget() {
@@ -2966,10 +3067,12 @@ function finishWorkout(reason) {
   const doneSets = (session.work || []).reduce(function(a, w) {
     return a + (w.sets || []).filter(function(x) { return x.done && !x.skipped; }).length;
   }, 0);
-  let emberAward = {gained: 0, bonus: 0, total: ensurePet().ember};
+  let emberAward = {gained: 0, bonus: 0, total: ensurePet().ember, shield: false};
   if (doneSets > 0) {
     emberAward = awardSessionEmbers();
   }
+  lastAward = emberAward;
+  lastAward.xp = doneSets * 5 + 10;
   if (reason === "complete") sfxDone();
   else sfxWarn();
   buzz(60);
@@ -3019,9 +3122,11 @@ function ensureFood() {
   const t = todayISO();
   let entry = (state.foodHistory || []).find(function(f) { return f.date === t; });
   if (!entry) {
-    entry = {date: t, work: false, home: false, after: false, rice: false};
+    entry = {date: t, work: false, home: false, after: false, rice: false, items: [], waterOz: 0};
     state.foodHistory.unshift(entry);
   }
+  if (!Array.isArray(entry.items)) entry.items = [];
+  if (entry.waterOz == null || isNaN(Number(entry.waterOz))) entry.waterOz = 0;
   state.foodHistory = state.foodHistory
     .sort(function(a, b) { return a.date < b.date ? 1 : -1; })
     .slice(0, 120);
@@ -3095,6 +3200,407 @@ function lastPinsLine(prog) {
 }
 
 
+
+const PLATES = [
+  {id:"rh", code:"RH", name:"Rice & habichuelas", cal:640, protein:24, carbs:102, fat:14},
+  {id:"pollo", code:"PO", name:"Pollo plate", cal:560, protein:46, carbs:48, fat:16},
+  {id:"carne", code:"CA", name:"Carne plate", cal:680, protein:42, carbs:52, fat:28},
+  {id:"eggs", code:"EG", name:"Eggs & rice", cal:480, protein:28, carbs:46, fat:18},
+  {id:"wk", code:"WK", name:"Work meal", cal:720, protein:36, carbs:82, fat:24},
+  {id:"pro", code:"PR", name:"Extra protein", cal:180, protein:36, carbs:3, fat:3},
+  {id:"fruit", code:"FR", name:"Fruit", cal:95, protein:1, carbs:24, fat:0},
+  {id:"yog", code:"YO", name:"Yogurt", cal:150, protein:15, carbs:18, fat:2}
+];
+
+function plateById(id) {
+  return PLATES.find(function(p) { return p.id === id; }) || null;
+}
+
+function plateByQuery(raw) {
+  const q = String(raw || "").trim();
+  if (!q) return null;
+  const up = q.toUpperCase();
+  const byCode = PLATES.find(function(p) { return p.code === up; });
+  if (byCode) return byCode;
+  const low = q.toLowerCase();
+  return PLATES.find(function(p) { return p.name.toLowerCase() === low || p.name.toLowerCase().indexOf(low) === 0; }) || null;
+}
+
+function yesterdayISO() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return isoFromDate(d);
+}
+
+function rollMacrosIfNewDay() {
+  if (!state) return false;
+  const m = ensureMacros();
+  const t = todayISO();
+  if (!m.date) { m.date = t; return false; }
+  if (m.date === t) return false;
+  const entry = ensureFoodFor(m.date);
+  entry.dayMacros = {cal: m.cal, protein: m.protein, carbs: m.carbs, fat: m.fat};
+  m.cal = 0;
+  m.protein = 0;
+  m.carbs = 0;
+  m.fat = 0;
+  m.date = t;
+  persist();
+  return true;
+}
+
+function reconcileShield() {
+  if (!state) return;
+  if (!state.shield || typeof state.shield !== "object") state.shield = {held: 0, covered: ""};
+  const iso = yesterdayISO();
+  if (sessionsForISO(iso).length || walkForDate(iso)) return;
+  if (state.shield.covered === iso) return;
+  if (!state.shield.held) return;
+  state.shield.held = 0;
+  state.shield.covered = iso;
+  try { persist(); } catch (e) {}
+}
+
+function macroRemainSentence() {
+  const m = ensureMacros();
+  const bits = [];
+  const pLeft = Math.round(m.proteinTarget - m.protein);
+  const cLeft = Math.round(m.calTarget - m.cal);
+  bits.push(pLeft > 0 ? (pLeft + "g protein left") : "Protein met");
+  bits.push(cLeft > 0 ? (cLeft + " cal left") : "Calories met");
+  return bits.join(" · ");
+}
+
+function proteinLeftLabel() {
+  const m = ensureMacros();
+  const left = Math.round(m.proteinTarget - m.protein);
+  if (left > 0) return left + "g protein left";
+  return "Protein met";
+}
+
+function todayGoal() {
+  const plan = todayPlan();
+  if (plan && plan.key) {
+    const logged = sessionsForISO(todayISO()).some(function(s) { return s.key === plan.key; });
+    if (logged) return {pct: 100, title: plan.short, note: "Logged", board: ""};
+    if (state.live && state.live.key === plan.key) {
+      const prog = PROGRAMS[plan.key];
+      const total = prog.items.length * 2;
+      let done = 0;
+      (state.live.sets || []).forEach(function(sets) {
+        (sets || []).forEach(function(s) { if (s.done && !s.skipped) done++; });
+      });
+      const pct = Math.max(4, Math.min(96, Math.round(done / Math.max(1, total) * 100)));
+      return {pct: pct, title: plan.short, note: "In session", board: plan.short + " is on the board."};
+    }
+    return {pct: 0, title: plan.short, note: "Open", board: plan.short + " is on the board."};
+  }
+  if (plan && isWorkDay(plan.d)) {
+    const w = walkForDate(todayISO());
+    const mins = w ? Number(w.minutes) || 0 : 0;
+    const pct = Math.max(0, Math.min(100, Math.round(mins / 20 * 100)));
+    return {pct: pct, title: "Walk", note: mins ? (mins + " / 20 min") : "Open", board: "Walk is on the board."};
+  }
+  const food = foodForISO(todayISO());
+  const ate = !!(food && (food.home || food.work));
+  return {pct: ate ? 100 : 0, title: plan ? plan.short : "Rest", note: ate ? "Plate logged" : "Gym off", board: "Rest day. Plate when you eat."};
+}
+
+function goalCardHtml() {
+  const g = todayGoal();
+  return '<div class="goalCard"><div class="goalDisc" style="--gpct:' + g.pct + '"><b>' + g.pct + '</b></div>' +
+    '<div><div class="lbl">Today</div><div class="gt">' + esc(g.title) + '</div><div class="n">' + esc(g.note) + "</div></div></div>";
+}
+
+function quietBoardHtml() {
+  if (!state.quietReminder) return "";
+  const g = todayGoal();
+  if (!g.board || g.pct >= 100) return "";
+  return '<p class="quietCue">' + esc(g.board) + "</p>";
+}
+
+function shieldNoteHtml() {
+  if (!state.shield || state.shield.covered !== yesterdayISO()) return "";
+  return '<p class="quietCue">Yesterday stayed covered.</p>';
+}
+
+function addPlate(plate, iso, opts) {
+  opts = opts || {};
+  if (!plate) return false;
+  iso = iso || todayISO();
+  if (isFutureISO(iso)) { toast("Future · plan only"); return false; }
+  rollMacrosIfNewDay();
+  const entry = ensureFoodFor(iso);
+  entry.items.push({
+    id: plate.id,
+    name: plate.name,
+    cal: plate.cal,
+    protein: plate.protein,
+    carbs: plate.carbs,
+    fat: plate.fat
+  });
+  if (!entry.dayMacros) entry.dayMacros = {cal: 0, protein: 0, carbs: 0, fat: 0};
+  entry.dayMacros.cal += plate.cal;
+  entry.dayMacros.protein += plate.protein;
+  entry.dayMacros.carbs += plate.carbs;
+  entry.dayMacros.fat += plate.fat;
+  if (iso === todayISO()) {
+    const m = ensureMacros();
+    m.cal += plate.cal;
+    m.protein += plate.protein;
+    m.carbs += plate.carbs;
+    m.fat += plate.fat;
+    entry.dayMacros = {cal: m.cal, protein: m.protein, carbs: m.carbs, fat: m.fat};
+  }
+  const slot = (state.plateSlot === "work" || state.plateSlot === "after") ? state.plateSlot : "home";
+  entry[slot] = true;
+  state.recentPlates = [plate.id].concat((state.recentPlates || []).filter(function(id) { return id !== plate.id; })).slice(0, 6);
+  if (!opts.silent) {
+    sfxConfirm();
+    toast(plate.name + " · logged");
+  }
+  if (!opts.deferPersist) persist();
+  return true;
+}
+
+function removePlateAt(iso, idx) {
+  if (isFutureISO(iso)) return;
+  const entry = ensureFoodFor(iso);
+  if (!entry.items || !entry.items[idx]) return;
+  const it = entry.items[idx];
+  entry.items.splice(idx, 1);
+  if (iso === todayISO()) {
+    const m = ensureMacros();
+    m.cal = Math.max(0, m.cal - (Number(it.cal) || 0));
+    m.protein = Math.max(0, m.protein - (Number(it.protein) || 0));
+    m.carbs = Math.max(0, m.carbs - (Number(it.carbs) || 0));
+    m.fat = Math.max(0, m.fat - (Number(it.fat) || 0));
+    entry.dayMacros = {cal: m.cal, protein: m.protein, carbs: m.carbs, fat: m.fat};
+  } else if (entry.dayMacros) {
+    entry.dayMacros.cal = Math.max(0, (entry.dayMacros.cal || 0) - (Number(it.cal) || 0));
+    entry.dayMacros.protein = Math.max(0, (entry.dayMacros.protein || 0) - (Number(it.protein) || 0));
+    entry.dayMacros.carbs = Math.max(0, (entry.dayMacros.carbs || 0) - (Number(it.carbs) || 0));
+    entry.dayMacros.fat = Math.max(0, (entry.dayMacros.fat || 0) - (Number(it.fat) || 0));
+  }
+  sfxTap();
+  persist();
+  toast("Removed");
+}
+
+function copyYesterdayPlates() {
+  const prev = foodForISO(yesterdayISO());
+  if (!prev || !prev.items || !prev.items.length) { toast("Nothing logged yesterday"); return; }
+  let n = 0;
+  prev.items.forEach(function(it) {
+    const plate = {id: it.id || "custom", name: it.name, cal: Number(it.cal) || 0, protein: Number(it.protein) || 0, carbs: Number(it.carbs) || 0, fat: Number(it.fat) || 0};
+    if (addPlate(plate, todayISO(), {silent: true, deferPersist: true})) n++;
+  });
+  persist();
+  sfxConfirm();
+  toast(n ? ("Copied " + n + " from yesterday") : "Nothing to copy");
+}
+
+function bumpWater(iso, delta) {
+  if (isFutureISO(iso)) { toast("Future · plan only"); return; }
+  const entry = ensureFoodFor(iso);
+  entry.waterOz = Math.max(0, Math.min(200, (Number(entry.waterOz) || 0) + delta));
+  sfxTap();
+  persist();
+}
+
+function dayMacrosFor(iso) {
+  if (iso === todayISO()) {
+    const m = ensureMacros();
+    return {cal: m.cal, protein: m.protein, carbs: m.carbs, fat: m.fat};
+  }
+  const f = foodForISO(iso);
+  if (f && f.dayMacros) return f.dayMacros;
+  return {cal: 0, protein: 0, carbs: 0, fat: 0};
+}
+
+function weekNutritionHtml() {
+  const m = ensureMacros();
+  let calSum = 0, proHits = 0, water = 0, locks = 0, withFood = 0;
+  for (let i = 0; i < 7; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const iso = isoFromDate(d);
+    const dm = dayMacrosFor(iso);
+    const f = (iso === todayISO()) ? ensureFood() : foodForISO(iso);
+    calSum += Number(dm.cal) || 0;
+    if ((Number(dm.protein) || 0) >= m.proteinTarget) proHits++;
+    if ((Number(dm.cal) || 0) > 0 || (f && f.items && f.items.length)) withFood++;
+    if (f) {
+      water += Number(f.waterOz) || 0;
+      locks += (f.work ? 1 : 0) + (f.home ? 1 : 0) + (f.after ? 1 : 0);
+    }
+  }
+  const avg = Math.round(calSum / 7);
+  let html = '<div class="card mt"><div class="lbl">This week</div>';
+  html += '<div class="sumGrid">';
+  html += '<div><b>' + avg + '</b><span>avg cal / day</span></div>';
+  html += '<div><b>' + proHits + '<small style="font-size:12px;color:var(--dim)">/7</small></b><span>protein days</span></div>';
+  html += '<div><b>' + water + '</b><span>oz water</span></div>';
+  html += '<div><b>' + locks + '</b><span>meal locks</span></div>';
+  html += '</div>';
+  html += '<p class="sub" style="margin:8px 0 0">' + withFood + " days with a diary line. Local only.</p></div>";
+  return html;
+}
+
+function diaryBlockHtml(iso) {
+  const future = isFutureISO(iso);
+  const entry = future ? (foodForISO(iso) || {items: [], waterOz: 0}) : ensureFoodFor(iso);
+  const items = entry.items || [];
+  let html = '<div class="card mt"><div class="lbl">Diary</div>';
+  if (!items.length) html += '<p class="sub" style="margin:8px 0 0">Nothing added.</p>';
+  items.forEach(function(it, idx) {
+    html += '<div class="diaryItem"><div><b>' + esc(it.name) + '</b><div class="n">' +
+      Math.round(it.cal || 0) + " cal · P " + Math.round(it.protein || 0) + "</div></div>";
+    if (!future) html += '<button type="button" data-rm-plate="' + idx + '" data-plate-iso="' + iso + '">Remove</button>';
+    html += "</div>";
+  });
+  html += "</div>";
+  return html;
+}
+
+function waterBlockHtml(iso) {
+  const future = isFutureISO(iso);
+  const entry = future ? (foodForISO(iso) || {}) : ensureFoodFor(iso);
+  const oz = Number(entry.waterOz) || 0;
+  let html = '<div class="card mt"><div class="lbl">Water</div>';
+  html += '<div class="stat" style="font-size:28px;margin:6px 0">' + oz + "<small> oz</small></div>";
+  if (!future) {
+    html += '<div class="step">';
+    html += '<button class="mini" type="button" data-water-step="-8" data-water-iso="' + iso + '">−</button>';
+    html += "<b>" + oz + "</b>";
+    html += '<button class="mini" type="button" data-water-step="8" data-water-iso="' + iso + '">+</button>';
+    html += "</div>";
+    html += '<p class="sub" style="margin:8px 0 0">8 oz steps. Log what you drank.</p>';
+  } else {
+    html += '<p class="sub" style="margin:0">Unlocks on this day.</p>';
+  }
+  html += "</div>";
+  return html;
+}
+
+function quickAddHtml(iso) {
+  if (isFutureISO(iso)) return "";
+  const slot = (state.plateSlot === "work" || state.plateSlot === "after") ? state.plateSlot : "home";
+  let html = '<div class="card mt"><div class="lbl">Quick add</div>';
+  html += '<p class="sub" style="margin-top:0">Tap a plate or type its code. Marks the lock you pick. Not a food store.</p>';
+  html += '<div class="seg" id="plateSlotSeg">';
+  html += '<button type="button" data-plate-slot="work" class="' + (slot === "work" ? "on" : "") + '">Work</button>';
+  html += '<button type="button" data-plate-slot="home" class="' + (slot === "home" ? "on" : "") + '">Home</button>';
+  html += '<button type="button" data-plate-slot="after" class="' + (slot === "after" ? "on" : "") + '">After</button>';
+  html += "</div>";
+  const recent = (state.recentPlates || []).map(plateById).filter(Boolean);
+  if (recent.length) {
+    html += '<div class="lbl" style="margin-top:12px">Recent</div><div class="recentRow">';
+    recent.forEach(function(p) {
+      html += '<button type="button" data-plate="' + p.id + '" data-plate-iso="' + iso + '">' + esc(p.name) + "</button>";
+    });
+    html += "</div>";
+  }
+  html += '<div class="codeRow"><input type="text" id="plateCode" data-plate-iso="' + iso + '" placeholder="Code · RH PO CA EG" maxlength="24" autocomplete="off"/>';
+  html += '<button class="btn pri" type="button" id="plateCodeAdd" data-plate-iso="' + iso + '">Add</button></div>';
+  html += '<div class="plateGrid">';
+  PLATES.forEach(function(p) {
+    html += '<button type="button" class="plateBtn" data-plate="' + p.id + '" data-plate-iso="' + iso + '">' +
+      esc(p.name) + "<small>" + p.code + " · " + p.cal + " cal · P" + p.protein + "</small></button>";
+  });
+  html += "</div>";
+  if (iso === todayISO()) {
+    html += '<div class="stack" style="margin-top:10px"><button class="btn gho" type="button" id="copyYday">Copy yesterday</button></div>';
+  }
+  html += "</div>";
+  return html;
+}
+
+function weekPathHtml() {
+  const today = new Date().getDay();
+  let html = '<div class="path">';
+  WEEK_ORDER.forEach(function(di) {
+    const w = WEEK.find(function(x) { return x.d === di; });
+    const done = w.key && didKeyThisWeek(w.key);
+    const walked = isWorkDay(w.d) && walkThisWeekForDay(w.d);
+    let cls = "node";
+    if (done || walked) cls += " on";
+    if (w.d === today) cls += " now";
+    const mark = done ? "✓" : (walked ? "W" : (w.key ? "·" : "–"));
+    html += '<div class="' + cls + '"><span>' + esc(w.short) + "</span><small>" + mark + "</small></div>";
+  });
+  html += "</div>";
+  html += '<p class="sub" style="margin-top:0">Next · ' + esc(nextLiftLabel()) + "</p>";
+  return html;
+}
+
+function nextLiftLabel() {
+  const seq = [
+    {d: 6, key: "upper-a", short: "Sat"},
+    {d: 0, key: "lower-a", short: "Sun"},
+    {d: 2, key: "upper-b", short: "Tue"},
+    {d: 3, key: "lower-b", short: "Wed"}
+  ];
+  const pos = {6: 0, 0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6};
+  const today = new Date().getDay();
+  let best = null;
+  seq.forEach(function(s) {
+    if (didKeyThisWeek(s.key)) return;
+    if (pos[s.d] < pos[today]) return;
+    if (!best) best = s;
+  });
+  if (best) return best.short + " " + PROGRAMS[best.key].name;
+  if (liftKeysClearedThisWeek() >= 4) return "Week clear · Sat Upper A";
+  return "Sat Upper A";
+}
+
+function clearsForWeekOffset(n) {
+  const start = weekStart();
+  start.setDate(start.getDate() - n * 7);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 7);
+  const keys = {};
+  (state.sessions || []).forEach(function(s) {
+    const dt = parseLocalDate(s.date);
+    if (dt >= start && dt < end && s.key && PROGRAMS[s.key]) keys[s.key] = 1;
+  });
+  return Object.keys(keys).length;
+}
+
+function recentWeekPathHtml() {
+  let html = '<div class="card mt"><div class="lbl">Week path</div><div class="weekPath">';
+  for (let n = 7; n >= 0; n--) {
+    const c = clearsForWeekOffset(n);
+    const cls = c >= 4 ? "on" : (c > 0 ? "part" : "");
+    html += '<i class="' + cls + '"></i>';
+  }
+  html += '</div><p class="sub" style="margin:8px 0 0">Eight Sat-weeks. Filled means 4/4. No rank.</p></div>';
+  return html;
+}
+
+function shopPathHtml() {
+  const n = liftKeysClearedThisWeek();
+  let html = '<div class="card mt"><div class="lbl">Afterglow path</div><div class="weekPath">';
+  for (let i = 0; i < 4; i++) html += '<i class="' + (i < n ? "on" : "") + '"></i>';
+  html += '</div><p class="sub" style="margin:8px 0 0">' + n + "/4 this week · cosmetic only. No purchase.</p></div>";
+  return html;
+}
+
+function lastSetRep(id, setIdx) {
+  for (let i = 0; i < (state.sessions || []).length; i++) {
+    const s = state.sessions[i];
+    if (!s.work) continue;
+    for (let j = 0; j < s.work.length; j++) {
+      if (s.work[j].id !== id) continue;
+      const sets = (s.work[j].sets || []).filter(function(x) { return x.done && !x.skipped; });
+      if (sets[setIdx] && sets[setIdx].r) return sets[setIdx].r;
+      return null;
+    }
+  }
+  return null;
+}
+
+
 function screenRecovery() {
   const plan = todayPlan();
   let html = statusbar();
@@ -3112,6 +3618,7 @@ function screenRecovery() {
   html += '<div class="toggle ' + (isFeetCooked() ? "on" : "") + '" id="feetLockToggle"><div><b>Feet cooked</b><span>Pre-skips Lower B calf · no guilt' + (isFeetCooked() ? ' <span class="chip">clears next Sat</span>' : "") + '</span></div><div class="sw"></div></div>';
   html += '<div class="toggle ' + (isHamWeird() ? "on" : "") + '" id="hamWeirdToggle"><div><b>Ham weird</b><span>Pre-skips Lower B seated curl' + (isHamWeird() ? ' <span class="chip">clears next Sat</span>' : "") + '</span></div><div class="sw"></div></div>';
   html += "</div>";
+  if (plan && isWorkDay(plan.d)) html += waterBlockHtml(todayISO());
   html += '<div class="stack mt"><button class="btn pri" data-go="cal">Open calendar</button></div>';
   html += nav("recovery");
   return html;
@@ -3151,7 +3658,7 @@ function screenShop() {
     html += "</div></div>";
   });
   html += "</div>";
-  html += '<div class="card mt cue"><b>Earn stub</b><br>Clear 4/4 lift sectors this week → Afterglow milestone toast. No gambling.</div>';
+  html += shopPathHtml();
   html += nav("shop");
   return html;
 }
@@ -3182,6 +3689,7 @@ function screenMore() {
   html += '<div class="stack" style="margin-top:8px"><input type="number" id="bfInput" placeholder="Body fat %" min="3" max="60" step="0.1" value="' + (bfNow !== "" ? bfNow : "") + '"/>';
   html += '<button class="btn pri" id="bfSave">Save body fat</button></div></div>';
   html += '<div class="card mt">';
+  html += '<div class="toggle ' + (state.quietReminder ? "on" : "") + '" id="quietReminderToggle"><div><b>Quiet board note</b><span>One calm line on Command if today is still open. No alerts.</span></div><div class="sw"></div></div>';
   html += '<div class="toggle ' + (c.reactive ? "on" : "") + '" id="reactiveToggle"><div><b>Reactive interface</b><span>Glow during lift · master OFF keeps day/night</span></div><div class="sw"></div></div>';
   html += '<div class="toggle ' + (state.sound ? "on" : "") + '" id="soundToggle"><div><b>Sound FX</b><span>Blips on confirm / rest / done</span></div><div class="sw"></div></div>';
   if (navigator.vibrate) {
@@ -3338,7 +3846,8 @@ function screenHome() {
   html += '<div class="hubMetrics">';
   html += '<div class="hubMetric"><div class="lbl">Weight</div><div class="val">' + esc(wtLabel) + (wtLabel !== "—" ? "<small>lb</small>" : "") + "</div></div>";
   html += '<div class="hubMetric"><div class="lbl">Body fat</div><div class="val">' + (bf != null ? (bf + "<small>%</small>") : "—") + "</div></div>";
-  html += '<div class="hubMetric"><div class="lbl">Streak</div><div class="val">' + streak + "<small>d</small></div></div>";
+  const shieldBit = (state.shield && state.shield.held) ? "d · shield" : ((state.shield && state.shield.covered === yesterdayISO()) ? "d · covered" : "d");
+  html += '<div class="hubMetric"><div class="lbl">Streak</div><div class="val">' + streak + "<small>" + shieldBit + "</small></div></div>";
   html += "</div>";
 
   // Sticky Resume — first Home action whenever a live session exists
@@ -3346,6 +3855,9 @@ function screenHome() {
     html += '<div class="stack"><button class="btn ok big" data-go="lift">Resume live session</button></div>';
   }
 
+  html += goalCardHtml();
+  html += quietBoardHtml();
+  html += shieldNoteHtml();
   html += crowdTagHtml();
   if (prog && plan.key && (plan.key === "lower-a" || plan.key === "lower-b")) {
     html += '<p class="sub" style="margin-top:8px">' + esc(lowerDayOneLiner(plan.key)) + "</p>";
@@ -3374,7 +3886,7 @@ function screenHome() {
   // Vision hub tiles — Training + Nutrition big; Recovery / Progress / Shop mini
   html += '<div class="hubTiles">';
   html += '<button type="button" class="hubTile" data-go="week"><span class="tico" aria-hidden="true">▦</span><span class="tlabel">Training</span><span class="tnote">Week · Sat→Fri</span></button>';
-  html += '<button type="button" class="hubTile nut" data-go="fuel"><span class="tico" aria-hidden="true">⇪</span><span class="tlabel">Nutrition</span><span class="tnote">Fuel · macros</span></button>';
+  html += '<button type="button" class="hubTile nut" data-go="fuel"><span class="tico" aria-hidden="true">⇪</span><span class="tlabel">Nutrition</span><span class="tnote">' + esc(proteinLeftLabel()) + "</span></button>";
   html += "</div>";
   html += '<div class="hubMini">';
   html += '<button type="button" class="hubTile" data-go="recovery"><span class="tico" aria-hidden="true">❋</span><span class="tlabel">Recovery</span></button>';
@@ -3402,6 +3914,10 @@ function screenHome() {
     const walk = walkForDate(todayISO());
     html += '<div class="card mt"><div class="lbl">Work walk</div>';
     html += '<div class="stat" style="font-size:28px;margin:6px 0">' + walkMinutes + "<small> min</small></div>";
+    var walkLoggedMin = walk ? (Number(walk.minutes) || 0) : 0;
+    var walkPct = Math.max(0, Math.min(100, Math.round(walkLoggedMin / 20 * 100)));
+    html += '<div class="bar"><i style="width:' + walkPct + '%"></i></div>';
+    html += '<div class="lbl">' + walkLoggedMin + " / 20 min · enough is enough</div>";
     html += '<div class="step"><button class="mini" id="walkMinus">−</button><b>' + walkMinutes + '</b><button class="mini" id="walkPlus">+</button></div>';
     html += '<div class="toggle ' + ((walk && walk.feetCooked) || isFeetCooked() ? "on" : "") + '" id="feetCookedToggle" style="margin-top:12px"><div><b>Feet cooked</b><span>Locks Lower B calf this week</span></div><div class="sw"></div></div>';
     html += '<div class="stack"><button class="btn pri" id="walkLog">' + (walk ? "Update walk · " + walk.minutes + "m" : "Log walk") + "</button></div>";
@@ -3437,6 +3953,7 @@ function screenWeek() {
   let html = statusbar();
   html += '<div class="lbl">Weekly plan</div><h1>Week in, week out</h1>';
   html += '<p class="sub">Tap a day for the manifest. Same rotation forever. Saturday starts it.</p>';
+  html += weekPathHtml();
   html += WEEK_ORDER.map(function(di) {
     const w = WEEK[di];
     const name = w.key ? PROGRAMS[w.key].name : (isWorkDay(w.d) ? "Work walking" : "Gym off");
@@ -3533,6 +4050,8 @@ function screenLift() {
   html += '<div class="bar"><i style="width:' + pct + '%"></i></div>';
   html += '<div class="lbl" style="margin-bottom:14px">Move ' + (live.i + 1) + "/" + prog.items.length + " · Set " + (live.set + 1) + "/2 · " + pct + "%</div>";
   html += "<h1>" + esc(ex.name) + "</h1>";
+  var thenLine = live.set === 0 ? "Then · set 2/2" : (live.i < prog.items.length - 1 ? ("Then · " + prog.items[live.i + 1].name) : "Then · session end");
+  html += '<p class="sub" style="margin-top:0">' + esc(thenLine) + "</p>";
   let liftCue = ex.cue;
   if (live.key === "lower-b" && ex.id === "calf" && isFeetCooked()) liftCue = "Pre-skip · feet cooked. No guilt.";
   if (live.key === "lower-b" && ex.id === "curl" && isHamWeird()) liftCue = "Pre-skip · ham weird. No guilt.";
@@ -3542,6 +4061,8 @@ function screenLift() {
   html += '</div></div><div><div class="lbl">Reps</div><div class="step">';
   html += '<button class="mini" data-act="r-" type="button">−</button><b>' + s.r + '</b><button class="mini" data-act="r+" type="button">+</button>';
   html += "</div></div></div>";
+  var prevRep = lastSetRep(ex.id, live.set);
+  if (prevRep) html += '<div class="stack"><button class="btn gho" id="matchLast" type="button">Match last · ' + prevRep + " reps</button></div>";
   html += '<div class="dots">' + prog.items.map(function(_, i) {
     return '<div class="dot ' + (i <= live.i ? "on" : "") + '" style="' + (i > live.i ? "opacity:.35" : "") + '"></div>';
   }).join("") + "</div>";
@@ -3562,6 +4083,17 @@ function screenDone() {
   html += '<div class="check">' + (reason === "complete" ? "✓" : "!") + "</div>";
   html += '<div class="lbl center">' + (reason === "complete" ? "Session complete" : reason === "cramp" ? "Cramp abort" : reason === "partial" ? "Partial session" : "Session saved") + "</div>";
   html += "<h1 class=\"center\">" + (reason === "complete" ? "Nice work." : reason === "cramp" ? "Leave. Heal." : "Logged.") + "</h1>";
+  if (lastAward && last) {
+    html += '<div class="card"><div class="lbl">This session</div>';
+    html += "<b>+" + (lastAward.xp || 0) + " XP</b>";
+    if (lastAward.gained) {
+      html += '<div class="n">+' + lastAward.gained + " embers" + (lastAward.bonus ? (" · +" + lastAward.bonus + " week") : "") + (lastAward.shield ? " · shield ready" : "") + "</div>";
+    }
+    if (state.pet && state.pet.celebrateUntil && Date.now() < state.pet.celebrateUntil) {
+      html += '<div class="n">Level ' + level() + "</div>";
+    }
+    html += "</div>";
+  }
   if (last) {
     html += '<div class="card"><div class="row" style="border:0;padding:0"><div><div class="lbl">Session</div><b>' + esc(last.name) +
       '</b><div class="n">reason · ' + esc(last.reason || reason) + '</div></div><div class="r"><div class="lbl">Time</div><b>' + last.minutes + " min</b></div></div></div>";
@@ -3590,6 +4122,7 @@ function screenFuel() {
   html += '<div class="lbl">Nutrition</div><h1>Fuel window</h1>';
   html += '<p class="sub">2pm–8pm. Protein ' + esc(proteinRange()) + " g (from LBM). Macro rings + three locks.</p>";
 
+  html += '<p class="remainLine">' + esc(macroRemainSentence()) + "</p>";
   html += '<div class="macroRings">';
   html += macroRingHtml("CAL", m.cal, m.calTarget, "var(--amber)");
   html += macroRingHtml("PRO", m.protein, m.proteinTarget, "var(--neon)");
@@ -3597,7 +4130,11 @@ function screenFuel() {
   html += macroRingHtml("FAT", m.fat, m.fatTarget, "#ff4ec8");
   html += "</div>";
 
-  html += '<div class="card"><div class="lbl">Manual targets &amp; today</div><div class="macroTargets">';
+  html += quickAddHtml(todayISO());
+  html += diaryBlockHtml(todayISO());
+  html += waterBlockHtml(todayISO());
+  html += weekNutritionHtml();
+  html += '<div class="card mt"><details class="bodyFold"><summary>Adjust targets &amp; today\'s numbers</summary><div class="macroTargets">';
   [
     {k: "cal", tk: "calTarget", label: "Calories", step: 50},
     {k: "protein", tk: "proteinTarget", label: "Protein", step: 5},
@@ -3613,7 +4150,7 @@ function screenFuel() {
     html += '<button class="mini" data-macro="' + row.tk + '" data-dir="1" data-step="' + row.step + '">+</button></div>';
     html += "</div></div>";
   });
-  html += '</div><p class="sub" style="margin:8px 0 0">Left = logged today · Right = target. No food DB yet.</p></div>';
+  html += '</div><p class="sub" style="margin:8px 0 0">Left = logged today · Right = target. Plates add to the left.</p></details></div>';
 
   html += '<div class="card mt"><div class="lbl">Window · 2pm–8pm</div>';
   html += '<div class="fuelBar"><i style="width:' + win.pct + '%"></i></div>';
@@ -3700,6 +4237,7 @@ function screenLog() {
   html += '</div><div class="bar"><i style="width:' + (xpInto() / 40 * 100) + '%"></i></div>';
   html += '<div class="lbl" style="margin-top:12px">Last night sleep (h)</div>';
   html += '<div class="step"><button class="mini" id="sleepMinus">−</button><b id="sleepVal">' + (state.sleepHours != null ? state.sleepHours : "—") + '</b><button class="mini" id="sleepPlus">+</button></div></div>';
+  html += recentWeekPathHtml();
   html += '<div class="card mt"><h2>Recent Sessions</h2>';
   if (!state.sessions.length) {
     html += '<p class="sub" style="margin:0">No sessions yet. Deploy something.</p>';
@@ -3874,6 +4412,10 @@ function screenCalDay() {
   }
   html += "</div>";
 
+  html += quickAddHtml(iso);
+  html += diaryBlockHtml(iso);
+  html += waterBlockHtml(iso);
+
   // B. Food
   html += '<div class="card mt"><h2>Food locks</h2>';
   [
@@ -3930,6 +4472,7 @@ function screenCalDay() {
 function render() {
   const app = document.getElementById("app");
   if (!app) return;
+  try { rollMacrosIfNewDay(); } catch (e) {}
   applyEnvironment();
   let html = "";
   if (view === "boot") html = screenBoot();
@@ -4563,6 +5106,10 @@ function bind() {
       if (key.indexOf("Target") >= 0) next = Math.max(1, next);
       else next = Math.max(0, next);
       m[key] = Math.round(next * 10) / 10;
+      if (key.indexOf("Target") < 0) {
+        const entry = ensureFood();
+        entry.dayMacros = {cal: m.cal, protein: m.protein, carbs: m.carbs, fat: m.fat};
+      }
       sfxTap();
       persist();
       render();
@@ -4602,6 +5149,74 @@ function bind() {
       render();
     };
   });
+  document.querySelectorAll("[data-plate]").forEach(function(btn) {
+    btn.onclick = function() {
+      const plate = plateById(btn.getAttribute("data-plate"));
+      const iso = btn.getAttribute("data-plate-iso") || todayISO();
+      if (!plate) return;
+      addPlate(plate, iso);
+      render();
+    };
+  });
+  document.querySelectorAll("[data-plate-slot]").forEach(function(btn) {
+    btn.onclick = function() {
+      const slot = btn.getAttribute("data-plate-slot");
+      if (slot !== "work" && slot !== "home" && slot !== "after") return;
+      state.plateSlot = slot;
+      sfxTap();
+      persist();
+      render();
+    };
+  });
+  document.querySelectorAll("[data-rm-plate]").forEach(function(btn) {
+    btn.onclick = function() {
+      const iso = btn.getAttribute("data-plate-iso") || todayISO();
+      removePlateAt(iso, parseInt(btn.getAttribute("data-rm-plate"), 10));
+      render();
+    };
+  });
+  document.querySelectorAll("[data-water-step]").forEach(function(btn) {
+    btn.onclick = function() {
+      const iso = btn.getAttribute("data-water-iso") || todayISO();
+      bumpWater(iso, parseInt(btn.getAttribute("data-water-step"), 10) || 0);
+      render();
+    };
+  });
+  if ($("plateCodeAdd")) $("plateCodeAdd").onclick = function() {
+    const input = $("plateCode");
+    const iso = $("plateCodeAdd").getAttribute("data-plate-iso") || todayISO();
+    const plate = plateByQuery(input && input.value);
+    if (!plate) { toast("Try RH, PO, CA, EG, WK, PR, FR, YO"); return; }
+    addPlate(plate, iso);
+    render();
+  };
+  if ($("plateCode")) $("plateCode").addEventListener("keydown", function(e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if ($("plateCodeAdd")) $("plateCodeAdd").click();
+    }
+  });
+  if ($("copyYday")) $("copyYday").onclick = function() {
+    copyYesterdayPlates();
+    render();
+  };
+  if ($("matchLast")) $("matchLast").onclick = function() {
+    if (!state.live) return;
+    const live = state.live;
+    const ex = PROGRAMS[live.key].items[live.i];
+    const prev = lastSetRep(ex.id, live.set);
+    if (!prev) return;
+    live.sets[live.i][live.set].r = prev;
+    sfxTap();
+    saveLive();
+    render();
+  };
+  if ($("quietReminderToggle")) $("quietReminderToggle").onclick = function() {
+    state.quietReminder = !state.quietReminder;
+    sfxTap();
+    persist();
+    render();
+  };
 }
 
 function tickClock() {
@@ -4779,7 +5394,7 @@ function registerOfflineSW() {
     const pageUrl = (location.href || "./").split("#")[0];
     const swCode = [
       "const PAGE = " + JSON.stringify(pageUrl) + ";",
-      "const CACHE = 'pftrack-v40';",
+      "const CACHE = 'pftrack-v44';",
       "self.addEventListener('install', function(e) {",
       "  e.waitUntil(caches.open(CACHE).then(function(c) { return c.addAll([PAGE, './']).catch(function(){}); }).then(function(){ return self.skipWaiting(); }));",
       "});",
