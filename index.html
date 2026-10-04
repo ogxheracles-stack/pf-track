@@ -1085,7 +1085,7 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
 
 const STORAGE_KEY = "pftrack_v3";
 const LIVE_KEY = "pftrack_live";
-const APP_VERSION = "4.12";
+const APP_VERSION = "4.13";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -5262,7 +5262,7 @@ function screenLift() {
     return '<div class="dot ' + (i <= live.i ? "on" : "") + '" style="' + (i > live.i ? "opacity:.35" : "") + '"></div>';
   }).join("") + "</div>";
   html += '<div class="stack">';
-  html += '<button class="btn gho big cleanBtn' + (effectiveClean(s) ? " on" : "") + '" id="cleanMark" type="button">' + (effectiveClean(s) ? "Clean" : "Mark clean") + "</button>";
+  html += '<button class="btn gho cleanBtn' + (effectiveClean(s) ? " on" : "") + '" id="cleanMark" type="button">' + (effectiveClean(s) ? "Clean" : "Mark clean") + "</button>";
   html += '<button class="btn ok big" id="did">✓ Set Complete</button>';
   html += '<button class="btn dan" id="cramp">Cramp — Abort</button>';
   html += '<button class="btn gho" id="skipEx">Skip Movement</button>';
