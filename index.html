@@ -1026,6 +1026,11 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
 .starBtn.on{color:var(--amber)}
 .path .node.ck{border-color:var(--amber);color:var(--text)}
 .path .node.rest{border-color:var(--cyan);color:var(--cyan)}
+.path.leadPath{margin:8px 0 12px}
+.path .node.lead{min-height:96px;font-size:26px;letter-spacing:-0.03em;padding:16px 10px;gap:6px}
+.path .node.lead small{font-size:15px;font-weight:650;letter-spacing:0}
+.nextLine{margin:2px 0 14px;font-size:22px;font-weight:700;color:var(--dim)}
+.hubMetrics.quietPair{grid-template-columns:1fr 1fr}
 .comboChip{font-size:12px;font-weight:700;color:var(--cyan)}
 .cleanBtn.on{border-color:var(--neon);color:var(--neon);background:var(--neon-dim)}
 .practiceBox{padding:6px 0 2px}
@@ -1053,7 +1058,7 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
 
 const STORAGE_KEY = "pftrack_v3";
 const LIVE_KEY = "pftrack_live";
-const APP_VERSION = "4.5";
+const APP_VERSION = "4.6";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -4392,31 +4397,51 @@ function screenHome() {
   const prog = plan.key && PROGRAMS[plan.key];
   const lastW = state.bodyweights[0];
   const full = liftKeysClearedThisWeek() >= 4;
-  const hour = new Date().getHours();
-  const deployFirst = !!(plan.key && hour >= 5);
-  const greet = greetingForHour(hour);
   const bf = (state.stats && state.stats.bf != null && !isNaN(Number(state.stats.bf))) ? Number(state.stats.bf) : null;
-  const streak = activityStreak();
   const wtLabel = lastW ? (String(lastW.lb)) : (state.stats.wt != null ? String(state.stats.wt) : "—");
+  const done = !!(plan.key && didKeyThisWeek(plan.key));
+  const walked = !!(isWorkDay(plan.d) && walkThisWeekForDay(plan.d));
+  const restDay = !plan.key && !isWorkDay(plan.d);
+  const ck = nextOpenLiftDay();
+  let nodeCls = "node now lead";
+  if (restDay) nodeCls += " on rest";
+  else if (done || walked) nodeCls += " on";
+  if (ck != null && plan.d === ck && !done) nodeCls += " ck";
+  let doctrine = "Rest";
+  if (plan.key === "upper-a") doctrine = "Upper A";
+  else if (plan.key === "lower-a") doctrine = "Lower A";
+  else if (plan.key === "upper-b") doctrine = "Upper B";
+  else if (plan.key === "lower-b") doctrine = "Lower B";
+  else if (isWorkDay(plan.d)) doctrine = "Walk";
+  let mark = "·";
+  if (done || restDay) mark = "✓";
+  else if (walked) mark = "W";
+  else if (ck != null && plan.d === ck) mark = "next";
+  else if (!plan.key) mark = "–";
 
   let html = statusbar();
-  html += '<div class="hubWrap">';
-  html += neonCityArtHtml();
-  html += '<div class="hubContent">';
-  html += '<div class="lbl">' + esc(plan.short) + " · LBM ~" + state.stats.lbm + " LB · LV " + level() + "</div>";
-  html += '<div class="hubGreet">' + esc(greet) + "</div>";
-  html += '<p class="hubTag">Discipline builds freedom.</p>';
-  html += '<div class="hubMetrics">';
-  html += '<div class="hubMetric"><div class="lbl">Weight</div><div class="val">' + esc(wtLabel) + (wtLabel !== "—" ? "<small>lb</small>" : "") + "</div></div>";
-  html += '<div class="hubMetric"><div class="lbl">Body fat</div><div class="val">' + (bf != null ? (bf + "<small>%</small>") : "—") + "</div></div>";
-  const shieldBit = (state.shield && state.shield.held) ? "d · shield" : ((state.shield && state.shield.covered === yesterdayISO()) ? "d · covered" : "d");
-  html += '<div class="hubMetric"><div class="lbl">Streak</div><div class="val">' + streak + "<small>" + shieldBit + "</small></div></div>";
+  html += '<div class="path leadPath" aria-label="Today on the path">';
+  html += '<div class="' + nodeCls + '"><span>' + esc(plan.short) + "</span><small>" + esc(doctrine) + " · " + mark + "</small></div>";
   html += "</div>";
 
-  // Sticky Resume — first Home action whenever a live session exists
   if (state.live) {
-    html += '<div class="stack"><button class="btn ok big" data-go="lift">Resume live session</button></div>';
+    html += '<div class="stack"><button class="btn ok big" data-go="lift">Resume</button></div>';
+  } else if (plan.key) {
+    html += '<div class="stack"><button class="btn pri big" data-go="start:' + plan.key + '">' + (full ? "Override deploy" : "Deploy") + "</button></div>";
+  } else if (isWorkDay(plan.d)) {
+    const walk = walkForDate(todayISO());
+    html += '<div class="stack">';
+    html += '<button class="btn pri big" id="walkLog">Log walk</button>';
+    html += '<div class="step"><button class="mini" id="walkMinus">−</button><b>' + walkMinutes + '</b><button class="mini" id="walkPlus">+</button></div>';
+    html += "</div>";
+  } else {
+    html += '<p class="nextLine">Rest</p>';
   }
+
+  html += '<div class="hubMetrics quietPair">';
+  html += '<div class="hubMetric"><div class="lbl">Weight</div><div class="val">' + esc(wtLabel) + (wtLabel !== "—" ? "<small>lb</small>" : "") + "</div></div>";
+  html += '<div class="hubMetric"><div class="lbl">Body fat</div><div class="val">' + (bf != null ? (bf + "<small>%</small>") : "—") + "</div></div>";
+  html += "</div>";
 
   html += goalCardHtml();
   html += quietBoardHtml();
@@ -4426,77 +4451,26 @@ function screenHome() {
     html += '<p class="sub" style="margin-top:8px">' + esc(lowerDayOneLiner(plan.key)) + "</p>";
   }
   html += sleepCueHtml(plan);
-
-  function deployBlock() {
-    let out = "";
-    out += '<div class="stack">';
-    if (full) {
-      out += '<button class="btn pri big" data-go="start:' + plan.key + '">Override deploy</button>';
-      out += '<p class="sub" style="margin:0">4/4 sectors cleared — override needs a reason.</p>';
-    } else {
-      out += '<button class="btn pri big" data-go="start:' + plan.key + '">Deploy · ' + esc(plan.short) + "</button>";
-    }
-    out += "</div>";
-    if (prog) out += pinStripHtml(prog, {key: plan.key});
-    out += '<div class="stack"><button class="btn gho" data-day="' + plan.d + '">Inspect manifest</button></div>';
-    return out;
+  if (prog && plan.key && !state.live) {
+    html += pinStripHtml(prog, {key: plan.key});
+    html += '<div class="stack"><button class="btn gho" data-day="' + plan.d + '">Inspect manifest</button></div>';
   }
-
-  if (plan.key && deployFirst) {
-    html += deployBlock();
-  }
-
-  // Vision hub tiles — Training + Nutrition big; Recovery / Progress / Shop mini
-  html += '<div class="hubTiles">';
-  html += '<button type="button" class="hubTile" data-go="week"><span class="tico" aria-hidden="true">▦</span><span class="tlabel">Training</span><span class="tnote">Week · Sat→Fri</span></button>';
-  html += '<button type="button" class="hubTile nut" data-go="fuel"><span class="tico" aria-hidden="true">⇪</span><span class="tlabel">Nutrition</span><span class="tnote">' + esc(proteinLeftLabel()) + "</span></button>";
-  html += "</div>";
-  html += '<div class="hubMini">';
-  html += '<button type="button" class="hubTile" data-go="recovery"><span class="tico" aria-hidden="true">❋</span><span class="tlabel">Recovery</span></button>';
-  html += '<button type="button" class="hubTile" data-go="log"><span class="tico" aria-hidden="true">≡</span><span class="tlabel">Progress</span></button>';
-  html += '<button type="button" class="hubTile" data-go="shop"><span class="tico" aria-hidden="true">◈</span><span class="tlabel">Shop</span></button>';
-  html += "</div>";
-
-  // Compact bubbles below hub tiles
-  html += bubbleMapHtml({hub: true});
-
-  html += '<div class="card' + (plan.key && deployFirst ? " mt" : "") + '"><div class="row" style="border:0;padding:0 0 4px">';
-  html += '<div><div class="lbl">Sessions this week</div><div class="stat">' + liftKeysClearedThisWeek() + "<small>/4</small></div></div>";
-  html += '<div class="r"><div class="lbl">Total XP</div><div class="stat" style="font-size:22px">' + xp() + "</div></div>";
-  html += "</div>";
-  html += weekDots();
-  html += '<div class="bar"><i style="width:' + (xpInto() / 40 * 100) + '%"></i></div>';
-  html += '<div class="lbl">LV ' + level() + " → LV " + (level() + 1) + " · " + (40 - xpInto()) + " pts</div>";
-  html += '<div class="lbl" style="margin-top:8px">';
-  html += lastW ? ("SCALE " + lastW.lb + " LB · " + lastW.date) : "NO SCALE LOGGED";
-  html += "</div></div>";
-
-  if (plan.key && !deployFirst) {
-    html += deployBlock();
-  } else if (!plan.key && isWorkDay(plan.d)) {
-    const walk = walkForDate(todayISO());
-    html += '<div class="card mt"><div class="lbl">Work walk</div>';
-    html += '<div class="stat" style="font-size:28px;margin:6px 0">' + walkMinutes + "<small> min</small></div>";
-    var walkLoggedMin = walk ? (Number(walk.minutes) || 0) : 0;
-    var walkPct = Math.max(0, Math.min(100, Math.round(walkLoggedMin / 20 * 100)));
-    html += '<div class="bar"><i style="width:' + walkPct + '%"></i></div>';
-    html += '<div class="lbl">' + walkLoggedMin + " / 20 min · enough is enough</div>";
-    html += '<div class="step"><button class="mini" id="walkMinus">−</button><b>' + walkMinutes + '</b><button class="mini" id="walkPlus">+</button></div>';
-    html += '<div class="toggle ' + ((walk && walk.feetCooked) || isFeetCooked() ? "on" : "") + '" id="feetCookedToggle" style="margin-top:12px"><div><b>Feet cooked</b><span>Locks Lower B calf this week</span></div><div class="sw"></div></div>';
-    html += '<div class="stack"><button class="btn pri" id="walkLog">' + (walk ? "Update walk · " + walk.minutes + "m" : "Log walk") + "</button></div>";
-    if (walk) html += '<div class="lbl" style="margin-top:10px;color:var(--amber)">Walk marked · ' + walk.minutes + " min" + (walk.feetCooked ? " · feet cooked" : "") + "</div>";
-    html += "</div>";
-    html += '<div class="stack"><button class="btn gho" data-day="' + plan.d + '">Why today is dark</button></div>';
-  } else if (!plan.key) {
-    html += '<div class="stack"><button class="btn gho" data-day="' + plan.d + '">Why today is dark</button></div>';
-  }
-
   if (!plan.key && isWorkDay(plan.d)) {
+    const walk = walkForDate(todayISO());
+    if (state.live) {
+      html += '<div class="card mt"><div class="lbl">Work walk</div>';
+      html += '<div class="step"><button class="mini" id="walkMinus">−</button><b>' + walkMinutes + '</b><button class="mini" id="walkPlus">+</button></div>';
+      html += '<div class="stack"><button class="btn pri" id="walkLog">Log walk</button></div></div>';
+    } else if (walk) {
+      html += '<p class="sub" style="margin-top:8px">Walk on the node · ' + walk.minutes + " min</p>";
+    }
+    html += '<div class="toggle ' + ((walk && walk.feetCooked) || isFeetCooked() ? "on" : "") + '" id="feetCookedToggle" style="margin-top:12px"><div><b>Feet cooked</b><span>Locks Lower B calf this week</span></div><div class="sw"></div></div>';
     html += heatBannerHtml(plan);
+  } else if (!plan.key && !state.live) {
+    html += '<div class="stack"><button class="btn gho" data-day="' + plan.d + '">Why today is dark</button></div>';
   }
 
-  const bodyOpen = !(plan.key && deployFirst);
-  html += '<div class="card mt"><details class="bodyFold"' + (bodyOpen ? " open" : "") + '>';
+  html += '<div class="card mt"><details class="bodyFold">';
   html += '<summary>Body · feet · ham · sleep</summary>';
   html += '<div class="toggle ' + (isFeetCooked() ? "on" : "") + '" id="feetLockToggle"><div><b>Feet cooked</b><span>Pre-skips Lower B calf · no guilt' + (isFeetCooked() ? ' <span class="chip">clears next Sat</span>' : "") + '</span></div><div class="sw"></div></div>';
   html += '<div class="toggle ' + (isHamWeird() ? "on" : "") + '" id="hamWeirdToggle"><div><b>Ham weird</b><span>Pre-skips Lower B seated curl' + (isHamWeird() ? ' <span class="chip">clears next Sat</span>' : "") + '</span></div><div class="sw"></div></div>';
@@ -4506,7 +4480,6 @@ function screenHome() {
 
   html += '<p class="sub" style="margin-top:14px;margin-bottom:0">2×10–15 · same pin until 15 twice · cramp = leave</p>';
   html += installHintHtml();
-  html += "</div></div>"; // hubContent + hubWrap
   html += nav("home");
   return html;
 }
