@@ -1006,6 +1006,34 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
 .remainLine{margin:2px 0 10px;font-size:15px;font-weight:600;color:var(--text)}
 .remainLine span{color:var(--dim);font-weight:500}
 
+/* v4.5 — favorites, templates, bars, spark, practice, clean */
+.goalBars{display:grid;gap:8px;margin:2px 0 12px}
+.gbar .gl{display:flex;justify-content:space-between;gap:8px;font-size:13px;font-weight:600;margin-bottom:4px}
+.gbar .gl span{color:var(--dim);font-weight:500}
+.gbar .bar{margin:0}
+.pctLine{margin:-2px 0 10px;color:var(--dim);font-size:13px;font-weight:600}
+.spark{width:100%;height:56px;display:block;margin-top:8px;color:var(--cyan)}
+.pweek{display:flex;align-items:flex-end;gap:6px;height:84px;margin-top:10px}
+.pweek .pw{flex:1;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px}
+.pweek .pw i{display:block;width:100%;max-width:22px;background:var(--neon);border-radius:6px 6px 2px 2px;min-height:4px}
+.pweek .pw span{font-size:10px;font-weight:700;color:var(--dim)}
+.plateCell{position:relative}
+.plateCell .plateBtn{width:100%;padding-right:40px}
+.starBtn{
+  position:absolute;top:6px;right:4px;width:40px;height:40px;
+  border:0;background:transparent;color:var(--dim);font-size:20px;cursor:pointer;
+}
+.starBtn.on{color:var(--amber)}
+.path .node.ck{border-color:var(--amber);color:var(--text)}
+.path .node.rest{border-color:var(--cyan);color:var(--cyan)}
+.comboChip{font-size:12px;font-weight:700;color:var(--cyan)}
+.cleanBtn.on{border-color:var(--neon);color:var(--neon);background:var(--neon-dim)}
+.practiceBox{padding:6px 0 2px}
+.practiceBox .n{margin:2px 0}
+.qtyStep{display:flex;align-items:center;gap:4px}
+.qtyStep b{min-width:36px;text-align:center;font-size:13px}
+.diaryItem{flex-wrap:wrap}
+
 </style>
 </head>
 <body>
@@ -1025,7 +1053,7 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
 
 const STORAGE_KEY = "pftrack_v3";
 const LIVE_KEY = "pftrack_live";
-const APP_VERSION = "4.4";
+const APP_VERSION = "4.5";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -1432,6 +1460,11 @@ let walkMinutes = 20;
 let lastAward = null;
 let longPressTimer = null;
 let longPressFired = false;
+let plateUndo = null;
+let plateUndoTimer = null;
+let foodQuery = "";
+let practiceId = "";
+let histPlateCache = [];
 
 function restSecFor(id) {
   if (COMPOUND[id]) return 90;
@@ -1464,6 +1497,8 @@ function defaults() {
     quietReminder: false,
     shield: {held: 0, covered: ""},
     recentPlates: [],
+    favPlates: [],
+    mealTemplates: [],
     plateSlot: "home",
     pet: {
       ember: 0,
@@ -1684,6 +1719,12 @@ function load() {
         data.shield.covered = typeof data.shield.covered === "string" ? data.shield.covered.slice(0, 10) : "";
       }
       if (!Array.isArray(data.recentPlates)) data.recentPlates = [];
+      if (!Array.isArray(data.favPlates)) data.favPlates = [];
+      data.favPlates = data.favPlates.filter(function(id) { return !!plateById(id); }).slice(0, 8);
+      if (!Array.isArray(data.mealTemplates)) data.mealTemplates = [];
+      data.mealTemplates = data.mealTemplates.filter(function(t) {
+        return t && typeof t.id === "string" && typeof t.name === "string" && Array.isArray(t.items);
+      }).slice(0, 3);
       if (data.plateSlot !== "work" && data.plateSlot !== "home" && data.plateSlot !== "after") data.plateSlot = "home";
       if (typeof data.haptics !== "boolean") data.haptics = true;
       if (typeof data.sound !== "boolean") data.sound = true;
@@ -1974,7 +2015,9 @@ function pinCardHtml(prog, opts) {
     return '<div class="row' + (preSkip ? " preSkip" : "") + '"><div><b>' + esc(ex.name) +
       '</b>' + (preSkip ? '<div class="n">pre-skip · lock on</div>' : '') +
       '</div><div class="r"><div class="pinVal">' + (pin != null ? pin : "—") +
-      '</div><div class="repsVal">reps ' + esc(reps) + "</div></div></div>";
+      '</div><div class="repsVal">reps ' + esc(reps) +
+      (nextHoleText(ex.id) ? " · next " + nextHoleText(ex.id) : "") +
+      "</div></div></div>";
   }).join("");
   html += "</div>";
   return html;
@@ -1992,8 +2035,10 @@ function pinStripHtml(prog, opts) {
       (ex.id === "curl" && isHamWeird())
     );
     const short = ex.name;
+    const hole = nextHoleText(ex.id);
     return '<div class="pinLine' + (preSkip ? " preSkip" : "") + '"><b>' + esc(short) +
       '</b><span class="meta"><b>' + (pin != null ? pin : "—") + "</b> · " + esc(reps) +
+      (hole ? " · next " + hole : "") +
       (preSkip ? " · skip" : "") + "</span></div>";
   }).join("");
   html += "</div>";
@@ -2625,6 +2670,7 @@ function restRemaining() {
 }
 
 function restTotal() {
+  if (state.live && state.live.restSpan) return state.live.restSpan;
   if (!state.live) return 75;
   const ex = PROGRAMS[state.live.key].items[state.live.i];
   return restSecFor(ex.id);
@@ -2676,6 +2722,7 @@ function startRest() {
   if (!state.live) return;
   const ex = PROGRAMS[state.live.key].items[state.live.i];
   const sec = restSecFor(ex.id);
+  state.live.restSpan = sec;
   state.live.restUntil = Date.now() + sec * 1000;
   saveLive();
   ensureRestTick();
@@ -2793,6 +2840,8 @@ function doStartWorkout(key) {
     i: 0,
     set: 0,
     restUntil: 0,
+    restSpan: 0,
+    combo: 0,
     started: Date.now(),
     sets: sets
   };
@@ -2918,7 +2967,7 @@ function checkProgression(session) {
   (session.work || []).forEach(function(w) {
     const sets = (w.sets || []).filter(function(x) { return x.done && !x.skipped; });
     if (sets.length < 2) return;
-    if (!(sets[0].r >= 15 && sets[1].r >= 15)) return;
+    if (!(countsAsClean(sets[0]) && countsAsClean(sets[1]))) return;
     const pin = sets[0].w;
     if (sets[1].w !== pin) return;
     let found = null;
@@ -2935,7 +2984,7 @@ function checkProgression(session) {
     }
     if (!found) return;
     if (found[0].w !== pin || found[1].w !== pin) return;
-    if (!(found[0].r >= 15 && found[1].r >= 15)) return;
+    if (!(countsAsClean(found[0]) && countsAsClean(found[1]))) return;
     state.readyUp[w.id] = true;
     toast(w.name + " · ready to up one hole");
   });
@@ -2955,9 +3004,12 @@ function completeSet() {
     restUntil: live.restUntil || 0,
     setData: Object.assign({}, live.sets[live.i][live.set]),
     lastW: state.lastWeights[ex.id],
-    readyUpId: readyPending ? ex.id : null
+    readyUpId: readyPending ? ex.id : null,
+    combo: live.combo || 0
   };
+  live.sets[live.i][live.set].clean = effectiveClean(live.sets[live.i][live.set]);
   live.sets[live.i][live.set].done = true;
+  live.combo = (live.combo || 0) + 1;
   live.sets[live.i][live.set].skipped = false;
   state.lastWeights[ex.id] = live.sets[live.i][live.set].w;
   if (readyPending) {
@@ -3007,6 +3059,7 @@ function undoLastSet() {
   if (snap.lastW == null) delete state.lastWeights[ex.id];
   else state.lastWeights[ex.id] = snap.lastW;
   if (snap.readyUpId) state.readyUp[snap.readyUpId] = true;
+  live.combo = snap.combo || 0;
   clearUndo();
   stopRestTick();
   saveLive();
@@ -3020,6 +3073,7 @@ function skipMovement() {
   if (!live) return;
   clearUndo();
   clearRest();
+  live.combo = 0;
   const sets = live.sets[live.i];
   for (let i = live.set; i < sets.length; i++) {
     if (!sets[i].done) {
@@ -3334,6 +3388,11 @@ function addPlate(plate, iso, opts) {
   entry.items.push({
     id: plate.id,
     name: plate.name,
+    qty: 1,
+    baseCal: plate.cal,
+    baseProtein: plate.protein,
+    baseCarbs: plate.carbs,
+    baseFat: plate.fat,
     cal: plate.cal,
     protein: plate.protein,
     carbs: plate.carbs,
@@ -3358,12 +3417,14 @@ function addPlate(plate, iso, opts) {
   if (!opts.silent) {
     sfxConfirm();
     toast(plate.name + " · logged");
+    armPlateUndo(iso);
   }
   if (!opts.deferPersist) persist();
   return true;
 }
 
-function removePlateAt(iso, idx) {
+function removePlateAt(iso, idx, opts) {
+  opts = opts || {};
   if (isFutureISO(iso)) return;
   const entry = ensureFoodFor(iso);
   if (!entry.items || !entry.items[idx]) return;
@@ -3382,9 +3443,11 @@ function removePlateAt(iso, idx) {
     entry.dayMacros.carbs = Math.max(0, (entry.dayMacros.carbs || 0) - (Number(it.carbs) || 0));
     entry.dayMacros.fat = Math.max(0, (entry.dayMacros.fat || 0) - (Number(it.fat) || 0));
   }
-  sfxTap();
+  if (!opts.silent) {
+    sfxTap();
+    toast("Removed");
+  }
   persist();
-  toast("Removed");
 }
 
 function copyYesterdayPlates() {
@@ -3454,9 +3517,16 @@ function diaryBlockHtml(iso) {
   let html = '<div class="card mt"><div class="lbl">Diary</div>';
   if (!items.length) html += '<p class="sub" style="margin:8px 0 0">Nothing added.</p>';
   items.forEach(function(it, idx) {
+    const qty = Number(it.qty) || 1;
+    const qtyLabel = (Math.round(qty * 2) / 2) + "×";
     html += '<div class="diaryItem"><div><b>' + esc(it.name) + '</b><div class="n">' +
       Math.round(it.cal || 0) + " cal · P " + Math.round(it.protein || 0) + "</div></div>";
-    if (!future) html += '<button type="button" data-rm-plate="' + idx + '" data-plate-iso="' + iso + '">Remove</button>';
+    if (!future) {
+      html += '<div class="qtyStep"><button type="button" class="mini" data-qty-dir="-1" data-qty-idx="' + idx + '" data-plate-iso="' + iso + '">−</button>';
+      html += "<b>" + qtyLabel + "</b>";
+      html += '<button type="button" class="mini" data-qty-dir="1" data-qty-idx="' + idx + '" data-plate-iso="' + iso + '">+</button></div>';
+      html += '<button type="button" data-rm-plate="' + idx + '" data-plate-iso="' + iso + '">Remove</button>';
+    }
     html += "</div>";
   });
   html += "</div>";
@@ -3475,7 +3545,9 @@ function waterBlockHtml(iso) {
     html += "<b>" + oz + "</b>";
     html += '<button class="mini" type="button" data-water-step="8" data-water-iso="' + iso + '">+</button>';
     html += "</div>";
-    html += '<p class="sub" style="margin:8px 0 0">8 oz steps. Log what you drank.</p>';
+    const waterPct = Math.max(0, Math.min(100, Math.round(oz / 64 * 100)));
+    html += '<div class="bar waterBar"><i style="width:' + waterPct + '%"></i></div>';
+    html += '<p class="sub" style="margin:8px 0 0">' + oz + ' / 64 oz mark. 8 oz steps.</p>';
   } else {
     html += '<p class="sub" style="margin:0">Unlocks on this day.</p>';
   }
@@ -3486,13 +3558,27 @@ function waterBlockHtml(iso) {
 function quickAddHtml(iso) {
   if (isFutureISO(iso)) return "";
   const slot = (state.plateSlot === "work" || state.plateSlot === "after") ? state.plateSlot : "home";
+  const q = String(foodQuery || "").trim();
+  histPlateCache = historyPlateHits(q);
   let html = '<div class="card mt"><div class="lbl">Quick add</div>';
-  html += '<p class="sub" style="margin-top:0">Tap a plate or type its code. Marks the lock you pick. Not a food store.</p>';
+  html += '<p class="sub" style="margin-top:0">Tap a plate, a favorite, or search what you have logged before.</p>';
+  const again = againPlate(iso);
+  if (again) {
+    html += '<div class="stack" style="margin-top:8px"><button class="btn pri" type="button" id="againPlate" data-plate-iso="' + iso + '">Again · ' + esc(again.name) + "</button></div>";
+  }
   html += '<div class="seg" id="plateSlotSeg">';
   html += '<button type="button" data-plate-slot="work" class="' + (slot === "work" ? "on" : "") + '">Work</button>';
   html += '<button type="button" data-plate-slot="home" class="' + (slot === "home" ? "on" : "") + '">Home</button>';
   html += '<button type="button" data-plate-slot="after" class="' + (slot === "after" ? "on" : "") + '">After</button>';
   html += "</div>";
+  const favs = (state.favPlates || []).map(plateById).filter(Boolean);
+  if (favs.length) {
+    html += '<div class="lbl" style="margin-top:12px">Favorites</div><div class="recentRow">';
+    favs.forEach(function(p) {
+      html += '<button type="button" data-plate="' + p.id + '" data-plate-iso="' + iso + '">' + esc(p.name) + "</button>";
+    });
+    html += "</div>";
+  }
   const recent = (state.recentPlates || []).map(plateById).filter(Boolean);
   if (recent.length) {
     html += '<div class="lbl" style="margin-top:12px">Recent</div><div class="recentRow">';
@@ -3501,32 +3587,66 @@ function quickAddHtml(iso) {
     });
     html += "</div>";
   }
+  const tpls = state.mealTemplates || [];
+  if (tpls.length) {
+    html += '<div class="lbl" style="margin-top:12px">Templates</div>';
+    tpls.forEach(function(t) {
+      html += '<div class="diaryItem"><div><b>' + esc(t.name) + '</b><div class="n">' + (t.items ? t.items.length : 0) + " plates</div></div>";
+      html += '<button type="button" data-tpl="' + esc(t.id) + '" data-plate-iso="' + iso + '">Log</button>';
+      html += '<button type="button" data-tpl-del="' + esc(t.id) + '">Remove</button></div>';
+    });
+  }
+  html += '<div class="stack" style="margin-top:10px"><button class="btn gho" type="button" id="saveTemplate" data-plate-iso="' + iso + '">Save diary as template</button></div>';
+  html += '<div class="codeRow"><input type="text" id="foodSearch" placeholder="Search plates or past food" maxlength="48" autocomplete="off" value="' + esc(q) + '"/>';
+  html += '<button class="btn pri" type="button" id="foodSearchAdd" data-plate-iso="' + iso + '">Add</button></div>';
+  if (histPlateCache.length) {
+    html += '<div class="lbl" style="margin-top:12px">From your diary</div><div class="recentRow">';
+    histPlateCache.forEach(function(p, idx) {
+      html += '<button type="button" data-hist="' + idx + '" data-plate-iso="' + iso + '">' + esc(p.name) + "</button>";
+    });
+    html += "</div>";
+  }
   html += '<div class="codeRow"><input type="text" id="plateCode" data-plate-iso="' + iso + '" placeholder="Code · RH PO CA EG" maxlength="24" autocomplete="off"/>';
   html += '<button class="btn pri" type="button" id="plateCodeAdd" data-plate-iso="' + iso + '">Add</button></div>';
   html += '<div class="plateGrid">';
+  let shown = 0;
   PLATES.forEach(function(p) {
+    if (!plateMatchesQuery(p, q)) return;
+    shown++;
+    const fav = (state.favPlates || []).indexOf(p.id) >= 0;
+    html += '<div class="plateCell">';
     html += '<button type="button" class="plateBtn" data-plate="' + p.id + '" data-plate-iso="' + iso + '">' +
-      esc(p.name) + "<small>" + p.code + " · " + p.cal + " cal · P" + p.protein + "</small></button>";
+      esc(p.name) + "<small>" + p.code + " · " + p.cal + " cal · P" + p.protein + " · " + plateProteinShare(p) + "% protein</small></button>";
+    html += '<button type="button" class="starBtn' + (fav ? " on" : "") + '" data-fav="' + p.id + '" aria-label="Favorite">' + (fav ? "★" : "☆") + "</button>";
+    html += "</div>";
   });
   html += "</div>";
+  if (!shown && q) html += '<p class="sub">No catalog plate matches. Add from diary, or type name calories protein.</p>';
   if (iso === todayISO()) {
     html += '<div class="stack" style="margin-top:10px"><button class="btn gho" type="button" id="copyYday">Copy yesterday</button></div>';
   }
   html += "</div>";
   return html;
 }
-
 function weekPathHtml() {
   const today = new Date().getDay();
+  const ck = nextOpenLiftDay();
   let html = '<div class="path">';
   WEEK_ORDER.forEach(function(di) {
     const w = WEEK.find(function(x) { return x.d === di; });
     const done = w.key && didKeyThisWeek(w.key);
     const walked = isWorkDay(w.d) && walkThisWeekForDay(w.d);
+    const restOk = !w.key && !isWorkDay(w.d);
     let cls = "node";
-    if (done || walked) cls += " on";
+    if (restOk) cls += " on rest";
+    else if (done || walked) cls += " on";
     if (w.d === today) cls += " now";
-    const mark = done ? "✓" : (walked ? "W" : (w.key ? "·" : "–"));
+    if (ck != null && w.d === ck && !done) cls += " ck";
+    let mark = "·";
+    if (done || restOk) mark = "✓";
+    else if (walked) mark = "W";
+    else if (ck != null && w.d === ck) mark = "next";
+    else if (!w.key) mark = "–";
     html += '<div class="' + cls + '"><span>' + esc(w.short) + "</span><small>" + mark + "</small></div>";
   });
   html += "</div>";
@@ -3598,6 +3718,449 @@ function lastSetRep(id, setIdx) {
     }
   }
   return null;
+}
+
+
+
+function macroPctLine() {
+  const m = ensureMacros();
+  function pct(c, t) {
+    return Math.round(((Number(c) || 0) / Math.max(1, Number(t) || 1)) * 100);
+  }
+  return "Protein " + pct(m.protein, m.proteinTarget) + "% of goal · Calories " + pct(m.cal, m.calTarget) + "%";
+}
+
+function macroBarsHtml() {
+  const m = ensureMacros();
+  const rows = [
+    ["Protein", m.protein, m.proteinTarget],
+    ["Calories", m.cal, m.calTarget],
+    ["Carbs", m.carbs, m.carbsTarget],
+    ["Fat", m.fat, m.fatTarget]
+  ];
+  let html = '<div class="goalBars">';
+  rows.forEach(function(r) {
+    const pct = Math.max(0, Math.min(100, Math.round(((Number(r[1]) || 0) / Math.max(1, Number(r[2]) || 1)) * 100)));
+    const left = Math.round((Number(r[2]) || 0) - (Number(r[1]) || 0));
+    const note = left > 0 ? (left + " left") : "met";
+    html += '<div class="gbar"><div class="gl"><b>' + r[0] + "</b><span>" + note + "</span></div>";
+    html += '<div class="bar"><i style="width:' + pct + '%"></i></div></div>';
+  });
+  html += "</div>";
+  return html;
+}
+
+function weightSparkHtml() {
+  const pts = (state.bodyweights || []).slice(0, 8).slice().reverse();
+  if (pts.length < 2) return '<p class="sub" style="margin:8px 0 0">Two weigh-ins draw a trend. No target.</p>';
+  const vals = pts.map(function(p) { return Number(p.lb) || 0; });
+  const min = Math.min.apply(null, vals);
+  const max = Math.max.apply(null, vals);
+  const span = Math.max(0.4, max - min);
+  const w = 300, h = 52, pad = 6;
+  let d = "";
+  vals.forEach(function(v, i) {
+    const x = pad + (vals.length === 1 ? 0 : (i / (vals.length - 1)) * (w - pad * 2));
+    const y = pad + (1 - (v - min) / span) * (h - pad * 2);
+    d += (i ? " L" : "M") + x.toFixed(1) + " " + y.toFixed(1);
+  });
+  const delta = Math.round((vals[vals.length - 1] - vals[0]) * 10) / 10;
+  const sign = delta > 0 ? "+" : "";
+  return '<svg class="spark" viewBox="0 0 ' + w + " " + h + '" aria-hidden="true"><path d="' + d + '" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+    '<p class="sub" style="margin:6px 0 0">' + pts.length + " weigh-ins · " + sign + delta + " lb across this spark.</p>";
+}
+
+function proteinWeekBarsHtml() {
+  const m = ensureMacros();
+  const tgt = Math.max(1, Number(m.proteinTarget) || 1);
+  const names = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+  let html = '<div class="card mt"><div class="lbl">Protein vs goal</div><div class="pweek">';
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dm = dayMacrosFor(isoFromDate(d));
+    const grams = Number(dm.protein) || 0;
+    const pct = grams > 0 ? Math.max(8, Math.min(100, Math.round(grams / tgt * 100))) : 6;
+    html += '<div class="pw"><i style="height:' + pct + '%"></i><span>' + names[d.getDay()] + "</span></div>";
+  }
+  html += '</div><p class="sub" style="margin:8px 0 0">Seven days against today\'s protein target. Height only. No score.</p></div>';
+  return html;
+}
+
+function plateMatchesQuery(p, q) {
+  const low = String(q || "").trim().toLowerCase();
+  if (!low) return true;
+  return p.name.toLowerCase().indexOf(low) >= 0 || p.code.toLowerCase().indexOf(low) >= 0;
+}
+
+function plateProteinShare(p) {
+  const m = ensureMacros();
+  const tgt = Math.max(1, Number(m.proteinTarget) || 1);
+  return Math.round(((Number(p.protein) || 0) / tgt) * 100);
+}
+
+function historyPlateHits(q) {
+  const low = String(q || "").trim().toLowerCase();
+  if (low.length < 2) return [];
+  const cat = {};
+  PLATES.forEach(function(p) {
+    if (plateMatchesQuery(p, low)) cat[p.name.toLowerCase()] = 1;
+  });
+  const seen = {};
+  const out = [];
+  (state.foodHistory || []).forEach(function(f) {
+    (f.items || []).forEach(function(it) {
+      const name = String(it.name || "").trim();
+      if (!name) return;
+      const key = name.toLowerCase();
+      if (seen[key] || cat[key]) return;
+      if (key.indexOf(low) < 0) return;
+      seen[key] = 1;
+      const qty = Number(it.qty) || 1;
+      out.push({
+        id: it.id || "custom",
+        name: name,
+        cal: it.baseCal != null ? Number(it.baseCal) : Math.round((Number(it.cal) || 0) / qty),
+        protein: it.baseProtein != null ? Number(it.baseProtein) : Math.round((Number(it.protein) || 0) / qty),
+        carbs: it.baseCarbs != null ? Number(it.baseCarbs) : Math.round((Number(it.carbs) || 0) / qty),
+        fat: it.baseFat != null ? Number(it.baseFat) : Math.round((Number(it.fat) || 0) / qty)
+      });
+    });
+  });
+  return out.slice(0, 6);
+}
+
+function plateFromFreeText(raw) {
+  const m = String(raw || "").trim().match(/^(.+?)\s+(\d{2,4})(?:\s+(\d{1,3}))?\s*$/);
+  if (!m) return null;
+  const name = m[1].replace(/[,\s]+$/g, "").trim();
+  if (name.length < 2) return null;
+  const cal = parseInt(m[2], 10);
+  const protein = m[3] ? parseInt(m[3], 10) : 0;
+  if (cal < 10 || cal > 2500) return null;
+  if (protein < 0 || protein > 250) return null;
+  return {id: "custom", name: name, cal: cal, protein: protein, carbs: 0, fat: 0};
+}
+
+function toggleFav(id) {
+  if (!plateById(id)) return;
+  if (!Array.isArray(state.favPlates)) state.favPlates = [];
+  const i = state.favPlates.indexOf(id);
+  if (i >= 0) state.favPlates.splice(i, 1);
+  else state.favPlates.unshift(id);
+  state.favPlates = state.favPlates.slice(0, 8);
+  sfxTap();
+  persist();
+}
+
+function itemBase(it) {
+  const q = Number(it.qty) || 1;
+  return {
+    id: it.id || "custom",
+    name: it.name,
+    cal: it.baseCal != null ? Number(it.baseCal) : Math.round((Number(it.cal) || 0) / q),
+    protein: it.baseProtein != null ? Number(it.baseProtein) : Math.round((Number(it.protein) || 0) / q),
+    carbs: it.baseCarbs != null ? Number(it.baseCarbs) : Math.round((Number(it.carbs) || 0) / q),
+    fat: it.baseFat != null ? Number(it.baseFat) : Math.round((Number(it.fat) || 0) / q)
+  };
+}
+
+function templateTitle(items) {
+  if (!items || !items.length) return "Template";
+  if (items.length === 1) return items[0].name;
+  return items[0].name + " +" + (items.length - 1);
+}
+
+function saveMealTemplate(iso) {
+  iso = iso || todayISO();
+  const entry = ensureFoodFor(iso);
+  if (!entry.items || !entry.items.length) { toast("Diary is empty"); return; }
+  if (!Array.isArray(state.mealTemplates)) state.mealTemplates = [];
+  const items = entry.items.map(itemBase);
+  state.mealTemplates.push({id: Date.now().toString(36), name: templateTitle(items), items: items});
+  if (state.mealTemplates.length > 3) {
+    state.mealTemplates.shift();
+    toast("Saved · replaced the oldest template");
+  } else {
+    toast("Template saved");
+  }
+  sfxConfirm();
+  persist();
+}
+
+function logMealTemplate(id, iso) {
+  const list = state.mealTemplates || [];
+  const t = list.find(function(x) { return x.id === id; });
+  if (!t) return;
+  iso = iso || todayISO();
+  let n = 0;
+  (t.items || []).forEach(function(it) {
+    if (addPlate(it, iso, {silent: true, deferPersist: true})) n++;
+  });
+  persist();
+  sfxConfirm();
+  toast(n ? ("Logged " + t.name) : "Template empty");
+}
+
+function deleteMealTemplate(id) {
+  state.mealTemplates = (state.mealTemplates || []).filter(function(t) { return t.id !== id; });
+  sfxTap();
+  persist();
+  toast("Template removed");
+}
+
+function againPlate(iso) {
+  const entry = iso === todayISO() ? ensureFood() : foodForISO(iso);
+  const items = entry && entry.items;
+  if (!items || !items.length) return null;
+  const it = items[items.length - 1];
+  return {
+    id: it.id || "custom",
+    name: it.name,
+    cal: Number(it.cal) || 0,
+    protein: Number(it.protein) || 0,
+    carbs: Number(it.carbs) || 0,
+    fat: Number(it.fat) || 0
+  };
+}
+
+function armPlateUndo(iso) {
+  plateUndo = {iso: iso};
+  if (plateUndoTimer) clearTimeout(plateUndoTimer);
+  plateUndoTimer = setTimeout(function() {
+    plateUndo = null;
+    const el = document.getElementById("plateUndoGhost");
+    if (el) el.remove();
+  }, 8000);
+}
+
+function showPlateUndo() {
+  if (!plateUndo) return;
+  let el = document.getElementById("plateUndoGhost");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "plateUndoGhost";
+    el.className = "undoGhost";
+    document.body.appendChild(el);
+  }
+  el.innerHTML = '<span>Plate logged</span><button type="button" id="undoPlateBtn">Undo</button>';
+  const btn = document.getElementById("undoPlateBtn");
+  if (btn) btn.onclick = function() { undoLastPlate(); };
+}
+
+function undoLastPlate() {
+  if (!plateUndo) return;
+  const iso = plateUndo.iso;
+  plateUndo = null;
+  if (plateUndoTimer) { clearTimeout(plateUndoTimer); plateUndoTimer = null; }
+  const el = document.getElementById("plateUndoGhost");
+  if (el) el.remove();
+  const entry = foodForISO(iso);
+  if (!entry || !entry.items || !entry.items.length) return;
+  removePlateAt(iso, entry.items.length - 1, {silent: true});
+  sfxTap();
+  toast("Plate undone");
+  render();
+}
+
+function applyMacroDelta(iso, d) {
+  const entry = ensureFoodFor(iso);
+  if (iso === todayISO()) {
+    const m = ensureMacros();
+    m.cal = Math.max(0, (Number(m.cal) || 0) + (d.cal || 0));
+    m.protein = Math.max(0, (Number(m.protein) || 0) + (d.protein || 0));
+    m.carbs = Math.max(0, (Number(m.carbs) || 0) + (d.carbs || 0));
+    m.fat = Math.max(0, (Number(m.fat) || 0) + (d.fat || 0));
+    entry.dayMacros = {cal: m.cal, protein: m.protein, carbs: m.carbs, fat: m.fat};
+  } else {
+    if (!entry.dayMacros) entry.dayMacros = {cal: 0, protein: 0, carbs: 0, fat: 0};
+    entry.dayMacros.cal = Math.max(0, (Number(entry.dayMacros.cal) || 0) + (d.cal || 0));
+    entry.dayMacros.protein = Math.max(0, (Number(entry.dayMacros.protein) || 0) + (d.protein || 0));
+    entry.dayMacros.carbs = Math.max(0, (Number(entry.dayMacros.carbs) || 0) + (d.carbs || 0));
+    entry.dayMacros.fat = Math.max(0, (Number(entry.dayMacros.fat) || 0) + (d.fat || 0));
+  }
+}
+
+function ensureItemBase(it) {
+  if (it.baseCal != null) return;
+  const b = itemBase(it);
+  it.baseCal = b.cal;
+  it.baseProtein = b.protein;
+  it.baseCarbs = b.carbs;
+  it.baseFat = b.fat;
+  if (it.qty == null) it.qty = 1;
+}
+
+function setItemQty(iso, idx, dir) {
+  if (isFutureISO(iso)) return;
+  const entry = ensureFoodFor(iso);
+  const it = entry.items && entry.items[idx];
+  if (!it) return;
+  ensureItemBase(it);
+  const cur = Number(it.qty) || 1;
+  const next = Math.max(0.5, Math.min(2, Math.round((cur + dir * 0.5) * 2) / 2));
+  if (next === cur) return;
+  const prev = {
+    cal: Number(it.cal) || 0,
+    protein: Number(it.protein) || 0,
+    carbs: Number(it.carbs) || 0,
+    fat: Number(it.fat) || 0
+  };
+  it.qty = next;
+  it.cal = Math.round(it.baseCal * next);
+  it.protein = Math.round(it.baseProtein * next);
+  it.carbs = Math.round(it.baseCarbs * next);
+  it.fat = Math.round(it.baseFat * next);
+  applyMacroDelta(iso, {
+    cal: it.cal - prev.cal,
+    protein: it.protein - prev.protein,
+    carbs: it.carbs - prev.carbs,
+    fat: it.fat - prev.fat
+  });
+  sfxTap();
+  persist();
+}
+
+function nextOpenLiftDay() {
+  const seq = [
+    {d: 6, key: "upper-a"},
+    {d: 0, key: "lower-a"},
+    {d: 2, key: "upper-b"},
+    {d: 3, key: "lower-b"}
+  ];
+  const pos = {6: 0, 0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6};
+  const today = new Date().getDay();
+  let best = null;
+  seq.forEach(function(s) {
+    if (didKeyThisWeek(s.key)) return;
+    if (pos[s.d] < pos[today]) return;
+    if (!best) best = s;
+  });
+  return best ? best.d : null;
+}
+
+function lastWeekReviewHtml() {
+  const start = weekStart();
+  start.setDate(start.getDate() - 7);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 7);
+  const keys = {};
+  let walks = 0;
+  (state.sessions || []).forEach(function(s) {
+    const dt = parseLocalDate(s.date);
+    if (dt >= start && dt < end && s.key && PROGRAMS[s.key]) keys[s.key] = 1;
+  });
+  (state.walks || []).forEach(function(w) {
+    const dt = parseLocalDate(w.date);
+    if (dt >= start && dt < end) walks++;
+  });
+  const m = ensureMacros();
+  let proteinDays = 0;
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    const dm = dayMacrosFor(isoFromDate(d));
+    if ((Number(dm.protein) || 0) >= m.proteinTarget) proteinDays++;
+  }
+  return '<div class="card mt"><div class="lbl">Last week</div><p class="sub" style="margin:0">' +
+    Object.keys(keys).length + "/4 lifts · " + walks + " walk" + (walks === 1 ? "" : "s") +
+    " · " + proteinDays + " protein days. One card. No rank.</p></div>";
+}
+
+function movementLog(id) {
+  const rows = [];
+  let best = null;
+  (state.sessions || []).forEach(function(s) {
+    (s.work || []).forEach(function(w) {
+      if (w.id !== id) return;
+      const sets = (w.sets || []).filter(function(x) { return x.done && !x.skipped; });
+      if (!sets.length) return;
+      sets.forEach(function(x) {
+        if (best == null || Number(x.w) > best) best = Number(x.w);
+      });
+      if (rows.length < 4) rows.push({date: s.date, sets: sets});
+    });
+  });
+  return {rows: rows, best: best};
+}
+
+function practiceHtml(id) {
+  const log = movementLog(id);
+  if (!log.rows.length) return '<div class="practiceBox"><p class="sub" style="margin:6px 0 0">No logged sets yet.</p></div>';
+  let html = '<div class="practiceBox">';
+  if (log.best != null) html += '<div class="n">Best pin · ' + log.best + " lb</div>";
+  log.rows.forEach(function(row) {
+    const bits = row.sets.map(function(x) {
+      return x.w + "×" + x.r + (x.clean ? " clean" : "");
+    }).join(" · ");
+    html += '<div class="n">' + esc(row.date) + " · " + esc(bits) + "</div>";
+  });
+  html += "</div>";
+  return html;
+}
+
+function lastSetDetail(id, setIdx) {
+  for (let i = 0; i < (state.sessions || []).length; i++) {
+    const s = state.sessions[i];
+    if (!s.work) continue;
+    for (let j = 0; j < s.work.length; j++) {
+      if (s.work[j].id !== id) continue;
+      const sets = (s.work[j].sets || []).filter(function(x) { return x.done && !x.skipped; });
+      if (sets[setIdx]) return sets[setIdx];
+      return null;
+    }
+  }
+  return null;
+}
+
+function nextHoleText(id) {
+  if (!state.readyUp || !state.readyUp[id]) return "";
+  const pin = state.lastWeights[id] != null ? Number(state.lastWeights[id]) : 10;
+  return (pin + 5) + " lb";
+}
+
+function effectiveClean(s) {
+  if (!s) return false;
+  if (s.cleanTouched) return !!s.clean;
+  return (Number(s.r) || 0) >= 15;
+}
+
+function countsAsClean(x) {
+  if (!x || !x.done || x.skipped) return false;
+  if (!((Number(x.r) || 0) >= 15)) return false;
+  if (x.clean === false) return false;
+  return true;
+}
+
+function comboSpan(live) {
+  const n = (live && live.combo) || 0;
+  if (n < 2) return "";
+  return ' <span class="comboChip">Combo ' + n + "</span>";
+}
+
+function stillNames(live) {
+  const items = PROGRAMS[live.key].items;
+  const names = [];
+  for (let i = live.i + 1; i < items.length; i++) names.push(items[i].name);
+  if (!names.length) return "Last movement.";
+  return "Still · " + names.join(" · ");
+}
+
+function adjustRest(delta) {
+  if (!state.live || !state.live.restUntil) return;
+  const ex = PROGRAMS[state.live.key].items[state.live.i];
+  let span = state.live.restSpan || restSecFor(ex.id);
+  span = Math.max(15, Math.min(300, span + delta));
+  state.live.restSpan = span;
+  let until = state.live.restUntil + delta * 1000;
+  const minUntil = Date.now() + 1000;
+  if (until < minUntil) until = minUntil;
+  state.live.restUntil = until;
+  saveLive();
+  sfxTap();
+  const lab = document.querySelector(".lbl.center");
+  if (lab) lab.textContent = "Rest · " + span + "s";
+  if (!patchRestUI()) render();
 }
 
 
@@ -3954,14 +4517,17 @@ function screenWeek() {
   html += '<div class="lbl">Weekly plan</div><h1>Week in, week out</h1>';
   html += '<p class="sub">Tap a day for the manifest. Same rotation forever. Saturday starts it.</p>';
   html += weekPathHtml();
+  html += lastWeekReviewHtml();
   html += WEEK_ORDER.map(function(di) {
     const w = WEEK[di];
     const name = w.key ? PROGRAMS[w.key].name : (isWorkDay(w.d) ? "Work walking" : "Gym off");
     const done = w.key && didKeyThisWeek(w.key);
     const walked = isWorkDay(w.d) && walkThisWeekForDay(w.d);
-    const cls = done ? "on" : (w.d === today ? "today" : (w.key ? "" : (isWorkDay(w.d) ? "hot" : "")));
+    const restOk = !w.key && !isWorkDay(w.d);
+    let cls = done ? "on" : (w.d === today ? "today" : (w.key ? "" : (isWorkDay(w.d) ? "hot" : "")));
     let tag = done ? "cleared" : (w.d === today ? "today" : (w.key ? "lift" : "dark"));
     if (walked && !done) tag = "walk";
+    if (restOk) { tag = "rest"; cls = "on"; }
     return '<button class="daybtn ' + (w.d === today ? "is-today" : "") + '" data-day="' + w.d + '">' +
       '<div class="l"><b>' + esc(w.label) + (walked ? '<span class="walkMark">WALK</span>' : "") + "</b><span>" + esc(name) + "</span></div>" +
       '<span class="pill ' + cls + '">' + tag + "</span></button>";
@@ -3993,7 +4559,10 @@ function screenDay() {
       );
       return '<div class="row' + (preSkip ? " preSkip" : "") + '"><div><b>' + esc(ex.name) + '</b><div class="n">' +
         (preSkip ? "Pre-skip · lock on" : esc(ex.cue)) +
-        '</div></div><div class="r"><b style="color:var(--neon)">' + esc(ex.sets) +
+        '</div><button type="button" class="btn gho" data-practice="' + ex.id + '" style="min-height:44px;margin-top:8px;width:auto;padding:0 14px">' +
+        (practiceId === ex.id ? "Close practice" : "Practice") + "</button>" +
+        (practiceId === ex.id ? practiceHtml(ex.id) : "") +
+        '</div><div class="r"><b style="color:var(--neon)">' + esc(ex.sets) +
         '</b><div class="n">pin ' + pin(ex.id) + " · reps " + esc(lastRepsFor(ex.id)) + "</div></div></div>";
     }).join("") + "</div>";
     if (w.key === "lower-a" || w.key === "lower-b") {
@@ -4041,17 +4610,23 @@ function screenLift() {
     html += '<circle class="bg" cx="60" cy="60" r="52"/>';
     html += '<circle class="fg" cx="60" cy="60" r="52" stroke-dasharray="' + CIRC.toFixed(1) + '" stroke-dashoffset="' + off.toFixed(1) + '"/>';
     html += '</svg><div class="num">' + rem + "</div></div>";
-    html += '<p class="sub center">Sit. Don\'t wander.<br><b style="color:var(--neon)">SET 2/2</b> · ' + esc(ex.name) + "</p>";
-    html += '<div class="stack"><button class="btn pri big" id="skipRest">Skip rest</button></div>';
+    html += '<p class="sub center">Sit. Same pin.<br><b style="color:var(--neon)">One more set</b><br>' + esc(ex.name) + "</p>";
+    html += '<div class="stack">';
+    html += '<button class="btn gho" type="button" id="restMinus">−15 seconds</button>';
+    html += '<button class="btn pri big" id="skipRest">Skip rest</button>';
+    html += '<button class="btn gho" type="button" id="restPlus">+15 seconds</button>';
+    html += "</div>";
     html += nav("home");
     return html;
   }
   html += '<div class="lbl">' + esc(prog.name) + "</div>";
   html += '<div class="bar"><i style="width:' + pct + '%"></i></div>';
-  html += '<div class="lbl" style="margin-bottom:14px">Move ' + (live.i + 1) + "/" + prog.items.length + " · Set " + (live.set + 1) + "/2 · " + pct + "%</div>";
+  const minsIn = Math.max(0, Math.round((Date.now() - (live.started || Date.now())) / 60000));
+  html += '<div class="lbl" style="margin-bottom:14px">Move ' + (live.i + 1) + "/" + prog.items.length + " · Set " + (live.set + 1) + "/2 · " + pct + '% · <span id="elapsedMin">' + minsIn + " min in</span>" + comboSpan(live) + "</div>";
   html += "<h1>" + esc(ex.name) + "</h1>";
   var thenLine = live.set === 0 ? "Then · set 2/2" : (live.i < prog.items.length - 1 ? ("Then · " + prog.items[live.i + 1].name) : "Then · session end");
   html += '<p class="sub" style="margin-top:0">' + esc(thenLine) + "</p>";
+  html += '<p class="sub" style="margin-top:0">' + esc(stillNames(live)) + "</p>";
   let liftCue = ex.cue;
   if (live.key === "lower-b" && ex.id === "calf" && isFeetCooked()) liftCue = "Pre-skip · feet cooked. No guilt.";
   if (live.key === "lower-b" && ex.id === "curl" && isHamWeird()) liftCue = "Pre-skip · ham weird. No guilt.";
@@ -4061,12 +4636,20 @@ function screenLift() {
   html += '</div></div><div><div class="lbl">Reps</div><div class="step">';
   html += '<button class="mini" data-act="r-" type="button">−</button><b>' + s.r + '</b><button class="mini" data-act="r+" type="button">+</button>';
   html += "</div></div></div>";
+  var lastDetail = lastSetDetail(ex.id, live.set);
+  if (lastDetail) {
+    html += '<p class="sub" style="margin:8px 0 0">Last session · ' + lastDetail.w + " lb × " + lastDetail.r + (lastDetail.clean ? " · clean" : "") + "</p>";
+  }
+  if (state.readyUp && state.readyUp[ex.id]) {
+    html += '<p class="sub" style="margin:4px 0 0">Next hole is loaded on this pin.</p>';
+  }
   var prevRep = lastSetRep(ex.id, live.set);
   if (prevRep) html += '<div class="stack"><button class="btn gho" id="matchLast" type="button">Match last · ' + prevRep + " reps</button></div>";
   html += '<div class="dots">' + prog.items.map(function(_, i) {
     return '<div class="dot ' + (i <= live.i ? "on" : "") + '" style="' + (i > live.i ? "opacity:.35" : "") + '"></div>';
   }).join("") + "</div>";
   html += '<div class="stack">';
+  html += '<button class="btn gho big cleanBtn' + (effectiveClean(s) ? " on" : "") + '" id="cleanMark" type="button">' + (effectiveClean(s) ? "Clean" : "Mark clean") + "</button>";
   html += '<button class="btn ok big" id="did">✓ Set Complete</button>';
   html += '<button class="btn dan" id="cramp">Cramp — Abort</button>';
   html += '<button class="btn gho" id="skipEx">Skip Movement</button>';
@@ -4097,6 +4680,9 @@ function screenDone() {
   if (last) {
     html += '<div class="card"><div class="row" style="border:0;padding:0"><div><div class="lbl">Session</div><b>' + esc(last.name) +
       '</b><div class="n">reason · ' + esc(last.reason || reason) + '</div></div><div class="r"><div class="lbl">Time</div><b>' + last.minutes + " min</b></div></div></div>";
+    html += '<div class="card mt"><div class="lbl">Session note</div>';
+    html += '<textarea id="sessionNote" maxlength="140" placeholder="Optional. One line." style="min-height:72px">' + esc(last.note || "") + "</textarea>";
+    html += '<div class="stack"><button class="btn gho" type="button" id="saveSessionNote">Keep note</button></div></div>';
   }
   html += '<div class="stack">';
   if (last) {
@@ -4123,16 +4709,19 @@ function screenFuel() {
   html += '<p class="sub">2pm–8pm. Protein ' + esc(proteinRange()) + " g (from LBM). Macro rings + three locks.</p>";
 
   html += '<p class="remainLine">' + esc(macroRemainSentence()) + "</p>";
+  html += '<p class="pctLine">' + esc(macroPctLine()) + "</p>";
   html += '<div class="macroRings">';
   html += macroRingHtml("CAL", m.cal, m.calTarget, "var(--amber)");
   html += macroRingHtml("PRO", m.protein, m.proteinTarget, "var(--neon)");
   html += macroRingHtml("CARB", m.carbs, m.carbsTarget, "var(--cyan)");
   html += macroRingHtml("FAT", m.fat, m.fatTarget, "#ff4ec8");
   html += "</div>";
+  html += macroBarsHtml();
 
   html += quickAddHtml(todayISO());
   html += diaryBlockHtml(todayISO());
   html += waterBlockHtml(todayISO());
+  html += proteinWeekBarsHtml();
   html += weekNutritionHtml();
   html += '<div class="card mt"><details class="bodyFold"><summary>Adjust targets &amp; today\'s numbers</summary><div class="macroTargets">';
   [
@@ -4184,6 +4773,7 @@ function screenFuel() {
   html += '<div class="stat" style="font-size:28px;margin:6px 0">' + (lastW ? lastW.lb + "<small> LB</small>" : "—") + "</div>";
   if (lastW) html += '<div class="lbl">' + lastW.date + "</div>";
   html += weightDeltaHtml();
+  html += weightSparkHtml();
   html += '<div class="stack" style="margin-top:10px"><input type="number" id="bwInput" placeholder="Weight today (lb)" min="100" max="500" step="0.1"/>';
   html += '<button class="btn pri" id="bwSave">Log Scale</button></div>';
   if (hasHealthBridge()) {
@@ -4285,10 +4875,11 @@ function screenSession() {
   if (s.reason) html += ' <span class="pill ' + (s.reason === "complete" ? "on" : "hot") + '">' + esc(s.reason) + "</span>";
   html += "<h1>" + esc(s.name) + "</h1>";
   html += '<p class="sub">' + s.minutes + " minutes · key " + esc(s.key) + "</p>";
+  if (s.note) html += '<div class="card"><div class="lbl">Note</div><p class="sub" style="margin:0">' + esc(s.note) + "</p></div>";
   html += '<div class="card">' + (s.work || []).map(function(w) {
     const sets = (w.sets || []).map(function(x, i) {
       if (x.skipped) return "S" + (i + 1) + " " + x.w + "×" + x.r + " (skipped)";
-      if (x.done) return "S" + (i + 1) + " " + x.w + "×" + x.r;
+      if (x.done) return "S" + (i + 1) + " " + x.w + "×" + x.r + (x.clean ? " clean" : "");
       return "S" + (i + 1) + " " + x.w + "×" + x.r + " (open)";
     }).join(" · ");
     return '<div class="row"><div><b>' + esc(w.name) + '</b><div class="n">' + esc(sets) + "</div></div></div>";
@@ -4493,6 +5084,7 @@ function render() {
   else html = screenHome();
   app.innerHTML = html;
   if (undoSnapshot && view === "lift") showUndoGhost();
+  if (plateUndo) showPlateUndo();
   bind();
   bindPetChrome();
   renderPetWidget();
@@ -5211,6 +5803,122 @@ function bind() {
     saveLive();
     render();
   };
+  if ($("againPlate")) $("againPlate").onclick = function() {
+    const iso = $("againPlate").getAttribute("data-plate-iso") || todayISO();
+    const plate = againPlate(iso);
+    if (!plate) { toast("Nothing to repeat"); return; }
+    addPlate(plate, iso);
+    render();
+  };
+  if ($("saveTemplate")) $("saveTemplate").onclick = function() {
+    const iso = $("saveTemplate").getAttribute("data-plate-iso") || todayISO();
+    saveMealTemplate(iso);
+    render();
+  };
+  document.querySelectorAll("[data-tpl]").forEach(function(btn) {
+    btn.onclick = function() {
+      logMealTemplate(btn.getAttribute("data-tpl"), btn.getAttribute("data-plate-iso") || todayISO());
+      render();
+    };
+  });
+  document.querySelectorAll("[data-tpl-del]").forEach(function(btn) {
+    btn.onclick = function() {
+      deleteMealTemplate(btn.getAttribute("data-tpl-del"));
+      render();
+    };
+  });
+  document.querySelectorAll("[data-fav]").forEach(function(btn) {
+    btn.onclick = function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleFav(btn.getAttribute("data-fav"));
+      render();
+    };
+  });
+  document.querySelectorAll("[data-hist]").forEach(function(btn) {
+    btn.onclick = function() {
+      const plate = histPlateCache[parseInt(btn.getAttribute("data-hist"), 10)];
+      const iso = btn.getAttribute("data-plate-iso") || todayISO();
+      if (!plate) return;
+      addPlate(plate, iso);
+      render();
+    };
+  });
+  document.querySelectorAll("[data-qty-dir]").forEach(function(btn) {
+    btn.onclick = function() {
+      const iso = btn.getAttribute("data-plate-iso") || todayISO();
+      const idx = parseInt(btn.getAttribute("data-qty-idx"), 10);
+      const dir = parseInt(btn.getAttribute("data-qty-dir"), 10) || 0;
+      setItemQty(iso, idx, dir);
+      render();
+    };
+  });
+  if ($("foodSearch")) {
+    $("foodSearch").addEventListener("input", function() {
+      foodQuery = this.value;
+      const caret = this.selectionStart;
+      render();
+      const el = $("foodSearch");
+      if (el) {
+        el.focus();
+        try { el.setSelectionRange(caret, caret); } catch (err) {}
+      }
+    });
+    $("foodSearch").addEventListener("keydown", function(e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if ($("foodSearchAdd")) $("foodSearchAdd").click();
+      }
+    });
+  }
+  if ($("foodSearchAdd")) $("foodSearchAdd").onclick = function() {
+    const iso = $("foodSearchAdd").getAttribute("data-plate-iso") || todayISO();
+    const q = String(foodQuery || "").trim();
+    let plate = plateByQuery(q);
+    if (!plate) {
+      const hits = historyPlateHits(q);
+      const exact = hits.find(function(h) { return h.name.toLowerCase() === q.toLowerCase(); });
+      if (exact) plate = exact;
+      else if (hits.length === 1) plate = hits[0];
+    }
+    if (!plate) plate = plateFromFreeText(q);
+    if (!plate) { toast("No match. Try a name, or name calories protein"); return; }
+    addPlate(plate, iso);
+    foodQuery = "";
+    render();
+  };
+  if ($("restMinus")) $("restMinus").onclick = function() { adjustRest(-15); };
+  if ($("restPlus")) $("restPlus").onclick = function() { adjustRest(15); };
+  if ($("cleanMark")) $("cleanMark").onclick = function() {
+    if (!state.live) return;
+    const live = state.live;
+    const cur = live.sets[live.i][live.set];
+    const on = effectiveClean(cur);
+    cur.cleanTouched = true;
+    cur.clean = !on;
+    sfxTap();
+    saveLive();
+    render();
+  };
+  document.querySelectorAll("[data-practice]").forEach(function(btn) {
+    btn.onclick = function() {
+      const id = btn.getAttribute("data-practice");
+      practiceId = (practiceId === id) ? "" : id;
+      sfxTap();
+      render();
+    };
+  });
+  if ($("saveSessionNote")) $("saveSessionNote").onclick = function() {
+    const last = state.sessions[0];
+    const ta = $("sessionNote");
+    if (!last) return;
+    const t = String(ta && ta.value || "").trim().slice(0, 140);
+    if (!t) { toast("Note left blank"); return; }
+    last.note = t;
+    sfxConfirm();
+    persist();
+    toast("Note kept");
+  };
   if ($("quietReminderToggle")) $("quietReminderToggle").onclick = function() {
     state.quietReminder = !state.quietReminder;
     sfxTap();
@@ -5229,6 +5937,10 @@ function tickClock() {
   const ss = String(now.getSeconds()).padStart(2, "0");
   const live = state.live ? '<span class="dotlive"></span>LIVE' : "OFFLINE";
   el.innerHTML = live + " · " + hh + ":" + mm + ":" + ss;
+  const elap = document.getElementById("elapsedMin");
+  if (elap && state.live && state.live.started && view === "lift") {
+    elap.textContent = Math.max(0, Math.round((Date.now() - state.live.started) / 60000)) + " min in";
+  }
   // Re-apply env when auto crosses day/night boundary
   try {
     const want = resolveEnvironment();
@@ -5394,7 +6106,7 @@ function registerOfflineSW() {
     const pageUrl = (location.href || "./").split("#")[0];
     const swCode = [
       "const PAGE = " + JSON.stringify(pageUrl) + ";",
-      "const CACHE = 'pftrack-v44';",
+      "const CACHE = 'pftrack-v45';",
       "self.addEventListener('install', function(e) {",
       "  e.waitUntil(caches.open(CACHE).then(function(c) { return c.addAll([PAGE, './']).catch(function(){}); }).then(function(){ return self.skipWaiting(); }));",
       "});",
