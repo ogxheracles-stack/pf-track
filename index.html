@@ -987,10 +987,11 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
 .goalCard .n{font-size:13px;color:var(--dim);margin-top:2px}
 .path{display:flex;gap:4px;margin:10px 0 8px}
 .path .node{
-  flex:1;min-height:52px;border-radius:10px;border:1px solid var(--line);
+  flex:1;min-height:52px;min-width:0;margin:0;border-radius:10px;border:1px solid var(--line);
   background:var(--panel);color:var(--dim);
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   font:700 10px/1.15 var(--font);padding:4px 1px;gap:2px;
+  cursor:pointer;appearance:none;-webkit-appearance:none;
 }
 .path .node.on{border-color:var(--neon);color:var(--neon);background:var(--neon-dim)}
 .path .node.now{box-shadow:inset 0 0 0 1px var(--cyan);color:var(--text)}
@@ -1085,7 +1086,7 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
 
 const STORAGE_KEY = "pftrack_v3";
 const LIVE_KEY = "pftrack_live";
-const APP_VERSION = "4.13";
+const APP_VERSION = "4.14";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -4227,6 +4228,17 @@ function quickAddHtml(iso) {
   html += "</div>";
   return html;
 }
+function todayDoctrine() {
+  const w = todayPlan();
+  if (!w) return "Rest";
+  if (w.key === "upper-a") return "Upper A";
+  if (w.key === "lower-a") return "Lower A";
+  if (w.key === "upper-b") return "Upper B";
+  if (w.key === "lower-b") return "Lower B";
+  if (isWorkDay(w.d)) return "Walk";
+  return "Rest";
+}
+
 function weekPathHtml() {
   const today = new Date().getDay();
   const ck = nextOpenLiftDay();
@@ -4239,38 +4251,18 @@ function weekPathHtml() {
     let cls = "node";
     if (restOk) cls += " on rest";
     else if (done || walked) cls += " on";
-    if (w.d === today) cls += " now";
+    if (w.d === today) cls += " now lead";
     if (ck != null && w.d === ck && !done) cls += " ck";
     let mark = "·";
     if (done || restOk) mark = "✓";
     else if (walked) mark = "W";
     else if (ck != null && w.d === ck) mark = "next";
     else if (!w.key) mark = "–";
-    html += '<div class="' + cls + '"><span>' + esc(w.short) + "</span><small>" + mark + "</small></div>";
+    html += '<button type="button" class="' + cls + '" data-day="' + w.d + '"><span>' + esc(w.short) + "</span><small>" + mark + "</small></button>";
   });
   html += "</div>";
-  html += '<p class="sub" style="margin-top:0">Next · ' + esc(nextLiftLabel()) + "</p>";
+  html += '<p class="nextLine">' + esc(todayDoctrine()) + "</p>";
   return html;
-}
-
-function nextLiftLabel() {
-  const seq = [
-    {d: 6, key: "upper-a", short: "Sat"},
-    {d: 0, key: "lower-a", short: "Sun"},
-    {d: 2, key: "upper-b", short: "Tue"},
-    {d: 3, key: "lower-b", short: "Wed"}
-  ];
-  const pos = {6: 0, 0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6};
-  const today = new Date().getDay();
-  let best = null;
-  seq.forEach(function(s) {
-    if (didKeyThisWeek(s.key)) return;
-    if (pos[s.d] < pos[today]) return;
-    if (!best) best = s;
-  });
-  if (best) return best.short + " " + PROGRAMS[best.key].name;
-  if (liftKeysClearedThisWeek() >= 4) return "Week clear · Sat Upper A";
-  return "Sat Upper A";
 }
 
 function clearsForWeekOffset(n) {
@@ -5126,27 +5118,12 @@ function screenHome() {
 }
 
 function screenWeek() {
-  const today = new Date().getDay();
   let html = statusbar();
   html += '<div class="lbl">Weekly plan</div><h1>Week in, week out</h1>';
   html += '<p class="sub">Tap a day for the manifest. Same rotation forever. Saturday starts it.</p>';
   html += '<p class="regionLine">' + esc(regionWord(todayPlan())) + "</p>";
   html += weekPathHtml();
   html += lastWeekReviewHtml();
-  html += WEEK_ORDER.map(function(di) {
-    const w = WEEK[di];
-    const name = w.key ? PROGRAMS[w.key].name : (isWorkDay(w.d) ? "Work walking" : "Gym off");
-    const done = w.key && didKeyThisWeek(w.key);
-    const walked = isWorkDay(w.d) && walkThisWeekForDay(w.d);
-    const restOk = !w.key && !isWorkDay(w.d);
-    let cls = done ? "on" : (w.d === today ? "today" : (w.key ? "" : (isWorkDay(w.d) ? "hot" : "")));
-    let tag = done ? "cleared" : (w.d === today ? "today" : (w.key ? "lift" : "dark"));
-    if (walked && !done) tag = "walk";
-    if (restOk) { tag = "rest"; cls = "on"; }
-    return '<button class="daybtn ' + (w.d === today ? "is-today" : "") + '" data-day="' + w.d + '">' +
-      '<div class="l"><b>' + esc(w.label) + (walked ? '<span class="walkMark">WALK</span>' : "") + '</b><span class="regionBit">' + esc(regionWord(w)) + "</span><span>" + esc(name) + "</span></div>" +
-      '<span class="pill ' + cls + '">' + tag + "</span></button>";
-  }).join("");
   html += nav("week");
   return html;
 }
