@@ -1086,7 +1086,7 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
 
 const STORAGE_KEY = "pftrack_v3";
 const LIVE_KEY = "pftrack_live";
-const APP_VERSION = "4.15";
+const APP_VERSION = "4.16";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -4815,7 +4815,6 @@ function screenRecovery() {
   if (plan && isWorkDay(plan.d)) {
     html += '<div class="stack">';
     html += '<button class="btn pri big" id="walkLog">Log walk</button>';
-    html += '<div class="step"><button class="mini" id="walkMinus">−</button><b>' + walkMinutes + '</b><button class="mini" id="walkPlus">+</button></div>';
     html += "</div>";
   } else if (plan && plan.key) {
     html += '<p class="nextLine">' + esc(todayDoctrine()) + "</p>";
@@ -4824,6 +4823,9 @@ function screenRecovery() {
   }
   html += '<p class="sub">Sleep · feet · ham · heat. Cal edits the day grid.</p>';
   html += trainHeatHtml();
+  if (plan && isWorkDay(plan.d)) {
+    html += '<div class="step mt"><button class="mini" id="walkMinus">−</button><b>' + walkMinutes + '</b><button class="mini" id="walkPlus">+</button></div>';
+  }
   if (!plan.key && isWorkDay(plan.d)) {
     html += heatBannerHtml(plan);
   }
