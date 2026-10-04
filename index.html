@@ -1086,7 +1086,7 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
 
 const STORAGE_KEY = "pftrack_v3";
 const LIVE_KEY = "pftrack_live";
-const APP_VERSION = "4.16";
+const APP_VERSION = "4.17";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -4839,7 +4839,6 @@ function screenRecovery() {
   html += '<div class="toggle ' + (isHamWeird() ? "on" : "") + '" id="hamWeirdToggle"><div><b>Ham weird</b><span>Pre-skips Lower B seated curl' + (isHamWeird() ? ' <span class="chip">clears next Sat</span>' : "") + '</span></div><div class="sw"></div></div>';
   html += "</div>";
   if (plan && isWorkDay(plan.d)) html += waterBlockHtml(todayISO());
-  html += '<div class="stack mt"><button class="btn pri" data-go="cal">Open calendar</button></div>';
   html += nav("recovery");
   return html;
 }
@@ -4891,6 +4890,7 @@ function screenMore() {
   html += '<p class="sub">Link · Stats · Settings · Companion · Export</p>';
   html += '<div class="moreList">';
   html += '<button class="btn" data-go="link"><span class="ico">⇄</span> Link · PFTRACK uplink</button>';
+  html += '<button class="btn" data-go="cal"><span class="ico">▦</span> Calendar</button>';
   html += '<button class="btn" data-go="backfill"><span class="ico">⏎</span> Backfill notes</button>';
   html += '<button class="btn" data-go="log"><span class="ico">≡</span> Stats · XP · sessions</button>';
   html += '<button class="btn" id="openPetFromMore"><span class="ico">✦</span> Companion</button>';
