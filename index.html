@@ -1085,7 +1085,7 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
 
 const STORAGE_KEY = "pftrack_v3";
 const LIVE_KEY = "pftrack_live";
-const APP_VERSION = "4.10";
+const APP_VERSION = "4.11";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -4163,7 +4163,7 @@ function quickAddHtml(iso) {
   html += '<p class="sub" style="margin-top:0">Tap a plate, a favorite, or search what you have logged before.</p>';
   const again = againPlate(iso);
   if (again) {
-    html += '<div class="stack" style="margin-top:8px"><button class="btn pri" type="button" id="againPlate" data-plate-iso="' + iso + '">Again · ' + esc(again.name) + "</button></div>";
+    html += '<div class="stack" style="margin-top:8px"><button class="btn pri" type="button" id="againPlate" data-again-plate="1" data-plate-iso="' + iso + '">Again · ' + esc(again.name) + "</button></div>";
   }
   html += '<div class="seg" id="plateSlotSeg">';
   html += '<button type="button" data-plate-slot="work" class="' + (slot === "work" ? "on" : "") + '">Work</button>';
@@ -5322,14 +5322,11 @@ function screenFuel() {
   html += '<p class="sub">2pm–8pm. Protein ' + esc(proteinRange()) + " g (from LBM). Macro rings + three locks.</p>";
 
   html += '<p class="remainLine">' + esc(macroRemainSentence()) + "</p>";
-  html += '<p class="pctLine">' + esc(macroPctLine()) + "</p>";
-  html += '<div class="macroRings">';
-  html += macroRingHtml("CAL", m.cal, m.calTarget, "var(--amber)");
-  html += macroRingHtml("PRO", m.protein, m.proteinTarget, "var(--neon)");
-  html += macroRingHtml("CARB", m.carbs, m.carbsTarget, "var(--cyan)");
-  html += macroRingHtml("FAT", m.fat, m.fatTarget, "#ff4ec8");
-  html += "</div>";
-  html += macroBarsHtml();
+  html += diaryBlockHtml(todayISO());
+  const again = againPlate(todayISO());
+  if (again) {
+    html += '<div class="stack" style="margin-top:8px"><button class="btn pri" type="button" id="againPlateTop" data-again-plate="1" data-plate-iso="' + todayISO() + '">Again · ' + esc(again.name) + "</button></div>";
+  }
 
   html += quickAddHtml(todayISO());
   html += diaryBlockHtml(todayISO());
@@ -6435,13 +6432,15 @@ function bind() {
     saveLive();
     render();
   };
-  if ($("againPlate")) $("againPlate").onclick = function() {
-    const iso = $("againPlate").getAttribute("data-plate-iso") || todayISO();
-    const plate = againPlate(iso);
-    if (!plate) { toast("Nothing to repeat"); return; }
-    addPlate(plate, iso);
-    render();
-  };
+  document.querySelectorAll("[data-again-plate]").forEach(function(btn) {
+    btn.onclick = function() {
+      const iso = btn.getAttribute("data-plate-iso") || todayISO();
+      const plate = againPlate(iso);
+      if (!plate) { toast("Nothing to repeat"); return; }
+      addPlate(plate, iso);
+      render();
+    };
+  });
   if ($("saveTemplate")) $("saveTemplate").onclick = function() {
     const iso = $("saveTemplate").getAttribute("data-plate-iso") || todayISO();
     saveMealTemplate(iso);
