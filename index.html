@@ -1085,7 +1085,7 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
 
 const STORAGE_KEY = "pftrack_v3";
 const LIVE_KEY = "pftrack_live";
-const APP_VERSION = "4.11";
+const APP_VERSION = "4.12";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -5319,7 +5319,6 @@ function screenFuel() {
   const m = ensureMacros();
   let html = statusbar();
   html += '<div class="lbl">Nutrition</div><h1>Fuel window</h1>';
-  html += '<p class="sub">2pm–8pm. Protein ' + esc(proteinRange()) + " g (from LBM). Macro rings + three locks.</p>";
 
   html += '<p class="remainLine">' + esc(macroRemainSentence()) + "</p>";
   html += diaryBlockHtml(todayISO());
