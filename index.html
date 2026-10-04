@@ -1076,7 +1076,7 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
 
 const STORAGE_KEY = "pftrack_v3";
 const LIVE_KEY = "pftrack_live";
-const APP_VERSION = "4.7";
+const APP_VERSION = "4.8";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -4474,7 +4474,6 @@ function screenHome() {
   const plan = todayPlan();
   const prog = plan.key && PROGRAMS[plan.key];
   const lastW = state.bodyweights[0];
-  const full = liftKeysClearedThisWeek() >= 4;
   const bf = (state.stats && state.stats.bf != null && !isNaN(Number(state.stats.bf))) ? Number(state.stats.bf) : null;
   const wtLabel = lastW ? (String(lastW.lb)) : (state.stats.wt != null ? String(state.stats.wt) : "—");
   const done = !!(plan.key && didKeyThisWeek(plan.key));
@@ -4505,7 +4504,7 @@ function screenHome() {
   if (state.live) {
     html += '<div class="stack"><button class="btn ok big" data-go="lift">Resume</button></div>';
   } else if (plan.key) {
-    html += '<div class="stack"><button class="btn pri big" data-go="start:' + plan.key + '">' + (full ? "Override deploy" : "Deploy") + "</button></div>";
+    html += '<div class="stack"><button class="btn pri big" data-go="start:' + plan.key + '">Deploy</button></div>';
   } else if (isWorkDay(plan.d)) {
     const walk = walkForDate(todayISO());
     html += '<div class="stack">';
@@ -4534,17 +4533,11 @@ function screenHome() {
   }
   if (!plan.key && isWorkDay(plan.d)) {
     const walk = walkForDate(todayISO());
-    if (state.live) {
-      html += '<div class="card mt"><div class="lbl">Work walk</div>';
-      html += '<div class="step"><button class="mini" id="walkMinus">−</button><b>' + walkMinutes + '</b><button class="mini" id="walkPlus">+</button></div>';
-      html += '<div class="stack"><button class="btn pri" id="walkLog">Log walk</button></div></div>';
-    } else if (walk) {
+    if (!state.live && walk) {
       html += '<p class="sub" style="margin-top:8px">Walk on the node · ' + walk.minutes + " min</p>";
     }
     html += '<div class="toggle ' + ((walk && walk.feetCooked) || isFeetCooked() ? "on" : "") + '" id="feetCookedToggle" style="margin-top:12px"><div><b>Feet cooked</b><span>Locks Lower B calf this week</span></div><div class="sw"></div></div>';
     html += heatBannerHtml(plan);
-  } else if (!plan.key && !state.live) {
-    html += '<div class="stack"><button class="btn gho" data-day="' + plan.d + '">Why today is dark</button></div>';
   }
 
   html += '<div class="card mt"><details class="bodyFold">';
