@@ -1057,6 +1057,15 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
 .qtyStep b{min-width:36px;text-align:center;font-size:13px}
 .diaryItem{flex-wrap:wrap}
 
+
+.bfErr{margin:10px 0 0;color:var(--amber);font-weight:650;font-size:15px}
+.bfOk{margin:10px 0 0;color:var(--neon);font-weight:650;font-size:15px}
+.bfInst{white-space:pre-wrap;font-family:var(--mono);font-size:11.5px;line-height:1.45;color:var(--dim);margin:0;max-height:220px;overflow:auto}
+.bfDay{padding:10px 0;border-top:1px solid var(--line)}
+.bfDay:first-child{border-top:0;padding-top:0}
+.bfDay b{display:block;font-size:15px}
+.bfDay .n{margin-top:2px}
+
 </style>
 </head>
 <body>
@@ -1076,7 +1085,7 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
 
 const STORAGE_KEY = "pftrack_v3";
 const LIVE_KEY = "pftrack_live";
-const APP_VERSION = "4.8";
+const APP_VERSION = "4.9";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -2279,6 +2288,532 @@ function applyPFTRACK(parsed) {
   return {updated: updated, logged: !!parsed.log};
 }
 
+const BACKFILL_EXAMPLE = [
+  "{",
+  '  "schema": "pftrack-backfill",',
+  '  "days": [',
+  "    {",
+  '      "date": "2026-10-03",',
+  '      "workout": {',
+  '        "key": "upper-a",',
+  '        "movements": [',
+  '          {"name": "Shoulder Press", "sets": [{"pin": 50, "reps": 12, "clean": true}, {"pin": 50, "reps": 12}]}',
+  "        ]",
+  "      },",
+  '      "food": [{"name": "chicken rice", "cal": 640, "protein": 48, "slot": "home"}],',
+  '      "waterOz": 48,',
+  '      "scale": 268.4,',
+  '      "note": "Pins felt honest."',
+  "    }",
+  "  ]",
+  "}"
+].join("\n");
+
+const BACKFILL_KEY_ALIASES = {
+  "upper-a": "upper-a", "upper a": "upper-a", "uppera": "upper-a", "ua": "upper-a",
+  "lower-a": "lower-a", "lower a": "lower-a", "lowera": "lower-a", "la": "lower-a",
+  "upper-b": "upper-b", "upper b": "upper-b", "upperb": "upper-b", "ub": "upper-b",
+  "lower-b": "lower-b", "lower b": "lower-b", "lowerb": "lower-b", "lb": "lower-b"
+};
+
+let backfillRaw = "";
+let backfillError = "";
+let backfillPlan = null;
+let backfillResult = "";
+let backfillFrom = "more";
+
+function backfillInstructions() {
+  return [
+    "Emit only JSON for PF//TRACK. Schema: pftrack-backfill.",
+    "Say nothing else. Dates are YYYY-MM-DD. Omit any field you do not have.",
+    "Doctrine: Sat upper-a, Sun lower-a, Tue upper-b, Wed lower-b. Mon and Fri are walk only. Thu is rest.",
+    "Program is 2 sets of 10–15. Use only these movements: press, lat, row, raise, rear, tri, curlbi, chest, lpress, abd, ext, curl, calf.",
+    "If a name is not in that list, put it in the day note. Do not invent a machine.",
+    "Fields: schema, days, date, workout, key, minutes, movements, name, id, sets, pin, reps, clean, food, cal, protein, slot, waterOz, walkMinutes, rest, scale, note.",
+    "slot is work, home, or after. clean is true or false. waterOz is added to that day, not a replacement.",
+    "Example:",
+    BACKFILL_EXAMPLE
+  ].join("\n");
+}
+
+function movementName(id) {
+  const keys = Object.keys(PROGRAMS);
+  for (let i = 0; i < keys.length; i++) {
+    const items = PROGRAMS[keys[i]].items;
+    for (let j = 0; j < items.length; j++) {
+      if (items[j].id === id) return items[j].name;
+    }
+  }
+  return id;
+}
+
+function canonicalDayKey(raw) {
+  const k = String(raw || "").trim().toLowerCase().replace(/_/g, "-").replace(/\s+/g, " ");
+  if (!k) return null;
+  if (PROGRAMS[k]) return k;
+  if (BACKFILL_KEY_ALIASES[k]) return BACKFILL_KEY_ALIASES[k];
+  return null;
+}
+
+function readLooseNumber(v) {
+  if (typeof v === "number" && isFinite(v)) return v;
+  const m = String(v == null ? "" : v).replace(/,/g, "").match(/-?\d+(?:\.\d+)?/);
+  return m ? parseFloat(m[0]) : NaN;
+}
+
+function normalizeISO(raw) {
+  const m = String(raw || "").trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (!m) return "";
+  return m[1] + "-" + String(m[2]).padStart(2, "0") + "-" + String(m[3]).padStart(2, "0");
+}
+
+function validBackfillISO(iso) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return false;
+  const dt = parseLocalDate(iso);
+  if (isNaN(dt.getTime())) return false;
+  if (isoFromDate(dt) !== iso) return false;
+  const today = parseLocalDate(todayISO());
+  const ahead = (dt.getTime() - today.getTime()) / 86400000;
+  if (ahead > 14) return false;
+  if (dt.getFullYear() < 2020) return false;
+  return true;
+}
+
+function extractBackfillJson(text) {
+  let s = String(text || "").replace(/^\uFEFF/, "").trim();
+  if (!s) return "";
+  const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence) s = fence[1].trim();
+  const obj = s.indexOf("{");
+  const arr = s.indexOf("[");
+  let cut = -1;
+  if (obj >= 0 && (arr < 0 || obj < arr)) cut = obj;
+  else if (arr >= 0) cut = arr;
+  if (cut > 0) s = s.slice(cut);
+  return s.trim();
+}
+
+function parseLooseJson(s) {
+  try { return JSON.parse(s); } catch (e) {}
+  try { return JSON.parse(s.replace(/,\s*([}\]])/g, "$1")); } catch (e2) {}
+  return null;
+}
+
+function readBackfillSet(raw) {
+  if (typeof raw === "string") {
+    const m = String(raw).trim().match(/^(\d+(?:\.\d+)?)\s*[xX×]\s*(\d+)/);
+    if (!m) return null;
+    raw = {pin: parseFloat(m[1]), reps: parseInt(m[2], 10)};
+  }
+  if (!raw || typeof raw !== "object") return null;
+  const pin = readLooseNumber(raw.pin != null ? raw.pin : (raw.w != null ? raw.w : raw.weight));
+  const reps = readLooseNumber(raw.reps != null ? raw.reps : (raw.r != null ? raw.r : raw.rep));
+  if (!(pin > 0) || !(reps > 0)) return null;
+  if (pin > 800 || reps > 40) return null;
+  const set = {w: Math.round(pin * 10) / 10, r: Math.round(reps), done: true, skipped: false};
+  if (raw.clean === true || raw.clean === false || raw.clean === 1 || raw.clean === 0) set.clean = !!raw.clean;
+  return set;
+}
+
+function insertSessionByDate(session) {
+  let idx = state.sessions.findIndex(function(s) { return s.date < session.date; });
+  if (idx < 0) state.sessions.push(session);
+  else state.sessions.splice(idx, 0, session);
+  while (state.sessions.length > 60) {
+    let oldest = 0;
+    for (let i = 1; i < state.sessions.length; i++) {
+      if (state.sessions[i].date < state.sessions[oldest].date) oldest = i;
+      else if (state.sessions[i].date === state.sessions[oldest].date && i > oldest) oldest = i;
+    }
+    const dropped = state.sessions.splice(oldest, 1)[0];
+    if (dropped === session) return false;
+  }
+  return true;
+}
+
+function logCatchupSession(iso, key, opts) {
+  opts = opts || {};
+  if (!PROGRAMS[key]) return {ok: false};
+  if (isFutureISO(iso) && !opts.allowFuture) return {ok: false};
+  if ((state.sessions || []).some(function(s) { return s.date === iso && s.key === key; })) {
+    return {ok: false, duplicate: true};
+  }
+  const p = PROGRAMS[key];
+  const work = opts.work || p.items.map(function(ex) {
+    const w = state.lastWeights[ex.id] != null ? state.lastWeights[ex.id] : 10;
+    return {
+      id: ex.id,
+      name: ex.name,
+      sets: [
+        {w: w, r: 10, done: true, skipped: false},
+        {w: w, r: 10, done: true, skipped: false}
+      ]
+    };
+  });
+  const session = {
+    date: iso,
+    key: key,
+    name: p.name,
+    minutes: opts.minutes || 1,
+    reason: "catch-up",
+    work: work
+  };
+  if (opts.note) session.note = String(opts.note).slice(0, 280);
+  if (opts.byDate) {
+    if (!insertSessionByDate(session)) return {ok: false};
+  } else {
+    state.sessions.unshift(session);
+    if (state.sessions.length > 60) state.sessions.length = 60;
+  }
+  // Do NOT award embers for catch-up / backfill
+  return {ok: true};
+}
+
+function backfillTouchPins(work, iso) {
+  (work || []).forEach(function(w) {
+    const sets = (w.sets || []).filter(function(x) { return x.done && !x.skipped && x.w > 0; });
+    if (!sets.length) return;
+    let later = false;
+    (state.sessions || []).forEach(function(s) {
+      if (!(s.date > iso)) return;
+      (s.work || []).forEach(function(sw) {
+        if (sw.id === w.id) later = true;
+      });
+    });
+    if (later) return;
+    state.lastWeights[w.id] = sets[sets.length - 1].w;
+  });
+}
+
+function appendDayNote(iso, text) {
+  const bit = String(text || "").trim();
+  if (!bit) return false;
+  if (!state.dayNotes || typeof state.dayNotes !== "object" || Array.isArray(state.dayNotes)) state.dayNotes = {};
+  const cur = String(state.dayNotes[iso] || "").trim();
+  if (cur && cur.indexOf(bit) >= 0) return false;
+  state.dayNotes[iso] = cur ? (cur + "\n" + bit) : bit;
+  return true;
+}
+
+function addBackfillFood(iso, item) {
+  const name = String(item.name || "").trim().slice(0, 80);
+  if (!name) return false;
+  const cal = Math.max(0, Math.min(5000, Math.round(Number(item.cal) || 0)));
+  const protein = Math.max(0, Math.min(400, Math.round(Number(item.protein) || 0)));
+  const carbs = Math.max(0, Math.min(800, Math.round(Number(item.carbs) || 0)));
+  const fat = Math.max(0, Math.min(400, Math.round(Number(item.fat) || 0)));
+  const entry = ensureFoodFor(iso);
+  const dup = (entry.items || []).some(function(it) {
+    return String(it.name) === name && Math.round(Number(it.cal) || 0) === cal && Math.round(Number(it.protein) || 0) === protein;
+  });
+  if (dup) return false;
+  entry.items.push({
+    id: "backfill",
+    name: name,
+    qty: 1,
+    baseCal: cal,
+    baseProtein: protein,
+    baseCarbs: carbs,
+    baseFat: fat,
+    cal: cal,
+    protein: protein,
+    carbs: carbs,
+    fat: fat
+  });
+  if (!entry.dayMacros) entry.dayMacros = {cal: 0, protein: 0, carbs: 0, fat: 0};
+  entry.dayMacros.cal += cal;
+  entry.dayMacros.protein += protein;
+  entry.dayMacros.carbs += carbs;
+  entry.dayMacros.fat += fat;
+  const slot = (item.slot === "work" || item.slot === "after") ? item.slot : "home";
+  entry[slot] = true;
+  if (iso === todayISO()) {
+    const m = ensureMacros();
+    m.cal += cal;
+    m.protein += protein;
+    m.carbs += carbs;
+    m.fat += fat;
+    entry.dayMacros = {cal: m.cal, protein: m.protein, carbs: m.carbs, fat: m.fat};
+  }
+  return true;
+}
+
+function mergeBackfillWater(iso, oz) {
+  const add = Math.max(0, Math.min(200, Math.round(Number(oz) || 0)));
+  if (!add) return false;
+  const entry = ensureFoodFor(iso);
+  const cur = Number(entry.waterOz) || 0;
+  const next = Math.max(0, Math.min(200, cur + add));
+  if (next === cur) return false;
+  entry.waterOz = next;
+  return true;
+}
+
+function mergeBackfillWalk(iso, mins) {
+  const minutes = Math.max(1, Math.min(180, Math.round(Number(mins) || 0)));
+  if (!minutes) return false;
+  if (!Array.isArray(state.walks)) state.walks = [];
+  const existing = state.walks.findIndex(function(w) { return w.date === iso; });
+  if (existing >= 0) {
+    if (Number(state.walks[existing].minutes) === minutes) return false;
+    state.walks[existing].minutes = minutes;
+    return true;
+  }
+  state.walks.unshift({date: iso, minutes: minutes, feetCooked: false});
+  if (state.walks.length > 120) state.walks.length = 120;
+  return true;
+}
+
+function mergeBackfillScale(iso, lb) {
+  const n = Math.round(Number(lb) * 10) / 10;
+  if (!n || n < 50 || n > 600) return false;
+  if (!Array.isArray(state.bodyweights)) state.bodyweights = [];
+  const idx = state.bodyweights.findIndex(function(w) { return w.date === iso; });
+  if (idx >= 0) {
+    if (state.bodyweights[idx].lb === n) return false;
+    state.bodyweights[idx] = {date: iso, lb: n};
+  } else {
+    state.bodyweights.unshift({date: iso, lb: n});
+  }
+  state.bodyweights.sort(function(a, b) { return a.date < b.date ? 1 : -1; });
+  if (state.bodyweights.length > 90) state.bodyweights.length = 90;
+  if (iso === todayISO() || !state.stats.wt) state.stats.wt = state.bodyweights[0].lb;
+  return true;
+}
+
+function normalizeBackfillDay(day) {
+  if (!day || typeof day !== "object" || Array.isArray(day)) return null;
+  const iso = normalizeISO(day.date || day.iso || "");
+  if (!validBackfillISO(iso)) return null;
+  const plan = planForISO(iso);
+  const bits = [];
+  const notes = [];
+  let session = null;
+
+  const restRaw = day.rest != null ? day.rest : day.restNote;
+  if (typeof restRaw === "string" && restRaw.trim()) notes.push("Rest · " + restRaw.trim().slice(0, 240));
+  else if (restRaw === true) notes.push("Rest.");
+
+  const workout = (day.workout && typeof day.workout === "object" && !Array.isArray(day.workout)) ? day.workout : null;
+  if (typeof day.workout === "string" && day.workout.trim()) {
+    notes.push(day.workout.trim().slice(0, 240));
+  }
+  if (workout) {
+    let key = canonicalDayKey(workout.key || workout.day || workout.program);
+    if (!key && plan && plan.key) key = plan.key;
+    const movements = Array.isArray(workout.movements) ? workout.movements : (Array.isArray(workout.work) ? workout.work : []);
+    const unmatched = [];
+    const work = [];
+    movements.forEach(function(mv) {
+      if (!mv) return;
+      if (typeof mv === "string") {
+        const idOnly = resolveMovementId(mv);
+        if (!idOnly) unmatched.push(mv);
+        else unmatched.push(movementName(idOnly));
+        return;
+      }
+      if (typeof mv !== "object") return;
+      const label = String(mv.name || mv.id || mv.movement || "").trim();
+      const id = resolveMovementId(mv.id || mv.name || mv.movement || "");
+      const sets = [];
+      (Array.isArray(mv.sets) ? mv.sets : []).forEach(function(s) {
+        const set = readBackfillSet(s);
+        if (set) sets.push(set);
+      });
+      if (!id) {
+        if (label) {
+          unmatched.push(label + (sets.length ? " " + sets.map(function(s) { return s.w + "×" + s.r; }).join(" ") : ""));
+        }
+        return;
+      }
+      if (!sets.length) {
+        unmatched.push(label || movementName(id));
+        return;
+      }
+      work.push({id: id, name: movementName(id), sets: sets.slice(0, 6)});
+    });
+    if (unmatched.length) notes.push("Unmatched · " + unmatched.join("; ").slice(0, 400));
+    const wnote = workout.note ? String(workout.note).trim().slice(0, 240) : "";
+    if (key && work.length) {
+      const dup = (state.sessions || []).some(function(s) { return s.date === iso && s.key === key; });
+      if (dup) {
+        bits.push("session already logged");
+        if (wnote) notes.push(wnote);
+      } else {
+        let minutes = Math.round(readLooseNumber(workout.minutes));
+        if (!minutes || minutes < 1) minutes = 1;
+        if (minutes > 180) minutes = 180;
+        session = {key: key, minutes: minutes, note: wnote, work: work};
+        const shortName = String(PROGRAMS[key].name).split("—")[0].trim();
+        bits.push(shortName + " · " + work.length + " movement" + (work.length === 1 ? "" : "s") + " · no embers");
+      }
+    } else if (work.length && !key) {
+      notes.push("Not a lift day · " + work.map(function(w) { return w.name; }).join(", "));
+      bits.push("off-day lifts kept as a note");
+    } else if (wnote) {
+      notes.push(wnote);
+    }
+  }
+
+  const foodsIn = Array.isArray(day.food) ? day.food : (Array.isArray(day.foods) ? day.foods : (day.food && typeof day.food === "object" ? [day.food] : []));
+  const foods = [];
+  foodsIn.forEach(function(f) {
+    if (!f || typeof f !== "object") return;
+    const name = String(f.name || f.item || "").trim();
+    if (!name) return;
+    const cal = readLooseNumber(f.cal != null ? f.cal : f.calories);
+    const protein = readLooseNumber(f.protein != null ? f.protein : f.p);
+    if (isNaN(cal) || isNaN(protein) || cal < 0 || protein < 0) return;
+    let slot = String(f.slot || f.meal || "home").toLowerCase();
+    if (slot === "snack") slot = "after";
+    if (slot !== "work" && slot !== "home" && slot !== "after") slot = "home";
+    foods.push({
+      name: name.slice(0, 80),
+      cal: Math.min(5000, Math.round(cal)),
+      protein: Math.min(400, Math.round(protein)),
+      carbs: Math.min(800, Math.max(0, Math.round(readLooseNumber(f.carbs) || 0))),
+      fat: Math.min(400, Math.max(0, Math.round(readLooseNumber(f.fat) || 0))),
+      slot: slot
+    });
+  });
+  if (foods.length) bits.push("+" + foods.length + " food");
+
+  let waterOz = null;
+  const waterRaw = day.waterOz != null ? day.waterOz : (day.water != null ? day.water : day.oz);
+  if (waterRaw != null && waterRaw !== "") {
+    const oz = Math.round(readLooseNumber(waterRaw));
+    if (oz > 0) {
+      waterOz = Math.min(200, oz);
+      bits.push("water +" + waterOz + " oz");
+    }
+  }
+
+  let walkMinutes = null;
+  const walkRaw = day.walkMinutes != null ? day.walkMinutes : day.walk;
+  if (walkRaw != null && walkRaw !== "" && typeof walkRaw !== "boolean") {
+    const mins = Math.round(readLooseNumber(typeof walkRaw === "object" ? walkRaw.minutes : walkRaw));
+    if (mins > 0) {
+      walkMinutes = Math.min(180, mins);
+      bits.push("walk " + walkMinutes + " min");
+    }
+  }
+
+  let scale = null;
+  const scaleRaw = day.scale != null ? day.scale : (day.weight != null ? day.weight : day.lb);
+  if (scaleRaw != null && scaleRaw !== "" && typeof scaleRaw !== "boolean") {
+    const lb = Math.round(readLooseNumber(typeof scaleRaw === "object" ? (scaleRaw.lb != null ? scaleRaw.lb : scaleRaw.weight) : scaleRaw) * 10) / 10;
+    if (lb >= 50 && lb <= 600) {
+      scale = lb;
+      bits.push("scale " + scale);
+    }
+  }
+
+  const noteRaw = day.note != null ? day.note : day.dayNote;
+  if (typeof noteRaw === "string" && noteRaw.trim()) notes.push(noteRaw.trim().slice(0, 500));
+  if (notes.length) bits.push("note");
+
+  const actionable = !!(session || foods.length || waterOz != null || walkMinutes != null || scale != null || notes.length || bits.length);
+  if (!actionable) return null;
+  return {
+    iso: iso,
+    title: iso + (plan ? " · " + plan.short : ""),
+    bits: bits.length ? bits : ["nothing new"],
+    session: session,
+    foods: foods,
+    waterOz: waterOz,
+    walkMinutes: walkMinutes,
+    scale: scale,
+    notes: notes
+  };
+}
+
+function planBackfill(text) {
+  const raw = extractBackfillJson(text);
+  if (!raw) return {ok: false, error: "Paste the JSON first."};
+  const parsed = parseLooseJson(raw);
+  if (parsed == null || typeof parsed !== "object") return {ok: false, error: "That is not JSON."};
+  let days = null;
+  if (Array.isArray(parsed)) days = parsed;
+  else if (Array.isArray(parsed.days)) days = parsed.days;
+  else if (parsed.date || parsed.iso) days = [parsed];
+  if (!days) return {ok: false, error: "Need a days list with YYYY-MM-DD dates."};
+  if (!days.length) return {ok: false, error: "Nothing to backfill."};
+  const planned = [];
+  let badDate = false;
+  days.forEach(function(day) {
+    if (!day || typeof day !== "object" || Array.isArray(day)) { badDate = true; return; }
+    const iso = normalizeISO(day.date || day.iso || "");
+    if (!iso || !validBackfillISO(iso)) {
+      if (day.date || day.iso) badDate = true;
+      else badDate = true;
+      return;
+    }
+    const norm = normalizeBackfillDay(day);
+    if (norm) planned.push(norm);
+  });
+  if (!planned.length) {
+    return {ok: false, error: badDate ? "Need a days list with YYYY-MM-DD dates." : "Nothing to backfill."};
+  }
+  return {ok: true, days: planned};
+}
+
+function applyBackfill(days) {
+  let n = 0;
+  (days || []).forEach(function(day) {
+    let wrote = false;
+    if (day.session) {
+      backfillTouchPins(day.session.work, day.iso);
+      const res = logCatchupSession(day.iso, day.session.key, {
+        work: day.session.work,
+        minutes: day.session.minutes,
+        note: day.session.note,
+        byDate: true,
+        allowFuture: true
+      });
+      if (res.ok) wrote = true;
+    }
+    (day.foods || []).forEach(function(f) {
+      if (addBackfillFood(day.iso, f)) wrote = true;
+    });
+    if (day.waterOz != null && mergeBackfillWater(day.iso, day.waterOz)) wrote = true;
+    if (day.walkMinutes != null && mergeBackfillWalk(day.iso, day.walkMinutes)) wrote = true;
+    if (day.scale != null && mergeBackfillScale(day.iso, day.scale)) wrote = true;
+    (day.notes || []).forEach(function(note) {
+      if (appendDayNote(day.iso, note)) wrote = true;
+    });
+    if (wrote) n++;
+  });
+  return n;
+}
+
+function screenBackfill() {
+  let html = statusbar();
+  const back = (backfillFrom === "cal" || backfillFrom === "calday") ? backfillFrom : "more";
+  html += '<button class="btn gho" data-go="' + back + '" style="margin-bottom:14px">← Back</button>';
+  html += '<div class="lbl">Notes</div><h1>Backfill</h1>';
+  html += '<p class="sub">Paste the JSON an LLM made from your notes. Nothing is written until you apply. Catch-up does not grant embers.</p>';
+  html += '<div class="card"><div class="lbl">Copy instructions</div>';
+  html += '<p class="sub" style="margin-top:0">Hand this to any LLM with your messy notes. Say: emit this schema.</p>';
+  html += '<pre class="bfInst">' + esc(backfillInstructions()) + "</pre>";
+  html += '<div class="stack" style="margin-top:12px"><button class="btn gho" type="button" id="bfCopy">Copy instructions</button></div></div>';
+  html += '<div class="card mt"><div class="lbl">Paste</div>';
+  html += '<textarea class="uplinkBox" id="bfPaste" placeholder="{ &quot;schema&quot;: &quot;pftrack-backfill&quot;, &quot;days&quot;: [] }">' + esc(backfillRaw) + "</textarea>";
+  html += '<div class="stack"><button class="btn pri big" type="button" id="bfParse">Parse</button></div>';
+  if (backfillError) html += '<p class="bfErr">' + esc(backfillError) + "</p>";
+  html += "</div>";
+  if (backfillPlan && backfillPlan.length) {
+    html += '<div class="card mt"><div class="lbl">Will write</div>';
+    backfillPlan.forEach(function(day) {
+      html += '<div class="bfDay"><b>' + esc(day.title) + "</b>";
+      html += '<div class="n">' + esc(day.bits.join(" · ")) + "</div></div>";
+    });
+    html += '<div class="stack" style="margin-top:12px"><button class="btn pri big" type="button" id="bfApply">Apply</button></div></div>';
+  }
+  if (backfillResult) html += '<p class="bfOk">' + esc(backfillResult) + "</p>";
+  html += nav("more");
+  return html;
+}
+
 
 function xp() {
   return state.sessions.reduce(function(n, s) {
@@ -2764,7 +3299,7 @@ function go(v) {
   if (v === "fuel") tab = "fuel";
   if (v === "recovery") tab = "recovery";
   if (v === "shop") tab = "shop";
-  if (v === "more" || v === "link" || v === "log" || v === "session") tab = "more";
+  if (v === "more" || v === "link" || v === "log" || v === "session" || v === "backfill") tab = "more";
   if (v === "cal" || v === "calday") tab = "recovery";
   if (v !== "calday") calCatchupPick = false;
   render();
@@ -4317,6 +4852,7 @@ function screenMore() {
   html += '<p class="sub">Link · Stats · Settings · Companion · Export</p>';
   html += '<div class="moreList">';
   html += '<button class="btn" data-go="link"><span class="ico">⇄</span> Link · PFTRACK uplink</button>';
+  html += '<button class="btn" data-go="backfill"><span class="ico">⏎</span> Backfill notes</button>';
   html += '<button class="btn" data-go="log"><span class="ico">≡</span> Stats · XP · sessions</button>';
   html += '<button class="btn" id="openPetFromMore"><span class="ico">✦</span> Companion</button>';
   html += '<button class="btn" id="dumpLogMore"><span class="ico">⇪</span> Export backup</button>';
@@ -4976,6 +5512,7 @@ function screenCal() {
   }
   html += "</div>";
   html += '<p class="sub mt">Tap a day to edit lifts, food, walk.</p>';
+  html += '<div class="stack"><button class="btn pri" data-go="backfill">Backfill notes</button></div>';
   html += nav("recovery");
   return html;
 }
@@ -5045,6 +5582,7 @@ function screenCalDay() {
   }
   html += "</div>";
 
+  html += '<div class="stack mt"><button class="btn gho" data-go="backfill">Paste a backfill</button></div>';
   html += quickAddHtml(iso);
   html += diaryBlockHtml(iso);
   html += waterBlockHtml(iso);
@@ -5123,6 +5661,7 @@ function render() {
   else if (view === "recovery") html = screenRecovery();
   else if (view === "shop") html = screenShop();
   else if (view === "more") html = screenMore();
+  else if (view === "backfill") html = screenBackfill();
   else html = screenHome();
   app.innerHTML = html;
   if (undoSnapshot && view === "lift") showUndoGhost();
@@ -5322,6 +5861,9 @@ function bind() {
         return;
       }
       sfxTap();
+      if (g === "backfill") {
+        backfillFrom = (view === "cal" || view === "calday") ? view : (view === "backfill" ? backfillFrom : "more");
+      }
       const doGo = function() { go(g); };
       if (view === "lift" && state.live && g !== "lift") {
         showModal({
@@ -5589,6 +6131,39 @@ function bind() {
     render();
   };
 
+  if ($("bfCopy")) $("bfCopy").onclick = function() {
+    copyText(backfillInstructions()).then(function(ok) {
+      if (ok) toast("Instructions copied");
+      else toast("Copy failed");
+    });
+  };
+  if ($("bfParse")) $("bfParse").onclick = function() {
+    const ta = $("bfPaste");
+    backfillRaw = ta ? String(ta.value || "") : "";
+    backfillResult = "";
+    const planned = planBackfill(backfillRaw);
+    if (!planned.ok) {
+      backfillPlan = null;
+      backfillError = planned.error || "That is not JSON.";
+      render();
+      return;
+    }
+    backfillError = "";
+    backfillPlan = planned.days;
+    sfxTap();
+    render();
+  };
+  if ($("bfApply")) $("bfApply").onclick = function() {
+    if (!backfillPlan || !backfillPlan.length) return;
+    const n = applyBackfill(backfillPlan);
+    backfillPlan = null;
+    backfillError = "";
+    backfillResult = n + " day" + (n === 1 ? "" : "s") + " backfilled";
+    sfxConfirm();
+    persist();
+    render();
+  };
+
   // Calendar month nav + day cells
   if ($("calPrev")) $("calPrev").onclick = function() {
     ensureCalCursor();
@@ -5663,29 +6238,9 @@ function bind() {
       const key = btn.getAttribute("data-catchup-key");
       if (!openCalISO || isFutureISO(openCalISO)) { toast("Future · plan only"); return; }
       if (!PROGRAMS[key]) return;
-      const p = PROGRAMS[key];
-      const session = {
-        date: openCalISO,
-        key: key,
-        name: p.name,
-        minutes: 1,
-        reason: "catch-up",
-        work: p.items.map(function(ex) {
-          const w = state.lastWeights[ex.id] != null ? state.lastWeights[ex.id] : 10;
-          return {
-            id: ex.id,
-            name: ex.name,
-            sets: [
-              {w: w, r: 10, done: true, skipped: false},
-              {w: w, r: 10, done: true, skipped: false}
-            ]
-          };
-        })
-      };
-      state.sessions.unshift(session);
-      if (state.sessions.length > 60) state.sessions.length = 60;
+      const res = logCatchupSession(openCalISO, key);
+      if (!res.ok) { toast(res.duplicate ? "Already logged" : "Could not log"); return; }
       calCatchupPick = false;
-      // Do NOT award embers for catch-up / backfill
       sfxConfirm();
       persist();
       toast("Catch-up logged · no embers");
@@ -6174,7 +6729,7 @@ function setupVisualViewportPad() {
   const apply = function() {
     const app = document.getElementById("app");
     if (!app) return;
-    const need = (view === "link" || view === "fuel");
+    const need = (view === "link" || view === "fuel" || view === "backfill");
     const vv = window.visualViewport;
     const keyboardOpen = need && vv && (window.innerHeight - vv.height > 80);
     if (keyboardOpen) {
