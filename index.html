@@ -1030,6 +1030,24 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
 .path .node.lead{min-height:96px;font-size:26px;letter-spacing:-0.03em;padding:16px 10px;gap:6px}
 .path .node.lead small{font-size:15px;font-weight:650;letter-spacing:0}
 .nextLine{margin:2px 0 14px;font-size:22px;font-weight:700;color:var(--dim)}
+
+.regionLine{margin:0 0 12px;font-size:20px;line-height:1.2;font-weight:700;color:var(--text);letter-spacing:-0.02em}
+.regionBit{display:block;margin-top:2px;font-size:13px;font-weight:700;color:var(--cyan)}
+.lastTime{margin:2px 0 8px;font-size:15px;line-height:1.35;font-weight:600;color:var(--dim)}
+.liftName{margin:8px 0 4px;font-size:34px;line-height:1.12;font-weight:700;letter-spacing:-0.03em;color:var(--text)}
+.setLine{margin:0 0 2px;font-size:17px;font-weight:650;color:var(--text)}
+.nextMove{margin:0 0 12px;font-size:15px;font-weight:600;color:var(--dim)}
+.heat{margin-top:10px}
+.heatDow,.heatRow{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.heatDow span{text-align:center;font-size:11px;font-weight:700;color:var(--dim)}
+.heatRow{margin-top:4px}
+.heatCell{
+  width:100%;min-height:34px;border-radius:8px;border:1px solid var(--line);
+  background:transparent;padding:0;cursor:pointer;
+  appearance:none;-webkit-appearance:none;
+}
+.heatCell.on{background:var(--cyan);border-color:var(--cyan)}
+.heatCell.today{box-shadow:inset 0 0 0 2px var(--text)}
 .hubMetrics.quietPair{grid-template-columns:1fr 1fr}
 .comboChip{font-size:12px;font-weight:700;color:var(--cyan)}
 .cleanBtn.on{border-color:var(--neon);color:var(--neon);background:var(--neon-dim)}
@@ -1058,7 +1076,7 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
 
 const STORAGE_KEY = "pftrack_v3";
 const LIVE_KEY = "pftrack_live";
-const APP_VERSION = "4.6";
+const APP_VERSION = "4.7";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -3216,20 +3234,26 @@ function foodDotsHtml() {
 function weightDeltaHtml() {
   const list = state.bodyweights || [];
   if (!list.length) return "";
+  if (list.length < 2) return '<p class="delta flat">One weigh-in so far.</p>';
   const latest = list[0];
-  const latestDt = parseLocalDate(latest.date).getTime();
-  let older = null;
-  for (let i = 1; i < list.length; i++) {
-    const dt = parseLocalDate(list[i].date).getTime();
-    const days = (latestDt - dt) / 86400000;
-    if (days >= 5 && days <= 10) { older = list[i]; break; }
+  const t0 = parseLocalDate(latest.date).getTime();
+  const oldest = list[list.length - 1];
+  const oldestDays = (t0 - parseLocalDate(oldest.date).getTime()) / 86400000;
+  let row = oldest;
+  let phrase = "the oldest log";
+  if (oldestDays >= 21) {
+    let best = Infinity;
+    for (let i = 1; i < list.length; i++) {
+      const days = (t0 - parseLocalDate(list[i].date).getTime()) / 86400000;
+      const dist = Math.abs(days - 28);
+      if (dist < best) { best = dist; row = list[i]; }
+    }
+    const d = Math.round((t0 - parseLocalDate(row.date).getTime()) / 86400000);
+    phrase = (d >= 24 && d <= 34) ? "about 4 weeks ago" : (d + " days ago");
   }
-  if (!older && list.length > 1) older = list[list.length - 1];
-  if (!older) return '<div class="delta flat">trend · need ~7d prior</div>';
-  const delta = Math.round((latest.lb - older.lb) * 10) / 10;
-  const cls = delta > 0 ? "up" : (delta < 0 ? "down" : "flat");
+  const delta = Math.round((Number(latest.lb) - Number(row.lb)) * 10) / 10;
   const sign = delta > 0 ? "+" : "";
-  return '<div class="delta ' + cls + '">trend ' + sign + delta + " lb vs ~7d</div>";
+  return '<p class="delta flat">' + sign + delta + " lb vs " + phrase + ".</p>";
 }
 
 function isStandalone() {
@@ -3756,23 +3780,76 @@ function macroBarsHtml() {
 }
 
 function weightSparkHtml() {
-  const pts = (state.bodyweights || []).slice(0, 8).slice().reverse();
+  const pts = (state.bodyweights || []).slice().reverse();
   if (pts.length < 2) return '<p class="sub" style="margin:8px 0 0">Two weigh-ins draw a trend. No target.</p>';
   const vals = pts.map(function(p) { return Number(p.lb) || 0; });
   const min = Math.min.apply(null, vals);
   const max = Math.max.apply(null, vals);
   const span = Math.max(0.4, max - min);
-  const w = 300, h = 52, pad = 6;
-  let d = "";
+  const w = 300, h = 56, pad = 8;
+  const r = vals.length > 28 ? 2.4 : 3.4;
+  let marks = "";
   vals.forEach(function(v, i) {
     const x = pad + (vals.length === 1 ? 0 : (i / (vals.length - 1)) * (w - pad * 2));
     const y = pad + (1 - (v - min) / span) * (h - pad * 2);
-    d += (i ? " L" : "M") + x.toFixed(1) + " " + y.toFixed(1);
+    marks += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="' + r + '" fill="currentColor"/>';
   });
-  const delta = Math.round((vals[vals.length - 1] - vals[0]) * 10) / 10;
-  const sign = delta > 0 ? "+" : "";
-  return '<svg class="spark" viewBox="0 0 ' + w + " " + h + '" aria-hidden="true"><path d="' + d + '" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
-    '<p class="sub" style="margin:6px 0 0">' + pts.length + " weigh-ins · " + sign + delta + " lb across this spark.</p>";
+  return '<svg class="spark" viewBox="0 0 ' + w + " " + h + '" aria-hidden="true">' + marks + "</svg>" +
+    '<p class="sub" style="margin:6px 0 0">' + pts.length + " weigh-ins.</p>";
+}
+
+function regionWord(w) {
+  if (!w) return "Rest";
+  if (w.key && String(w.key).indexOf("upper") === 0) return "Upper";
+  if (w.key && String(w.key).indexOf("lower") === 0) return "Lower";
+  if (isWorkDay(w.d)) return "Walk";
+  return "Rest";
+}
+
+function priorLiftLine(id) {
+  const sessions = state.sessions || [];
+  for (let i = 0; i < sessions.length; i++) {
+    const work = sessions[i].work || [];
+    for (let j = 0; j < work.length; j++) {
+      if (work[j].id !== id) continue;
+      const sets = (work[j].sets || []).filter(function(x) { return x.done && !x.skipped; });
+      if (!sets.length) continue;
+      const reps = sets.map(function(x) { return x.r; }).join("/");
+      return "Last time · " + sets[0].w + " lb · " + reps;
+    }
+  }
+  return "";
+}
+
+function dayWasLogged(iso) {
+  if ((sessionsForISO(iso) || []).length) return true;
+  return !!walkForDate(iso);
+}
+
+function trainHeatHtml() {
+  const start = weekStart();
+  start.setDate(start.getDate() - 11 * 7);
+  const today = todayISO();
+  const heads = ["Sa", "Su", "Mo", "Tu", "We", "Th", "Fr"];
+  let html = '<div class="card mt"><div class="lbl">Training · 12 weeks</div>';
+  html += '<div class="heat" role="grid" aria-label="Logged sessions and walks, last 12 weeks">';
+  html += '<div class="heatDow">' + heads.map(function(h) { return "<span>" + h + "</span>"; }).join("") + "</div>";
+  for (let w = 0; w < 12; w++) {
+    html += '<div class="heatRow">';
+    for (let d = 0; d < 7; d++) {
+      const dt = new Date(start.getFullYear(), start.getMonth(), start.getDate() + w * 7 + d);
+      const iso = isoFromDate(dt);
+      const on = dayWasLogged(iso);
+      let cls = "heatCell";
+      if (on) cls += " on";
+      if (iso === today) cls += " today";
+      const label = iso + (on ? ", logged" : "");
+      html += '<button type="button" class="' + cls + '" data-cal-iso="' + iso + '" aria-label="' + label + '"></button>';
+    }
+    html += "</div>";
+  }
+  html += '</div><p class="sub" style="margin:8px 0 0">Filled when a session or walk is logged. Empty stays empty.</p></div>';
+  return html;
 }
 
 function proteinWeekBarsHtml() {
@@ -4174,6 +4251,7 @@ function screenRecovery() {
   let html = statusbar();
   html += '<div class="lbl">Body cues</div><h1>Recovery</h1>';
   html += '<p class="sub">Sleep · feet · ham · heat. Cal edits the day grid.</p>';
+  html += trainHeatHtml();
   if (!plan.key && isWorkDay(plan.d)) {
     html += heatBannerHtml(plan);
   }
@@ -4443,7 +4521,6 @@ function screenHome() {
   html += '<div class="hubMetric"><div class="lbl">Body fat</div><div class="val">' + (bf != null ? (bf + "<small>%</small>") : "—") + "</div></div>";
   html += "</div>";
 
-  html += goalCardHtml();
   html += quietBoardHtml();
   html += shieldNoteHtml();
   html += crowdTagHtml();
@@ -4489,6 +4566,7 @@ function screenWeek() {
   let html = statusbar();
   html += '<div class="lbl">Weekly plan</div><h1>Week in, week out</h1>';
   html += '<p class="sub">Tap a day for the manifest. Same rotation forever. Saturday starts it.</p>';
+  html += '<p class="regionLine">' + esc(regionWord(todayPlan())) + "</p>";
   html += weekPathHtml();
   html += lastWeekReviewHtml();
   html += WEEK_ORDER.map(function(di) {
@@ -4502,7 +4580,7 @@ function screenWeek() {
     if (walked && !done) tag = "walk";
     if (restOk) { tag = "rest"; cls = "on"; }
     return '<button class="daybtn ' + (w.d === today ? "is-today" : "") + '" data-day="' + w.d + '">' +
-      '<div class="l"><b>' + esc(w.label) + (walked ? '<span class="walkMark">WALK</span>' : "") + "</b><span>" + esc(name) + "</span></div>" +
+      '<div class="l"><b>' + esc(w.label) + (walked ? '<span class="walkMark">WALK</span>' : "") + '</b><span class="regionBit">' + esc(regionWord(w)) + "</span><span>" + esc(name) + "</span></div>" +
       '<span class="pill ' + cls + '">' + tag + "</span></button>";
   }).join("");
   html += nav("week");
@@ -4512,13 +4590,11 @@ function screenWeek() {
 function screenDay() {
   const w = WEEK.find(function(x) { return x.d === openDay; }) || todayPlan();
   const prog = w.key && PROGRAMS[w.key];
-  function pin(id) {
-    return state.lastWeights[id] != null ? state.lastWeights[id] : "—";
-  }
   let html = statusbar();
   html += '<button class="btn gho" data-go="week" style="margin-bottom:14px">← Rotation</button>';
   html += '<span class="pill ' + (w.key ? "on" : "hot") + '">' + esc(w.short) + "</span>";
   html += "<h1>" + esc(prog ? prog.name : w.label) + "</h1>";
+  html += '<p class="regionLine">' + esc(regionWord(w)) + "</p>";
   html += '<p class="sub">' + esc(w.note) + (prog ? " " + esc(prog.why) : "") + "</p>";
   if (w.key === "lower-a" || w.key === "lower-b") {
     html += '<p class="sub">' + esc(lowerDayOneLiner(w.key)) + "</p>";
@@ -4530,13 +4606,16 @@ function screenDay() {
         (ex.id === "calf" && isFeetCooked()) ||
         (ex.id === "curl" && isHamWeird())
       );
-      return '<div class="row' + (preSkip ? " preSkip" : "") + '"><div><b>' + esc(ex.name) + '</b><div class="n">' +
+      const prior = priorLiftLine(ex.id);
+      return '<div class="row' + (preSkip ? " preSkip" : "") + '"><div><b>' + esc(ex.name) + "</b>" +
+        (prior ? '<div class="lastTime">' + esc(prior) + "</div>" : "") +
+        '<div class="n">' +
         (preSkip ? "Pre-skip · lock on" : esc(ex.cue)) +
         '</div><button type="button" class="btn gho" data-practice="' + ex.id + '" style="min-height:44px;margin-top:8px;width:auto;padding:0 14px">' +
         (practiceId === ex.id ? "Close practice" : "Practice") + "</button>" +
         (practiceId === ex.id ? practiceHtml(ex.id) : "") +
         '</div><div class="r"><b style="color:var(--neon)">' + esc(ex.sets) +
-        '</b><div class="n">pin ' + pin(ex.id) + " · reps " + esc(lastRepsFor(ex.id)) + "</div></div></div>";
+        "</b></div></div>";
     }).join("") + "</div>";
     if (w.key === "lower-a" || w.key === "lower-b") {
       html += '<div class="card mt"><div class="toggle ' + (isHamWeird() ? "on" : "") + '" id="hamWeirdToggle"><div><b>Ham weird</b><span>Week-scoped · pre-skips Lower B curl' + (isHamWeird() ? ' <span class="chip">clears next Sat</span>' : "") + '</span></div><div class="sw"></div></div>';
@@ -4592,14 +4671,15 @@ function screenLift() {
     html += nav("home");
     return html;
   }
-  html += '<div class="lbl">' + esc(prog.name) + "</div>";
-  html += '<div class="bar"><i style="width:' + pct + '%"></i></div>';
   const minsIn = Math.max(0, Math.round((Date.now() - (live.started || Date.now())) / 60000));
-  html += '<div class="lbl" style="margin-bottom:14px">Move ' + (live.i + 1) + "/" + prog.items.length + " · Set " + (live.set + 1) + "/2 · " + pct + '% · <span id="elapsedMin">' + minsIn + " min in</span>" + comboSpan(live) + "</div>";
-  html += "<h1>" + esc(ex.name) + "</h1>";
-  var thenLine = live.set === 0 ? "Then · set 2/2" : (live.i < prog.items.length - 1 ? ("Then · " + prog.items[live.i + 1].name) : "Then · session end");
-  html += '<p class="sub" style="margin-top:0">' + esc(thenLine) + "</p>";
-  html += '<p class="sub" style="margin-top:0">' + esc(stillNames(live)) + "</p>";
+  html += '<div class="lbl">' + esc(prog.name) + ' · <span id="elapsedMin">' + minsIn + " min in</span></div>";
+  html += '<div class="bar"><i style="width:' + pct + '%"></i></div>';
+  html += '<p class="liftName">' + esc(ex.name) + "</p>";
+  var prior = priorLiftLine(ex.id);
+  if (prior) html += '<p class="lastTime">' + esc(prior) + "</p>";
+  html += '<p class="setLine">Set ' + (live.set + 1) + " of 2" + comboSpan(live) + "</p>";
+  var nextMove = live.i < prog.items.length - 1 ? prog.items[live.i + 1].name : "";
+  html += '<p class="nextMove">' + (nextMove ? ("Next · " + esc(nextMove)) : "Last movement") + "</p>";
   let liftCue = ex.cue;
   if (live.key === "lower-b" && ex.id === "calf" && isFeetCooked()) liftCue = "Pre-skip · feet cooked. No guilt.";
   if (live.key === "lower-b" && ex.id === "curl" && isHamWeird()) liftCue = "Pre-skip · ham weird. No guilt.";
@@ -4609,10 +4689,6 @@ function screenLift() {
   html += '</div></div><div><div class="lbl">Reps</div><div class="step">';
   html += '<button class="mini" data-act="r-" type="button">−</button><b>' + s.r + '</b><button class="mini" data-act="r+" type="button">+</button>';
   html += "</div></div></div>";
-  var lastDetail = lastSetDetail(ex.id, live.set);
-  if (lastDetail) {
-    html += '<p class="sub" style="margin:8px 0 0">Last session · ' + lastDetail.w + " lb × " + lastDetail.r + (lastDetail.clean ? " · clean" : "") + "</p>";
-  }
   if (state.readyUp && state.readyUp[ex.id]) {
     html += '<p class="sub" style="margin:4px 0 0">Next hole is loaded on this pin.</p>';
   }
