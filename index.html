@@ -1089,7 +1089,7 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
 
 const STORAGE_KEY = "pftrack_v3";
 const LIVE_KEY = "pftrack_live";
-const APP_VERSION = "4.21";
+const APP_VERSION = "4.22";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -5176,9 +5176,6 @@ function screenDay() {
       html += '<div class="card mt"><div class="toggle ' + (isHamWeird() ? "on" : "") + '" id="hamWeirdToggle"><div><b>Ham weird</b><span>Week-scoped · pre-skips Lower B curl' + (isHamWeird() ? ' <span class="chip">clears next Sat</span>' : "") + '</span></div><div class="sw"></div></div>';
       html += '<div class="toggle ' + (isFeetCooked() ? "on" : "") + '" id="feetLockToggle"><div><b>Feet cooked</b><span>Sticky this week · pre-skips Lower B calf</span></div><div class="sw"></div></div></div>';
     }
-    const full = liftKeysClearedThisWeek() >= 4;
-    html += '<div class="stack"><button class="btn pri big" data-go="start:' + w.key + '">' +
-      (full ? "Override deploy" : ("Deploy · " + esc(w.short))) + "</button></div>";
   } else {
     html += '<div class="card cue">';
     html += isWorkDay(w.d)
