@@ -1086,7 +1086,7 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
 
 const STORAGE_KEY = "pftrack_v3";
 const LIVE_KEY = "pftrack_live";
-const APP_VERSION = "4.17";
+const APP_VERSION = "4.18";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -5560,7 +5560,6 @@ function screenCalDay() {
   if (future) {
     html += '<div class="card cue"><b>Future · plan only</b><br>Notes are fine. Logging unlocks on or after this day.</div>';
   }
-  html += '<div class="card"><div class="lbl">Doctrine</div><p class="sub" style="margin:0">' + esc(plan ? plan.note : "") + "</p></div>";
 
   // Soft ADHD cues (past only)
   if (past && plan && plan.key && !sessions.length) {
@@ -5588,24 +5587,26 @@ function screenCalDay() {
       html += '<button class="btn dan" data-cal-del-sess="' + idx + '" style="margin-top:8px;min-height:44px">Delete session</button>';
     });
   }
+  html += "</div>";
+
+  html += diaryBlockHtml(iso);
+  html += waterBlockHtml(iso);
+
   if (!future) {
     if (calCatchupPick) {
-      html += '<div class="lbl" style="margin-top:14px">Pick program</div><div class="stack">';
+      html += '<div class="card mt"><div class="lbl">Pick program</div><div class="stack">';
       ["upper-a", "lower-a", "upper-b", "lower-b"].forEach(function(k) {
         html += '<button class="btn gho big" data-catchup-key="' + k + '">' + esc(PROGRAMS[k].name) + "</button>";
       });
-      html += '<button class="btn pri" id="calCatchupCancel">Cancel</button></div>';
+      html += '<button class="btn pri" id="calCatchupCancel">Cancel</button></div></div>';
     } else {
-      html += '<div class="stack" style="margin-top:12px"><button class="btn pri" id="calCatchup">Log catch-up</button></div>';
+      html += '<div class="stack mt"><button class="btn pri" id="calCatchup">Log catch-up</button></div>';
       html += '<p class="sub" style="margin-bottom:0">Catch-up logs the day · no embers.</p>';
     }
   }
-  html += "</div>";
 
   html += '<div class="stack mt"><button class="btn gho" data-go="backfill">Paste a backfill</button></div>';
   html += quickAddHtml(iso);
-  html += diaryBlockHtml(iso);
-  html += waterBlockHtml(iso);
 
   // B. Food
   html += '<div class="card mt"><h2>Food locks</h2>';
@@ -5655,6 +5656,9 @@ function screenCalDay() {
   html += '<div class="card mt"><h2>Day note</h2>';
   html += '<textarea id="calDayNote" placeholder="What mattered today — pins, feet, plate, mood." style="min-height:110px">' + esc(note) + "</textarea>";
   html += '<div class="stack"><button class="btn pri" id="calNoteSave">Save note</button></div></div>';
+
+  // Doctrine (bottom)
+  html += '<div class="card mt"><div class="lbl">Doctrine</div><p class="sub" style="margin:0">' + esc(plan ? plan.note : "") + "</p></div>";
 
   html += nav("recovery");
   return html;
