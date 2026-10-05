@@ -1089,7 +1089,7 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
 
 const STORAGE_KEY = "pftrack_v3";
 const LIVE_KEY = "pftrack_live";
-const APP_VERSION = "4.20";
+const APP_VERSION = "4.21";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -4851,7 +4851,7 @@ function screenShop() {
   const env = resolveEnvironment();
   let html = statusbar();
   html += '<div class="lbl">Cosmetic only</div><h1>Shop</h1>';
-  html += '<p class="sub">Camos · no pay-to-win · no loot boxes. Prices = future reference. All listed owned offline.</p>';
+  html += '<p class="sub">Camos · no pay-to-win · no loot boxes. All listed owned offline.</p>';
   html += '<div class="card"><div class="lbl">Preview environment</div>';
   html += '<div class="seg" id="shopEnvPreview">';
   html += '<button type="button" data-shop-env="day" class="' + (env === "day" ? "on" : "") + '">Day</button>';
@@ -4868,7 +4868,6 @@ function screenShop() {
     html += '<div class="shopRow"><div><b>' + esc(it.name) + "</b>";
     html += '<div class="shopMeta">' + esc(it.blurb);
     if (it.free) html += " · free";
-    else html += " · " + it.price + " · placeholder";
     html += "</div></div>";
     if (eq) {
       html += '<span class="pill on">equipped</span>';
