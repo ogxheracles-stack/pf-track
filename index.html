@@ -4093,7 +4093,7 @@ function statusbar() {
   const mm = String(now.getMinutes()).padStart(2, "0");
   const ss = String(now.getSeconds()).padStart(2, "0");
   const live = state.live ? '<span class="dotlive"></span>LIVE' : "OFFLINE";
-  return '<div class="sb"><span><b>PF//TRACK</b> · v' + APP_VERSION + (PF_ASOF ? " · TEST " + PF_ASOF : "") + '</span><span id="sbClock">' + live + " · " + hh + ":" + mm + ":" + ss + "</span></div>";
+  return '<div class="sb"><span><b>PF//TRACK</b> · v' + APP_VERSION + (PF_ASOF ? " · TEST " + PF_ASOF.slice(5) : "") + '</span><span id="sbClock">' + live + " · " + hh + ":" + mm + ":" + ss + "</span></div>";
 }
 
 function nav(active) {
