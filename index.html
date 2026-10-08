@@ -1311,11 +1311,11 @@ html[data-env="day"] input,html[data-env="day"] textarea,html[data-env="day"] se
 .sleepDur{text-align:center;margin:18px 0 6px}
 .sleepDur b{display:block;font:800 44px/1 var(--font);letter-spacing:-0.03em;color:var(--text)}
 .sleepDur small{display:block;margin-top:6px;font:600 13px/1.2 var(--font);color:var(--dim)}
-.sleepTime{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
-.sleepTime .tbox{padding:12px 10px;border-radius:14px;background:color-mix(in srgb,var(--panel2) 80%,transparent);border:1px solid var(--line)}
+.sleepTime{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-top:12px}
+.sleepTime .tbox{min-width:0;padding:10px 6px;border-radius:14px;background:color-mix(in srgb,var(--panel2) 80%,transparent);border:1px solid var(--line)}
 .sleepTime .tbox .lbl{text-align:center}
-.sleepTime .step{gap:4px}
-.sleepTime .step b{font-size:16px;min-width:0;text-align:center;white-space:nowrap;flex:1}
+.sleepTime .step{gap:2px;min-width:0;width:100%;justify-content:space-between}
+.sleepTime .step b{font-size:clamp(13px,3.4vw,15px);letter-spacing:-.02em;min-width:0;overflow:hidden;text-align:center;white-space:nowrap;flex:1}
 .sleepTime .mini{width:44px;height:44px;min-width:44px;min-height:44px;font-size:22px}
 .qRow{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:8px}
 .qRow button{min-height:56px;border-radius:12px;border:1px solid var(--line2);background:var(--panel2);color:var(--text);font:800 18px/1 var(--font);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;cursor:pointer}
@@ -1396,7 +1396,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.39";
+const APP_VERSION = "4.40";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
