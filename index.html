@@ -53,36 +53,36 @@
   --env-fade:450ms;
 }
 html[data-env="day"]{
-  --bg:#06120e;
-  --panel:#122018;
-  --panel2:#182820;
-  --line:#2a3a30;
-  --line2:#3a4e42;
-  --text:#e8f4ec;
-  --dim:#8ba898;
-  --muted:#6b8a78;
+  --bg:#0e2a33;
+  --panel:#143640;
+  --panel2:#1a414c;
+  --line:#2c5763;
+  --line2:#3b6c78;
+  --text:#f2fbfa;
+  --dim:#a9cbd0;
+  --muted:#86aab0;
   --neon:#b8ff2e;
   --neon-dim:rgba(184,255,46,.18);
-  --cyan:#5ec8d8;
-  --hot:#ff6b8a;
-  --amber:#ffb020;
+  --cyan:#7fe6f2;
+  --hot:#ff8aa0;
+  --amber:#ffc04a;
   --ok:#3dff9e;
-  --ok-bg:rgba(61,255,158,.12);
-  --env-glow-a:rgba(94,200,216,.14);
-  --env-glow-b:rgba(80,120,220,.1);
+  --ok-bg:rgba(61,255,158,.14);
+  --env-glow-a:rgba(255,214,150,.22);
+  --env-glow-b:rgba(255,140,170,.14);
   --reactive-glow:rgba(184,255,46,.18);
-  --sb-bg:rgba(6,18,14,.98);
-  --hud-bg:rgba(6,18,14,.96);
-  --vice-sky-top:#04140f;
-  --vice-sky-mid:#0a1c2e;
-  --vice-sky-bot:#020806;
-  --aurora-a:rgba(61,255,158,.13);
-  --aurora-b:rgba(70,120,255,.12);
-  --aurora-c:rgba(94,200,216,.11);
-  --grid-line:rgba(94,200,216,.2);
+  --sb-bg:rgba(14,42,51,.98);
+  --hud-bg:rgba(14,42,51,.96);
+  --vice-sky-top:#2f8fb0;
+  --vice-sky-mid:#1d6478;
+  --vice-sky-bot:#0b2329;
+  --aurora-a:rgba(255,200,140,.16);
+  --aurora-b:rgba(127,230,242,.16);
+  --aurora-c:rgba(255,140,170,.1);
+  --grid-line:rgba(127,230,242,.24);
   --grid-opacity:.15;
-  --skyline-pink:#3dff9e;
-  --skyline-cyan:#5ec8d8;
+  --skyline-pink:#ff9ab0;
+  --skyline-cyan:#7fe6f2;
 }
 html[data-env="night"]{
   --bg:#050218;
@@ -1089,7 +1089,7 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
 
 const STORAGE_KEY = "pftrack_v3";
 const LIVE_KEY = "pftrack_live";
-const APP_VERSION = "4.22";
+const APP_VERSION = "4.23";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -1195,7 +1195,7 @@ function applyEnvironment() {
     document.documentElement.setAttribute("data-env", env);
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) {
-      meta.setAttribute("content", env === "day" ? "#06120e" : "#050218");
+      meta.setAttribute("content", env === "day" ? "#2f8fb0" : "#050218");
     }
   } catch (e) {}
   applyDayTint();
