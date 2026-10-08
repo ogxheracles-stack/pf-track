@@ -1348,12 +1348,21 @@ html[data-env="day"] input,html[data-env="day"] textarea,html[data-env="day"] se
 .tip .sleepProg em,.sleepSaved .sleepProg em{display:inline;margin:0 0 0 3px;font:600 12px/1 var(--font);font-style:normal;color:var(--dim)}
 .sleepStats.waiting b.wait{color:var(--muted)}
 .tip div > span{display:block;margin-top:3px;font:500 14px/1.4 var(--font);color:var(--dim)}
-.plan{display:grid;gap:0;margin-top:10px}
-.planRow{display:flex;justify-content:space-between;align-items:center;min-height:44px;border-bottom:1px solid color-mix(in srgb,var(--line) 70%,transparent);font:600 14px/1.2 var(--font);color:var(--dim)}
-.planRow:last-child{border-bottom:0}
-.planRow b{font:700 15px/1 var(--mono);color:var(--text)}
-.planRow.key{color:var(--text)}
-.planRow.key b{color:var(--neon);font-size:17px}
+.tonHead{display:flex;align-items:center;justify-content:space-between;margin:-10px -8px 0 0}
+.tonMore{display:inline-flex;align-items:center;gap:4px;min-height:44px;padding:0 8px 0 12px;background:none;border:0;border-radius:10px;font:600 13px/1 var(--font);color:var(--dim);cursor:pointer}
+.tonMore .pfi{width:16px;height:16px;transform:rotate(90deg)}
+.tonMore[aria-expanded="true"] .pfi{transform:rotate(-90deg)}
+.tmr{margin:2px 0 0;font:500 14px/1.4 var(--font);color:var(--dim);text-wrap:balance}
+.tmr b{font-weight:700;color:var(--text)}
+.tmr .nw{white-space:nowrap}
+.plan{display:grid;gap:0;margin-top:6px}
+.planGrp{margin:10px 0 2px;font:600 11px/1 var(--font);letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
+.planRow{display:flex;justify-content:space-between;align-items:center;min-height:36px;border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent);font:500 14px/1.2 var(--font);color:var(--text)}
+.planGrp + .planRow,.planGrp + .planRow[hidden] + .planRow[hidden] + .planRow[hidden] + .planRow{border-top:0}
+.planRow[hidden]{display:none}
+.planRow b{font:500 14px/1 var(--mono);font-variant-numeric:tabular-nums;color:var(--dim)}
+.planRow.key{font-weight:700}
+.planRow.key b{color:var(--neon);font-weight:700}
 .sleepHead{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
 .sleepGoalKey{display:inline-flex;align-items:center;gap:6px;font:700 12px/1 var(--mono);color:var(--neon);white-space:nowrap}
 .sleepGoalKey i{width:14px;border-top:2px dashed currentColor}
@@ -1429,7 +1438,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.53";
+const APP_VERSION = "4.54";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -3687,7 +3696,7 @@ function go(v) {
   if (v === "week" || v === "day") tab = "week";
   if (v === "fuel") tab = "fuel";
   if (v === "recovery") tab = "recovery";
-  if (v === "sleep") { tab = "sleep"; sleepTagsOpen = false; sleepBarSel = null; }
+  if (v === "sleep") { tab = "sleep"; sleepTagsOpen = false; sleepBarSel = null; sleepPlanOpen = false; }
   if (v === "shop") tab = "shop";
   if (v === "more" || v === "link" || v === "log" || v === "session" || v === "backfill") tab = "more";
   if (v === "cal" || v === "calday") tab = "recovery";
@@ -5658,6 +5667,7 @@ function sleepTips() {
   return tips.slice(0, 3);
 }
 let sleepBarSel = null;
+let sleepPlanOpen = false;
 function sleepNightLabel(iso) {
   return parseLocalDate(iso).toLocaleDateString("en-US", {weekday: "short", month: "short", day: "numeric"});
 }
@@ -5758,19 +5768,17 @@ function screenSleep() {
 
   // Tonight plan
   const lights = wrapMin(g.wake - g.hours * 60);
-  const tmr = WEEK.find(function(w) { return w.d === (new Date().getDay() + 1) % 7; });
+  const tmr = WEEK.find(function(w) { return w.d === (parseLocalDate(todayISO()).getDay() + 1) % 7; });
   const tmrProg = tmr && tmr.key && PROGRAMS[tmr.key];
-  html += '<div class="card mt"><div class="lbl">Tonight</div>';
-  if (tmrProg) html += '<p class="sub" style="margin:6px 0 0">Tomorrow is ' + esc(tmr.label) + " · " + esc(tmrProg.name) + ". Sleep is part of the session.</p>";
-  html += '<div class="plan">';
-  const rows = [
-    ["Caffeine cutoff", wrapMin(lights - 480)],
-    ["Last plate", Math.min(wrapMin(lights - 150), 20 * 60)],
-    ["Wind down · phone away", wrapMin(lights - 45)],
-    ["Lights out", lights],
-    ["Wake", g.wake]
-  ];
-  rows.forEach(function(r, i) { html += '<div class="planRow' + (i === 3 ? " key" : "") + '"><span>' + r[0] + "</span><b>" + fmtClock(r[1]) + "</b></div>"; });
+  html += '<div class="card mt sleepTonight"><div class="tonHead"><span class="lbl">Tonight</span><button type="button" class="tonMore" id="sleepPlanMore" aria-expanded="' + sleepPlanOpen + '" aria-controls="sleepPlan">' + (sleepPlanOpen ? "Less" : "Full plan") + pfIcon("chevron", "sm") + '</button></div>';
+  if (tmrProg) html += '<p class="tmr">Tomorrow <b>' + esc(tmr.label) + '</b> · <span class="nw">' + esc(tmrProg.name) + "</span></p>";
+  const row = function(label, m, cls, extra) { return '<div class="planRow' + (cls ? " " + cls : "") + '"' + (extra || "") + '><span>' + label + "</span><b>" + fmtClock(m) + "</b></div>"; };
+  html += '<div class="plan" id="sleepPlan"><div class="planGrp">Before bed</div>';
+  html += row("Caffeine cutoff", wrapMin(lights - 480), "opt", sleepPlanOpen ? "" : " hidden");
+  html += row("Last plate", Math.min(wrapMin(lights - 150), 20 * 60), "opt", sleepPlanOpen ? "" : " hidden");
+  html += row("Wind down · phone away", wrapMin(lights - 45), "opt", sleepPlanOpen ? "" : " hidden");
+  html += row("Lights out", lights, "key");
+  html += '<div class="planGrp">Morning</div>' + row("Wake", g.wake);
   html += "</div></div>";
 
   // Goal
@@ -5782,6 +5790,13 @@ function screenSleep() {
   return html;
 }
 function bindSleep() {
+  if ($("sleepPlanMore")) $("sleepPlanMore").onclick = function() {
+    sleepPlanOpen = !sleepPlanOpen;
+    document.querySelectorAll("#sleepPlan .planRow.opt").forEach(function(r) { r.hidden = !sleepPlanOpen; });
+    this.setAttribute("aria-expanded", sleepPlanOpen ? "true" : "false");
+    this.firstChild.textContent = sleepPlanOpen ? "Less" : "Full plan";
+    sfxTap();
+  };
   document.querySelectorAll("[data-sleep-bar]").forEach(function(b) {
     b.onclick = function() {
       const iso = b.getAttribute("data-sleep-bar");
