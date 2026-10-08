@@ -1411,7 +1411,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.48";
+const APP_VERSION = "4.49";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -1489,6 +1489,7 @@ function resolveEnvironment() {
 
 function prefersReducedMotion() {
   try {
+    if (/[?&]rm=1(&|$)/.test(location.search)) return true;
     return !!(typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches);
   } catch (e) { return false; }
 }
@@ -5506,12 +5507,19 @@ const SLEEP_TAGS = [
 const SLEEP_Q = ["Wrecked", "Rough", "OK", "Good", "Great"];
 let sleepDraft = null;
 let sleepTagsOpen = false;
-function sleepKeepVisible(el) {
+function sleepKeepVisible(el, pad) {
   if (!el) return;
-  const nb = document.querySelector("nav.hud button");
-  const navTop = nb ? nb.getBoundingClientRect().top : window.innerHeight;
-  const over = el.getBoundingClientRect().bottom + 8 - navTop;
-  if (over > 0) window.scrollBy({top: over, behavior: prefersReducedMotion() ? "auto" : "smooth"});
+  pad = pad || 16;
+  const fix = function(smooth) {
+    if (!el.isConnected) return;
+    const nb = document.querySelector("nav.hud button");
+    const navTop = nb ? nb.getBoundingClientRect().top : window.innerHeight;
+    const over = el.getBoundingClientRect().bottom + pad - navTop;
+    if (over > 0.5) window.scrollBy({top: Math.ceil(over), behavior: smooth ? "smooth" : "auto"});
+  };
+  const rm = prefersReducedMotion();
+  fix(!rm);
+  setTimeout(function() { fix(false); }, rm ? 120 : 450);
 }
 
 function ensureSleep() {
