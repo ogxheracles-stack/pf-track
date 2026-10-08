@@ -1010,6 +1010,51 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
 .remainLine{margin:2px 0 10px;font-size:15px;font-weight:600;color:var(--text)}
 .remainLine span{color:var(--dim);font-weight:500}
 
+/* v4.26 — Comida criolla + build-a-plate */
+.criollaCard .criollaHead{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.criollaCard .criollaHead .lbl{margin:0}
+.criollaTiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.criollaTile{
+  min-height:64px;padding:12px 12px 10px;text-align:left;
+  background:var(--panel2);border:1px solid var(--line2);border-radius:12px;
+  color:var(--text);font:600 14px/1.25 var(--font);cursor:pointer;
+  display:flex;flex-direction:column;justify-content:center;gap:3px;
+  -webkit-tap-highlight-color:transparent;
+}
+.criollaTile .en{font-weight:500;color:var(--dim);font-size:12px;line-height:1.2}
+.criollaTile .meta{font-weight:500;color:var(--muted);font-size:11px;font-family:var(--mono)}
+.criollaTile.on{border-color:var(--neon);background:var(--neon-dim);box-shadow:inset 0 0 0 1px var(--neon)}
+.criollaTile:active{filter:brightness(1.06)}
+.plateDraft{
+  position:sticky;bottom:calc(80px + env(safe-area-inset-bottom,0px));z-index:3;
+  margin-top:12px;padding:10px 12px 12px;border-radius:14px;
+  background:var(--panel2);border:1px solid var(--neon);
+  box-shadow:0 10px 30px rgba(0,0,0,.35);
+}
+.plateDraft .draftRow{
+  display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;
+  padding:5px 0;border-bottom:1px solid var(--line);
+}
+.plateDraft .draftRow:last-of-type{border-bottom:0}
+.plateDraft .draftRow b{display:block;font-size:14px;font-weight:600;color:var(--text);line-height:1.2}
+.plateDraft .draftRow span{display:block;font-size:12px;color:var(--dim);font-family:var(--mono);margin-top:2px}
+.portionChips{display:grid;grid-template-columns:repeat(4,44px);gap:4px}
+.portionChips button{
+  min-height:44px;height:44px;border-radius:10px;border:1px solid var(--line2);padding:0;
+  background:var(--panel);color:var(--dim);font:700 15px/1 var(--font);cursor:pointer;
+}
+.portionChips button.on{background:var(--neon-dim);border-color:var(--neon);color:var(--neon)}
+.plateDraft .btns{display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-top:10px}
+.plateDraft .btns .btn{min-height:52px;padding:10px 12px}
+.criollaMore{margin-top:10px}
+.criollaMore .btn{min-height:48px}
+.criollaGroup{margin-top:12px}
+.criollaGroup .lbl{margin-bottom:6px}
+.linkish{
+  background:0;border:0;color:var(--neon);font:600 13px/1 var(--font);
+  padding:8px 4px;min-height:44px;cursor:pointer;
+}
+
 /* v4.5 — favorites, templates, bars, spark, practice, clean */
 .goalBars{display:grid;gap:8px;margin:2px 0 12px}
 .gbar .gl{display:flex;justify-content:space-between;gap:8px;font-size:13px;font-weight:600;margin-bottom:4px}
@@ -1022,9 +1067,9 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
 .pweek .pw i{display:block;width:100%;max-width:22px;background:var(--neon);border-radius:6px 6px 2px 2px;min-height:4px}
 .pweek .pw span{font-size:10px;font-weight:700;color:var(--dim)}
 .plateCell{position:relative}
-.plateCell .plateBtn{width:100%;padding-right:40px}
+.plateCell .plateBtn{width:100%;padding-right:44px}
 .starBtn{
-  position:absolute;top:6px;right:4px;width:40px;height:40px;
+  position:absolute;top:4px;right:2px;width:44px;height:44px;
   border:0;background:transparent;color:var(--dim);font-size:20px;cursor:pointer;
 }
 .starBtn.on{color:var(--amber)}
@@ -1060,6 +1105,10 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
 .qtyStep{display:flex;align-items:center;gap:4px}
 .qtyStep b{min-width:36px;text-align:center;font-size:13px}
 .diaryItem{flex-wrap:wrap}
+.diaryItem.dRow{row-gap:8px}
+.diaryItem.dRow > div:first-child{flex:1 1 100%;min-width:0}
+.diaryItem.dRow .qtyStep .mini{min-width:48px;width:48px;height:44px;min-height:44px;font-size:20px;color:var(--text)}
+.diaryItem.dRow > button{margin-left:auto}
 
 
 .bfErr{margin:10px 0 0;color:var(--amber);font-weight:650;font-size:15px}
@@ -1108,7 +1157,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.25";
+const APP_VERSION = "4.26";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -1520,6 +1569,10 @@ let plateUndoTimer = null;
 let foodQuery = "";
 let practiceId = "";
 let histPlateCache = [];
+let plateBuild = [];
+let criollaShowAll = false;
+let plateUndoCount = 1;
+
 
 function restSecFor(id) {
   if (COMPOUND[id]) return 90;
@@ -3888,6 +3941,63 @@ const PLATES = [
   {id:"yog", code:"YO", name:"Yogurt", cal:150, protein:15, carbs:18, fat:2}
 ];
 
+// v4.26 — Comida criolla. Macros per typical PR serving; sources in pf-track-research/pr-foods.md (USDA FNDDS PR-style codes where they exist).
+const PR_FOODS = [
+  {id:"pr_arroz", code:"", name:"Arroz blanco", en:"White rice (PR style, cooked with oil)", serv:"1½ cups (plate scoop)", grp:"plato", when:"plate", cal:461, protein:7, carbs:74, fat:14, al:"rice white rice"},
+  {id:"pr_habichuelas", code:"", name:"Habichuelas guisadas", en:"Stewed red/pink beans", serv:"¾ cup ladle", grp:"plato", when:"plate", cal:158, protein:8, carbs:19, fat:6, al:"beans stewed beans red beans pink beans"},
+  {id:"pr_gandules", code:"", name:"Arroz con gandules", en:"Rice with pigeon peas", serv:"1½ cups (plate scoop)", grp:"plato", when:"plate", cal:315, protein:6, carbs:53, fat:9, al:"rice pigeon peas"},
+  {id:"pr_arrozpollo", code:"", name:"Arroz con pollo", en:"Chicken and rice", serv:"1½ cups", grp:"plato", when:"plate", cal:706, protein:27, carbs:77, fat:31, al:"chicken rice"},
+  {id:"pr_pernil", code:"", name:"Pernil", en:"Roast pork shoulder", serv:"4 oz cooked (plate portion)", grp:"plato", when:"plate", cal:328, protein:26, carbs:0, fat:24, al:"pork roast pork shoulder lechon"},
+  {id:"pr_polloguisado", code:"", name:"Pollo guisado", en:"Stewed chicken with potatoes", serv:"1 cup with sauce, bone out", grp:"plato", when:"plate", cal:381, protein:30, carbs:16, fat:22, al:"chicken stew fricase fricassee"},
+  {id:"pr_carneguisada", code:"", name:"Carne guisada", en:"Beef stew with potatoes", serv:"1 cup", grp:"plato", when:"plate", cal:462, protein:31, carbs:14, fat:31, al:"beef stew"},
+  {id:"pr_bistec", code:"", name:"Bistec encebollado", en:"Steak with onions", serv:"1 steak + onions", grp:"plato", when:"plate", cal:427, protein:28, carbs:5, fat:32, al:"steak onions beef steak bistek biftec"},
+  {id:"pr_chuleta", code:"", name:"Chuleta frita", en:"Fried pork chop", serv:"1 large chop, bone out", grp:"plato", when:"plate", cal:247, protein:32, carbs:0, fat:12, al:"pork chop fried chop"},
+  {id:"pr_pollofrito", code:"", name:"Pollo frito", en:"Fried chicken", serv:"1 piece (thigh)", grp:"plato", when:"plate", cal:323, protein:18, carbs:14, fat:22, al:"fried chicken"},
+  {id:"pr_chicharronpollo", code:"", name:"Chicharrón de pollo", en:"Fried chicken chunks", serv:"6 chunks", grp:"plato", when:"plate", cal:514, protein:35, carbs:30, fat:27, al:"chicken chunks fried chicken bites chicharrones"},
+  {id:"pr_carnefrita", code:"", name:"Carne frita", en:"Fried pork chunks (masitas)", serv:"4 chunks", grp:"plato", when:"plate", cal:391, protein:54, carbs:1, fat:17, al:"fried pork masitas pork chunks"},
+  {id:"pr_pastelon", code:"", name:"Pastelón", en:"Sweet plantain & beef bake", serv:"1 piece (4×2×2 in)", grp:"plato", when:"plate", cal:614, protein:24, carbs:42, fat:41, al:"plantain lasagna pinon plantain pie"},
+  {id:"pr_mofongo", code:"", name:"Mofongo", en:"Mashed fried plantain with chicharrón", serv:"1 cup (pilón)", grp:"plato", when:"plate", cal:658, protein:20, carbs:55, fat:42, al:"mashed plantain plantain"},
+  {id:"pr_asopao", code:"", name:"Asopao de pollo", en:"Soupy chicken & rice", serv:"1 bowl (1½ cups)", grp:"plato", when:"plate", cal:600, protein:53, carbs:65, fat:13, al:"chicken rice soup soupy rice gumbo"},
+  {id:"pr_sancocho", code:"", name:"Sancocho", en:"Meat & root-vegetable stew", serv:"1 bowl (1½ cups)", grp:"plato", when:"plate", cal:537, protein:29, carbs:53, fat:24, al:"stew soup salcocho"},
+  {id:"pr_tostones", code:"", name:"Tostones", en:"Twice-fried green plantain", serv:"1 plantain (4–5 pcs)", grp:"lado", when:"plate", cal:373, protein:2, carbs:56, fat:19, al:"fried green plantain plantain chips patacones"},
+  {id:"pr_amarillos", code:"", name:"Amarillos", en:"Fried sweet plantain", serv:"½ plantain (side)", grp:"lado", when:"plate", cal:214, protein:1, carbs:31, fat:11, al:"sweet plantain maduros fried ripe plantain"},
+  {id:"pr_coditos", code:"", name:"Ensalada de coditos", en:"Macaroni salad", serv:"½ cup scoop", grp:"lado", when:"plate", cal:225, protein:5, carbs:25, fat:12, al:"macaroni salad pasta salad"},
+  {id:"pr_alcapurria", code:"", name:"Alcapurria", en:"Stuffed yautía-guineo fritter", serv:"1 large", grp:"fritura", when:"snack", cal:345, protein:10, carbs:18, fat:26, al:"fritter stuffed fritter"},
+  {id:"pr_bacalaito", code:"", name:"Bacalaíto", en:"Codfish fritter", serv:"1 kiosk-size", grp:"fritura", when:"snack", cal:278, protein:15, carbs:36, fat:7, al:"codfish fritter cod fritter"},
+  {id:"pr_empanadilla", code:"", name:"Empanadilla", en:"Fried beef turnover (pastelillo)", serv:"1 piece", grp:"fritura", when:"snack", cal:228, protein:11, carbs:19, fat:12, al:"pastelillo turnover empanada beef turnover"},
+  {id:"pr_pastel", code:"", name:"Pastel", en:"Green-banana masa pastel", serv:"1 pastel", grp:"fritura", when:"snack", cal:313, protein:11, carbs:26, fat:19, al:"pasteles masa tamale"},
+  {id:"pr_sorullitos", code:"", name:"Sorullitos", en:"Cornmeal sticks", serv:"4 sticks", grp:"fritura", when:"snack", cal:328, protein:6, carbs:39, fat:16, al:"corn sticks cornmeal sticks sorullos"},
+  {id:"pr_pansobao", code:"", name:"Pan sobao", en:"Soft PR bread", serv:"3 slices", grp:"pan", when:"am", cal:205, protein:6, carbs:37, fat:3, al:"bread pan sobado sobao"},
+  {id:"pr_mallorca", code:"", name:"Mallorca", en:"Sweet bread roll", serv:"1 roll", grp:"pan", when:"am", cal:250, protein:7, carbs:44, fat:5, al:"sweet bread sweet roll pan de mallorca"},
+  {id:"pr_quesito", code:"", name:"Quesito", en:"Cream-cheese puff pastry", serv:"1 pastry", grp:"pan", when:"am", cal:260, protein:4, carbs:22, fat:18, al:"cheese pastry cream cheese pastry"},
+  {id:"pr_avena", code:"", name:"Avena", en:"Oatmeal with milk & sugar", serv:"1 cup", grp:"pan", when:"am", cal:302, protein:10, carbs:55, fat:5, al:"oatmeal oats"},
+  {id:"pr_cafe", code:"", name:"Café con leche", en:"Coffee with milk", serv:"1 cup (8 oz)", grp:"pan", when:"am", cal:94, protein:4, carbs:14, fat:3, al:"coffee milk latte cafe"},
+  {id:"pr_flan", code:"", name:"Flan", en:"Caramel custard", serv:"1 slice", grp:"dulce", when:"snack", cal:235, protein:7, carbs:39, fat:6, al:"custard caramel custard flan de queso"}
+];
+PR_FOODS.forEach(function(p) { PLATES.push(p); });
+
+function isPrFood(p) {
+  return !!(p && typeof p.id === "string" && p.id.indexOf("pr_") === 0);
+}
+
+function normText(s) {
+  let t = String(s || "");
+  try { t = t.normalize("NFD"); } catch (e) {}
+  return t.replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function plateHay(p) {
+  if (!p._hay) p._hay = " " + normText([p.name, p.en || "", p.al || "", p.code || ""].join(" ")) + " ";
+  return p._hay;
+}
+
+function tokenHit(hay, t) {
+  if (hay.indexOf(t) >= 0) return true;
+  if (t.length > 4 && /es$/.test(t) && hay.indexOf(t.slice(0, -2)) >= 0) return true;
+  if (t.length > 3 && /s$/.test(t) && hay.indexOf(t.slice(0, -1)) >= 0) return true;
+  return false;
+}
+
 function plateById(id) {
   return PLATES.find(function(p) { return p.id === id; }) || null;
 }
@@ -3896,10 +4006,14 @@ function plateByQuery(raw) {
   const q = String(raw || "").trim();
   if (!q) return null;
   const up = q.toUpperCase();
-  const byCode = PLATES.find(function(p) { return p.code === up; });
+  const byCode = PLATES.find(function(p) { return p.code && p.code === up; });
   if (byCode) return byCode;
-  const low = q.toLowerCase();
-  return PLATES.find(function(p) { return p.name.toLowerCase() === low || p.name.toLowerCase().indexOf(low) === 0; }) || null;
+  const low = normText(q);
+  if (!low) return null;
+  const byName = PLATES.find(function(p) { const n = normText(p.name); return n === low || n.indexOf(low) === 0; });
+  if (byName) return byName;
+  const hits = PLATES.filter(function(p) { return plateMatchesQuery(p, q); });
+  return hits.length === 1 ? hits[0] : null;
 }
 
 function yesterdayISO() {
@@ -4006,40 +4120,48 @@ function addPlate(plate, iso, opts) {
   iso = iso || todayISO();
   if (isFutureISO(iso)) { toast("Future · plan only"); return false; }
   rollMacrosIfNewDay();
+  const qty = opts.qty != null ? Math.max(0.5, Math.min(2, Number(opts.qty) || 1)) : 1;
+  const cal = Math.round((Number(plate.cal) || 0) * qty);
+  const protein = Math.round((Number(plate.protein) || 0) * qty);
+  const carbs = Math.round((Number(plate.carbs) || 0) * qty);
+  const fat = Math.round((Number(plate.fat) || 0) * qty);
   const entry = ensureFoodFor(iso);
-  entry.items.push({
+  const row = {
     id: plate.id,
     name: plate.name,
-    qty: 1,
-    baseCal: plate.cal,
-    baseProtein: plate.protein,
-    baseCarbs: plate.carbs,
-    baseFat: plate.fat,
-    cal: plate.cal,
-    protein: plate.protein,
-    carbs: plate.carbs,
-    fat: plate.fat
-  });
+    qty: qty,
+    baseCal: Number(plate.cal) || 0,
+    baseProtein: Number(plate.protein) || 0,
+    baseCarbs: Number(plate.carbs) || 0,
+    baseFat: Number(plate.fat) || 0,
+    cal: cal,
+    protein: protein,
+    carbs: carbs,
+    fat: fat
+  };
+  if (iso === todayISO()) row.at = new Date().getHours();
+  if (opts.plate) row.plate = opts.plate;
+  entry.items.push(row);
   if (!entry.dayMacros) entry.dayMacros = {cal: 0, protein: 0, carbs: 0, fat: 0};
-  entry.dayMacros.cal += plate.cal;
-  entry.dayMacros.protein += plate.protein;
-  entry.dayMacros.carbs += plate.carbs;
-  entry.dayMacros.fat += plate.fat;
+  entry.dayMacros.cal += cal;
+  entry.dayMacros.protein += protein;
+  entry.dayMacros.carbs += carbs;
+  entry.dayMacros.fat += fat;
   if (iso === todayISO()) {
     const m = ensureMacros();
-    m.cal += plate.cal;
-    m.protein += plate.protein;
-    m.carbs += plate.carbs;
-    m.fat += plate.fat;
+    m.cal += cal;
+    m.protein += protein;
+    m.carbs += carbs;
+    m.fat += fat;
     entry.dayMacros = {cal: m.cal, protein: m.protein, carbs: m.carbs, fat: m.fat};
   }
   const slot = (state.plateSlot === "work" || state.plateSlot === "after") ? state.plateSlot : "home";
   entry[slot] = true;
-  state.recentPlates = [plate.id].concat((state.recentPlates || []).filter(function(id) { return id !== plate.id; })).slice(0, 6);
+  state.recentPlates = [plate.id].concat((state.recentPlates || []).filter(function(id) { return id !== plate.id; })).slice(0, 8);
   if (!opts.silent) {
     sfxConfirm();
     toast(plate.name + " · logged");
-    armPlateUndo(iso);
+    armPlateUndo(iso, 1);
   }
   if (!opts.deferPersist) persist();
   return true;
@@ -4141,7 +4263,7 @@ function diaryBlockHtml(iso) {
   items.forEach(function(it, idx) {
     const qty = Number(it.qty) || 1;
     const qtyLabel = (Math.round(qty * 2) / 2) + "×";
-    html += '<div class="diaryItem"><div><b>' + esc(it.name) + '</b><div class="n">' +
+    html += '<div class="diaryItem dRow"><div><b>' + esc(it.name) + '</b><div class="n">' +
       Math.round(it.cal || 0) + " cal · P " + Math.round(it.protein || 0) + "</div></div>";
     if (!future) {
       html += '<div class="qtyStep"><button type="button" class="mini" data-qty-dir="-1" data-qty-idx="' + idx + '" data-plate-iso="' + iso + '">−</button>';
@@ -4177,14 +4299,155 @@ function waterBlockHtml(iso) {
   return html;
 }
 
-function quickAddHtml(iso) {
+const CRIOLLA_GROUPS = [
+  {k: "plato", label: "Platos"},
+  {k: "lado", label: "Acompañantes"},
+  {k: "fritura", label: "Frituras"},
+  {k: "pan", label: "Desayuno y panadería"},
+  {k: "dulce", label: "Postre"}
+];
+const CRIOLLA_ORDER = {
+  am: ["pr_cafe", "pr_avena", "pr_pansobao", "pr_mallorca", "pr_quesito", "pr_arroz", "pr_habichuelas", "pr_polloguisado"],
+  mid: ["pr_arroz", "pr_habichuelas", "pr_polloguisado", "pr_pernil", "pr_chuleta", "pr_tostones", "pr_amarillos", "pr_carneguisada"],
+  late: ["pr_arroz", "pr_habichuelas", "pr_polloguisado", "pr_tostones", "pr_alcapurria", "pr_bacalaito", "pr_empanadilla", "pr_pernil"]
+};
+
+function criollaSlot(hour) {
+  if (hour >= 4 && hour < 11) return "am";
+  if (hour >= 11 && hour < 16) return "mid";
+  return "late";
+}
+
+function criollaGoTos(hour) {
+  const score = {};
+  (state.foodHistory || []).slice(0, 30).forEach(function(f) {
+    (f.items || []).forEach(function(it) {
+      if (!it || typeof it.id !== "string" || it.id.indexOf("pr_") !== 0) return;
+      const at = Number(it.at);
+      if (it.at == null || isNaN(at)) return;
+      let d = Math.abs(at - hour);
+      d = Math.min(d, 24 - d);
+      if (d <= 2) score[it.id] = (score[it.id] || 0) + (d === 0 ? 2 : 1);
+    });
+  });
+  return Object.keys(score).filter(function(id) { return score[id] >= 2 && plateById(id); })
+    .sort(function(a, b) { return score[b] - score[a]; });
+}
+
+function criollaNow() {
+  const hour = new Date().getHours();
+  const out = [];
+  criollaGoTos(hour).slice(0, 4).forEach(function(id) { if (out.indexOf(id) < 0) out.push(id); });
+  CRIOLLA_ORDER[criollaSlot(hour)].forEach(function(id) { if (out.length < 8 && out.indexOf(id) < 0) out.push(id); });
+  return out.map(plateById).filter(Boolean);
+}
+
+function portionLabel(q) {
+  if (q === 0.5) return "½";
+  if (q === 1.5) return "1½";
+  return String(q);
+}
+
+function criollaTileHtml(p) {
+  const on = plateBuild.some(function(b) { return b.id === p.id; });
+  return '<button type="button" class="criollaTile' + (on ? " on" : "") + '" data-build="' + p.id + '" aria-pressed="' + (on ? "true" : "false") + '" aria-label="' + esc(p.name + ", " + p.en + ", " + p.serv + ", " + p.cal + " calories") + '">' +
+    "<span>" + (on ? "✓ " : "") + esc(p.name) + '</span><span class="en">' + esc(p.serv) + '</span><span class="meta">' + p.cal + " cal · P" + p.protein + "</span></button>";
+}
+
+function plateBuildTotals() {
+  const t = {cal: 0, protein: 0, carbs: 0, fat: 0};
+  plateBuild.forEach(function(b) {
+    const p = plateById(b.id);
+    if (!p) return;
+    t.cal += Math.round(p.cal * b.qty);
+    t.protein += Math.round(p.protein * b.qty);
+    t.carbs += Math.round(p.carbs * b.qty);
+    t.fat += Math.round(p.fat * b.qty);
+  });
+  return t;
+}
+
+function criollaCardHtml(iso) {
+  if (isFutureISO(iso)) return "";
+  plateBuild = plateBuild.filter(function(b) { return !!plateById(b.id); });
+  let html = '<div class="card mt criollaCard"><div class="criollaHead"><div class="lbl">Comida criolla</div></div>';
+  html += '<p class="sub" style="margin:4px 0 0">Tap what is on the plate, then Log.</p>';
+  html += '<div class="criollaTiles">' + criollaNow().map(criollaTileHtml).join("") + "</div>";
+  html += '<div class="criollaMore"><button type="button" class="btn gho" id="criollaAll" aria-expanded="' + (criollaShowAll ? "true" : "false") + '">' + (criollaShowAll ? "Show fewer" : "Show all " + PR_FOODS.length) + "</button></div>";
+  if (criollaShowAll) {
+    CRIOLLA_GROUPS.forEach(function(g) {
+      const list = PR_FOODS.filter(function(p) { return p.grp === g.k; });
+      if (!list.length) return;
+      html += '<div class="criollaGroup"><div class="lbl">' + esc(g.label) + '</div><div class="criollaTiles" style="margin-top:0">' + list.map(criollaTileHtml).join("") + "</div></div>";
+    });
+  }
+  if (plateBuild.length) {
+    const t = plateBuildTotals();
+    html += '<div class="plateDraft" id="plateDraft">';
+    plateBuild.forEach(function(b) {
+      const p = plateById(b.id);
+      if (!p) return;
+      html += '<div class="draftRow"><div><b>' + esc(p.name) + "</b><span>" + Math.round(p.cal * b.qty) + " cal · P" + Math.round(p.protein * b.qty) + '</span></div><div class="portionChips" role="group" aria-label="Portion for ' + esc(p.name) + '">';
+      [0.5, 1, 1.5, 2].forEach(function(q) {
+        html += '<button type="button" class="' + (b.qty === q ? "on" : "") + '" data-build-qty="' + p.id + '" data-q="' + q + '" aria-label="' + portionLabel(q) + ' serving">' + portionLabel(q) + "</button>";
+      });
+      html += "</div></div>";
+    });
+    html += '<div class="btns"><button type="button" class="btn gho" id="plateBuildClear">Clear</button>';
+    html += '<button type="button" class="btn pri" id="plateBuildLog" data-plate-iso="' + iso + '">' + (plateBuild.length > 1 ? "Log " + plateBuild.length : "Log") + " · " + t.cal + " cal</button></div>";
+    html += "</div>";
+  }
+  html += "</div>";
+  return html;
+}
+
+function toggleBuild(id) {
+  if (!plateById(id)) return;
+  const i = plateBuild.findIndex(function(b) { return b.id === id; });
+  if (i >= 0) plateBuild.splice(i, 1);
+  else plateBuild.push({id: id, qty: 1});
+  sfxTap();
+}
+
+function setBuildQty(id, q) {
+  const b = plateBuild.find(function(x) { return x.id === id; });
+  if (!b) return;
+  if ([0.5, 1, 1.5, 2].indexOf(q) < 0) return;
+  b.qty = q;
+  sfxTap();
+}
+
+function logPlateBuild(iso) {
+  iso = iso || todayISO();
+  if (!plateBuild.length) return;
+  const gid = plateBuild.length > 1 ? ("p" + Date.now().toString(36)) : "";
+  let n = 0;
+  let first = "";
+  plateBuild.forEach(function(b) {
+    const p = plateById(b.id);
+    if (!p) return;
+    if (addPlate(p, iso, {silent: true, deferPersist: true, qty: b.qty, plate: gid})) {
+      n++;
+      if (!first) first = p.name;
+    }
+  });
+  plateBuild = [];
+  if (!n) return;
+  persist();
+  sfxConfirm();
+  toast(n > 1 ? ("Plate logged · " + n + " items") : (first + " · logged"));
+  armPlateUndo(iso, n);
+}
+
+function quickAddHtml(iso, opts) {
+  opts = opts || {};
   if (isFutureISO(iso)) return "";
   const slot = (state.plateSlot === "work" || state.plateSlot === "after") ? state.plateSlot : "home";
   const q = String(foodQuery || "").trim();
   histPlateCache = historyPlateHits(q);
   let html = '<div class="card mt"><div class="lbl">Quick add</div>';
   html += '<p class="sub" style="margin-top:0">Tap a plate, a favorite, or search what you have logged before.</p>';
-  const again = againPlate(iso);
+  const again = opts.noAgain ? null : againPlate(iso);
   if (again) {
     html += '<div class="stack" style="margin-top:8px"><button class="btn pri" type="button" id="againPlate" data-again-plate="1" data-plate-iso="' + iso + '">Again · ' + esc(again.name) + "</button></div>";
   }
@@ -4219,7 +4482,7 @@ function quickAddHtml(iso) {
     });
   }
   html += '<div class="stack" style="margin-top:10px"><button class="btn gho" type="button" id="saveTemplate" data-plate-iso="' + iso + '">Save diary as template</button></div>';
-  html += '<div class="codeRow"><input type="text" id="foodSearch" placeholder="Search plates or past food" maxlength="48" autocomplete="off" value="' + esc(q) + '"/>';
+  html += '<div class="codeRow"><input type="text" id="foodSearch" placeholder="Search · arroz, tostones, rice, beans" maxlength="48" autocomplete="off" value="' + esc(q) + '"/>';
   html += '<button class="btn pri" type="button" id="foodSearchAdd" data-plate-iso="' + iso + '">Add</button></div>';
   if (histPlateCache.length) {
     html += '<div class="lbl" style="margin-top:12px">From your diary</div><div class="recentRow">';
@@ -4233,12 +4496,16 @@ function quickAddHtml(iso) {
   html += '<div class="plateGrid">';
   let shown = 0;
   PLATES.forEach(function(p) {
+    const pr = isPrFood(p);
+    if (!q && pr) return;
     if (!plateMatchesQuery(p, q)) return;
+    if (shown >= 12) return;
     shown++;
     const fav = (state.favPlates || []).indexOf(p.id) >= 0;
+    const meta = pr ? (esc(p.serv) + " · " + p.cal + " cal · P" + p.protein) : (p.code + " · " + p.cal + " cal · P" + p.protein + " · " + plateProteinShare(p) + "% protein");
     html += '<div class="plateCell">';
     html += '<button type="button" class="plateBtn" data-plate="' + p.id + '" data-plate-iso="' + iso + '">' +
-      esc(p.name) + "<small>" + p.code + " · " + p.cal + " cal · P" + p.protein + " · " + plateProteinShare(p) + "% protein</small></button>";
+      esc(p.name) + "<small>" + meta + "</small></button>";
     html += '<button type="button" class="starBtn' + (fav ? " on" : "") + '" data-fav="' + p.id + '" aria-label="Favorite">' + (fav ? "★" : "☆") + "</button>";
     html += "</div>";
   });
@@ -4454,9 +4721,10 @@ function proteinWeekBarsHtml() {
 }
 
 function plateMatchesQuery(p, q) {
-  const low = String(q || "").trim().toLowerCase();
+  const low = normText(q);
   if (!low) return true;
-  return p.name.toLowerCase().indexOf(low) >= 0 || p.code.toLowerCase().indexOf(low) >= 0;
+  const hay = plateHay(p);
+  return low.split(" ").every(function(t) { return tokenHit(hay, t); });
 }
 
 function plateProteinShare(p) {
@@ -4466,7 +4734,7 @@ function plateProteinShare(p) {
 }
 
 function historyPlateHits(q) {
-  const low = String(q || "").trim().toLowerCase();
+  const low = normText(q);
   if (low.length < 2) return [];
   const cat = {};
   PLATES.forEach(function(p) {
@@ -4480,7 +4748,7 @@ function historyPlateHits(q) {
       if (!name) return;
       const key = name.toLowerCase();
       if (seen[key] || cat[key]) return;
-      if (key.indexOf(low) < 0) return;
+      if (normText(name).indexOf(low) < 0) return;
       seen[key] = 1;
       const qty = Number(it.qty) || 1;
       out.push({
@@ -4579,19 +4847,59 @@ function againPlate(iso) {
   const entry = iso === todayISO() ? ensureFood() : foodForISO(iso);
   const items = entry && entry.items;
   if (!items || !items.length) return null;
-  const it = items[items.length - 1];
+  const last = items[items.length - 1];
+  if (last.plate) {
+    const group = items.filter(function(it) { return it.plate === last.plate; });
+    if (group.length > 1) {
+      return {
+        multi: true,
+        name: group[0].name + " +" + (group.length - 1),
+        items: group.map(function(it) {
+          return {
+            id: it.id || "custom",
+            name: it.name,
+            qty: Number(it.qty) || 1,
+            cal: it.baseCal != null ? Number(it.baseCal) : Math.round((Number(it.cal) || 0) / (Number(it.qty) || 1)),
+            protein: it.baseProtein != null ? Number(it.baseProtein) : Math.round((Number(it.protein) || 0) / (Number(it.qty) || 1)),
+            carbs: it.baseCarbs != null ? Number(it.baseCarbs) : Math.round((Number(it.carbs) || 0) / (Number(it.qty) || 1)),
+            fat: it.baseFat != null ? Number(it.baseFat) : Math.round((Number(it.fat) || 0) / (Number(it.qty) || 1))
+          };
+        })
+      };
+    }
+  }
+  const qty = Number(last.qty) || 1;
   return {
-    id: it.id || "custom",
-    name: it.name,
-    cal: Number(it.cal) || 0,
-    protein: Number(it.protein) || 0,
-    carbs: Number(it.carbs) || 0,
-    fat: Number(it.fat) || 0
+    id: last.id || "custom",
+    name: last.name,
+    qty: qty,
+    cal: last.baseCal != null ? Number(last.baseCal) : Math.round((Number(last.cal) || 0) / qty),
+    protein: last.baseProtein != null ? Number(last.baseProtein) : Math.round((Number(last.protein) || 0) / qty),
+    carbs: last.baseCarbs != null ? Number(last.baseCarbs) : Math.round((Number(last.carbs) || 0) / qty),
+    fat: last.baseFat != null ? Number(last.baseFat) : Math.round((Number(last.fat) || 0) / qty)
   };
 }
 
-function armPlateUndo(iso) {
-  plateUndo = {iso: iso};
+function logAgainPlate(iso) {
+  const plate = againPlate(iso);
+  if (!plate) { toast("Nothing to repeat"); return; }
+  if (plate.multi) {
+    const gid = "p" + Date.now().toString(36);
+    let n = 0;
+    plate.items.forEach(function(it) {
+      if (addPlate(it, iso, {silent: true, deferPersist: true, qty: it.qty || 1, plate: gid})) n++;
+    });
+    persist();
+    sfxConfirm();
+    toast(n ? ("Again · " + plate.name) : "Nothing to repeat");
+    armPlateUndo(iso, n);
+  } else {
+    addPlate(plate, iso, {qty: plate.qty || 1});
+  }
+}
+
+function armPlateUndo(iso, count) {
+  plateUndo = {iso: iso, count: Math.max(1, count || 1)};
   if (plateUndoTimer) clearTimeout(plateUndoTimer);
   plateUndoTimer = setTimeout(function() {
     plateUndo = null;
@@ -4609,7 +4917,9 @@ function showPlateUndo() {
     el.className = "undoGhost";
     document.body.appendChild(el);
   }
-  el.innerHTML = '<span>Plate logged</span><button type="button" id="undoPlateBtn">Undo</button>';
+  const n = plateUndo.count || 1;
+  const label = n > 1 ? ("Plate logged · " + n) : "Plate logged";
+  el.innerHTML = "<span>" + label + '</span><button type="button" id="undoPlateBtn">Undo</button>';
   const btn = document.getElementById("undoPlateBtn");
   if (btn) btn.onclick = function() { undoLastPlate(); };
 }
@@ -4617,15 +4927,19 @@ function showPlateUndo() {
 function undoLastPlate() {
   if (!plateUndo) return;
   const iso = plateUndo.iso;
+  const n = plateUndo.count || 1;
   plateUndo = null;
   if (plateUndoTimer) { clearTimeout(plateUndoTimer); plateUndoTimer = null; }
   const el = document.getElementById("plateUndoGhost");
   if (el) el.remove();
   const entry = foodForISO(iso);
   if (!entry || !entry.items || !entry.items.length) return;
-  removePlateAt(iso, entry.items.length - 1, {silent: true});
+  const take = Math.min(n, entry.items.length);
+  for (let i = 0; i < take; i++) {
+    removePlateAt(iso, entry.items.length - 1, {silent: true});
+  }
   sfxTap();
-  toast("Plate undone");
+  toast(take > 1 ? ("Undone · " + take) : "Plate undone");
   render();
 }
 
@@ -5334,8 +5648,8 @@ function screenFuel() {
     html += '<div class="stack" style="margin-top:8px"><button class="btn pri" type="button" id="againPlateTop" data-again-plate="1" data-plate-iso="' + todayISO() + '">Again · ' + esc(again.name) + "</button></div>";
   }
 
-  html += quickAddHtml(todayISO());
-  html += diaryBlockHtml(todayISO());
+  html += criollaCardHtml(todayISO());
+  html += quickAddHtml(todayISO(), {noAgain: true});
   html += waterBlockHtml(todayISO());
   html += proteinWeekBarsHtml();
   html += weekNutritionHtml();
@@ -6446,12 +6760,36 @@ function bind() {
   document.querySelectorAll("[data-again-plate]").forEach(function(btn) {
     btn.onclick = function() {
       const iso = btn.getAttribute("data-plate-iso") || todayISO();
-      const plate = againPlate(iso);
-      if (!plate) { toast("Nothing to repeat"); return; }
-      addPlate(plate, iso);
+      logAgainPlate(iso);
       render();
     };
   });
+  document.querySelectorAll("[data-build]").forEach(function(btn) {
+    btn.onclick = function() {
+      toggleBuild(btn.getAttribute("data-build"));
+      render();
+    };
+  });
+  document.querySelectorAll("[data-build-qty]").forEach(function(btn) {
+    btn.onclick = function() {
+      setBuildQty(btn.getAttribute("data-build-qty"), Number(btn.getAttribute("data-q")));
+      render();
+    };
+  });
+  if ($("plateBuildClear")) $("plateBuildClear").onclick = function() {
+    plateBuild = [];
+    sfxTap();
+    render();
+  };
+  if ($("plateBuildLog")) $("plateBuildLog").onclick = function() {
+    logPlateBuild($("plateBuildLog").getAttribute("data-plate-iso") || todayISO());
+    render();
+  };
+  if ($("criollaAll")) $("criollaAll").onclick = function() {
+    criollaShowAll = !criollaShowAll;
+    sfxTap();
+    render();
+  };
   if ($("saveTemplate")) $("saveTemplate").onclick = function() {
     const iso = $("saveTemplate").getAttribute("data-plate-iso") || todayISO();
     saveMealTemplate(iso);
