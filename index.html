@@ -1180,6 +1180,16 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
 .path.leadPath{margin:8px 0 12px}
 .path .node.lead{min-height:96px;font-size:26px;letter-spacing:-0.03em;padding:16px 10px;gap:6px}
 .path .node.lead small{font-size:15px;font-weight:650;letter-spacing:0}
+.hero .heroText,.hero .heroEmblem{position:relative;z-index:1}
+/* v4.38 week strip hierarchy: cleared is quiet, now gets the one strong treatment */
+.path .node.on,.path .node.rest{background:var(--panel);border-color:var(--line);color:var(--dim)}
+.path .node.on small,.path .node.rest small{color:var(--muted);opacity:.85}
+.path .node.ck{border-color:color-mix(in srgb,var(--amber) 70%,var(--line))}
+.path .node.now{
+  background:var(--neon-dim);border:1.5px solid var(--neon);color:var(--text);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--neon) 14%,transparent),0 8px 22px -10px var(--reactive-glow);
+}
+.path .node.now small{color:var(--neon);font-weight:700}
 .nextLine{margin:2px 0 14px;font-size:22px;font-weight:700;color:var(--dim)}
 
 .regionLine{margin:0 0 12px;font-size:20px;line-height:1.2;font-weight:700;color:var(--text);letter-spacing:-0.02em}
@@ -1333,7 +1343,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.37";
+const APP_VERSION = "4.38";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
