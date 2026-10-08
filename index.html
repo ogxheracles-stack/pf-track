@@ -1444,7 +1444,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.55";
+const APP_VERSION = "4.56";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -5801,6 +5801,7 @@ function bindSleep() {
     sleepGoalOpen = this.open;
     const sm = this.querySelector("summary");
     if (sm) sm.setAttribute("aria-expanded", this.open ? "true" : "false");
+    if (this.open) { const st = this.querySelectorAll(".step"); sleepKeepVisible(st[st.length - 1]); }
   });
   if ($("sleepPlanMore")) $("sleepPlanMore").onclick = function() {
     sleepPlanOpen = !sleepPlanOpen;
