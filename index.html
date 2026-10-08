@@ -533,6 +533,15 @@ nav.hud button.on .ico{opacity:1}
 .heroCheck .pfi.sm{width:13px;height:13px;stroke-width:3}
 .hero-rest .heroEmblem,.hero-rest .heroCorner{color:var(--cyan);border-color:var(--cyan)}
 .hero-rest .heroEmblem{background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.14),transparent 60%),color-mix(in srgb,var(--cyan) 12%,transparent);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--cyan) 60%,transparent),0 0 24px -4px color-mix(in srgb,var(--cyan) 35%,transparent)}
+.hero.tabHero{min-height:104px;padding:18px 18px;gap:14px;margin:4px 0 14px}
+.tabHero .heroEmblem{width:60px;height:60px}
+.tabHero .heroEmblem .pfi{width:30px;height:30px}
+.hero h1.heroTitle{margin:6px 0 0;font:800 30px/1.04 var(--font);letter-spacing:-0.03em}
+.tabHero .heroSub{font-size:13px}
+.hero-cyan .heroEmblem,.hero-cyan .heroCorner{color:var(--cyan);border-color:var(--cyan)}
+.hero-cyan .heroEmblem{background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.14),transparent 60%),color-mix(in srgb,var(--cyan) 12%,transparent);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--cyan) 60%,transparent),0 0 24px -4px color-mix(in srgb,var(--cyan) 35%,transparent)}
+.hero + .stack{margin-top:0;margin-bottom:12px}
+.hero + .stack + .hubMetrics{margin-top:12px}
 @media (prefers-reduced-motion: reduce){.btn,.pfi .f{transition:none}}
 /* PF icon set */
 .pfi{width:22px;height:22px;flex:none;display:inline-block;vertical-align:middle;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
@@ -1228,7 +1237,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.28";
+const APP_VERSION = "4.29";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -5243,10 +5252,20 @@ function adjustRest(delta) {
 }
 
 
+function tabHeroHtml(ico, eyebrow, title, sub, tone) {
+  let h = '<section class="hero tabHero' + (tone ? " hero-" + tone : "") + '">';
+  h += '<span class="heroCorner tl"></span><span class="heroCorner tr"></span><span class="heroCorner bl"></span><span class="heroCorner br"></span>';
+  h += '<div class="heroEmblem">' + pfIcon(ico) + '</div>';
+  h += '<div class="heroText"><div class="heroEyebrow">' + esc(eyebrow) + '</div>';
+  h += '<h1 class="heroTitle">' + esc(title) + '</h1>';
+  if (sub) h += '<div class="heroSub">' + esc(sub) + '</div>';
+  return h + '</div></section>';
+}
+
 function screenRecovery() {
   const plan = todayPlan();
   let html = statusbar();
-  html += '<div class="lbl">Body cues</div><h1>Recovery</h1>';
+  html += tabHeroHtml("recovery", "Body cues", "Recovery", "Feet up · sleep · walk", "cyan");
   if (plan && isWorkDay(plan.d)) {
     html += '<div class="stack">';
     html += '<button class="btn pri big" id="walkLog">Log walk</button>';
@@ -5280,8 +5299,7 @@ function screenShop() {
   const c = ensureCosmetics();
   const env = resolveEnvironment();
   let html = statusbar();
-  html += '<div class="lbl">Cosmetic only</div><h1>Shop</h1>';
-  html += '<p class="sub">Camos · no pay-to-win · no loot boxes. All listed owned offline.</p>';
+  html += tabHeroHtml("shop", "Cosmetic only", "Shop", "Camos · no pay-to-win · all owned offline");
   html += '<div class="card"><div class="lbl">Preview environment</div>';
   html += '<div class="seg" id="shopEnvPreview">';
   html += '<button type="button" data-shop-env="day" class="' + (env === "day" ? "on" : "") + '">Day</button>';
@@ -5318,8 +5336,7 @@ function screenMore() {
   const c = ensureCosmetics();
   const pref = c.environmentPreference || "auto";
   let html = statusbar();
-  html += '<div class="lbl">Hub</div><h1>More</h1>';
-  html += '<p class="sub">Link · Stats · Settings · Companion · Export</p>';
+  html += tabHeroHtml("more", "Hub", "More", "Link · Stats · Companion · Export", "cyan");
   html += '<div class="moreList">';
   html += '<button class="btn" data-go="link"><span class="ico">' + pfIcon("link") + '</span> Link · PFTRACK uplink</button>';
   html += '<button class="btn" data-go="cal"><span class="ico">' + pfIcon("calendar") + '</span> Calendar</button>';
@@ -5572,8 +5589,7 @@ function screenHome() {
 
 function screenWeek() {
   let html = statusbar();
-  html += '<div class="lbl">Weekly plan</div><h1>Week in, week out</h1>';
-  html += '<p class="sub">Tap a day for the manifest. Same rotation forever. Saturday starts it.</p>';
+  html += tabHeroHtml("training", "Weekly plan", "Training", "Saturday starts it · tap a day");
   html += '<p class="regionLine">' + esc(regionWord(todayPlan())) + "</p>";
   html += weekPathHtml();
   html += lastWeekReviewHtml();
@@ -5745,7 +5761,7 @@ function screenFuel() {
   const win = fuelWindowMeta();
   const m = ensureMacros();
   let html = statusbar();
-  html += '<div class="lbl">Nutrition</div><h1>Fuel window</h1>';
+  html += tabHeroHtml("nutrition", "Nutrition", "Fuel window", "2–8 PM · comida criolla in one tap");
 
   html += '<p class="remainLine">' + esc(macroRemainSentence()) + "</p>";
   html += diaryBlockHtml(todayISO());
