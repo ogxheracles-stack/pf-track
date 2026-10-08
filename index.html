@@ -470,7 +470,7 @@ input:focus{border-color:var(--neon)}
 nav.hud{
   position:fixed;left:50%;bottom:0;transform:translateX(-50%);
   width:100%;max-width:440px;z-index:45;
-  display:grid;grid-template-columns:repeat(6,1fr);
+  display:grid;grid-template-columns:repeat(7,1fr);
   background:var(--hud-bg);
   backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
   border-top:1px solid var(--line);
@@ -1305,6 +1305,59 @@ html[data-env="day"] #envBg .envSkyline{opacity:.2}
 html[data-env="day"] #envBg .envHaze{opacity:.35;mix-blend-mode:normal}
 html[data-env="day"] .searchField{background:#fff}
 html[data-env="day"] input,html[data-env="day"] textarea,html[data-env="day"] select{color:var(--text)}
+
+/* v4.39 Sleep tab */
+.seg.two{grid-template-columns:1fr 1fr;margin-top:0}
+.sleepDur{text-align:center;margin:18px 0 6px}
+.sleepDur b{display:block;font:800 44px/1 var(--font);letter-spacing:-0.03em;color:var(--text)}
+.sleepDur small{display:block;margin-top:6px;font:600 13px/1.2 var(--font);color:var(--dim)}
+.sleepTime{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.sleepTime .tbox{padding:12px 10px;border-radius:14px;background:color-mix(in srgb,var(--panel2) 80%,transparent);border:1px solid var(--line)}
+.sleepTime .tbox .lbl{text-align:center}
+.sleepTime .step{gap:4px}
+.sleepTime .step b{font-size:16px;min-width:0;text-align:center;white-space:nowrap;flex:1}
+.sleepTime .mini{width:44px;height:44px;min-width:44px;min-height:44px;font-size:22px}
+.qRow{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:8px}
+.qRow button{min-height:56px;border-radius:12px;border:1px solid var(--line2);background:var(--panel2);color:var(--text);font:800 18px/1 var(--font);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;cursor:pointer}
+.qRow button small{font:600 10px/1 var(--font);color:var(--dim)}
+.qRow button.on{background:var(--neon-dim);border-color:var(--neon);box-shadow:0 0 0 3px color-mix(in srgb,var(--neon) 12%,transparent)}
+.qRow button.on small{color:var(--text)}
+.sleepTagsFold{margin-top:14px}
+.tagRow{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.tagRow button{min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--line2);background:var(--panel2);color:var(--dim);font:600 13px/1 var(--font);cursor:pointer}
+.tagRow button.on{border-color:var(--cyan);color:var(--text);background:color-mix(in srgb,var(--cyan) 16%,transparent)}
+.tipList{display:grid;gap:12px;margin-top:10px}
+.tip{display:grid;grid-template-columns:36px 1fr;gap:12px;align-items:start}
+.tipIco{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;color:var(--cyan);background:color-mix(in srgb,var(--cyan) 12%,transparent)}
+.tipIco .pfi{width:20px;height:20px}
+.tip b{display:block;font:700 15px/1.3 var(--font);color:var(--text)}
+.tip span{display:block;margin-top:3px;font:500 14px/1.4 var(--font);color:var(--dim)}
+.plan{display:grid;gap:0;margin-top:10px}
+.planRow{display:flex;justify-content:space-between;align-items:center;min-height:44px;border-bottom:1px solid color-mix(in srgb,var(--line) 70%,transparent);font:600 14px/1.2 var(--font);color:var(--dim)}
+.planRow:last-child{border-bottom:0}
+.planRow b{font:700 15px/1 var(--mono);color:var(--text)}
+.planRow.key{color:var(--text)}
+.planRow.key b{color:var(--neon);font-size:17px}
+.sleepPlot{position:relative;display:flex;align-items:flex-end;gap:4px;height:104px;margin-top:14px}
+.sleepPlot i{flex:1;border-radius:5px 5px 2px 2px;background:var(--well);border:1px solid var(--line)}
+.sleepPlot i.good{background:var(--neon);border-color:transparent}
+.sleepPlot i.near{background:var(--cyan);border-color:transparent}
+.sleepPlot i.short{background:var(--amber);border-color:transparent}
+.sleepPlot .goalLine{position:absolute;left:0;right:0;border-top:1.5px dashed color-mix(in srgb,var(--text) 40%,transparent);pointer-events:none;z-index:1}
+.sleepPlot .goalLine span{position:absolute;right:0;top:-18px;font:700 10px/1 var(--mono);color:var(--dim)}
+.sleepDays{display:flex;gap:4px;margin-top:6px}
+.sleepDays small{flex:1;text-align:center;font:600 10px/1 var(--font);color:var(--muted)}
+.sleepDays small.on{color:var(--text);font-weight:800}
+.sleepStats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.sleepStats div{padding:12px;border-radius:12px;background:color-mix(in srgb,var(--panel2) 80%,transparent);border:1px solid var(--line)}
+.sleepStats small{display:block;font:600 12px/1 var(--font);color:var(--dim)}
+.sleepStats b{display:block;margin-top:6px;font:800 20px/1 var(--font);color:var(--text)}
+.sleepGoalFold summary{min-height:44px}
+.step b{color:var(--text)}
+html[data-env="day"] .sleepPlot i.good{background:#5a9a00}
+html[data-env="day"] .sleepPlot i.near{background:#0a8aa3}
+html[data-env="day"] .sleepPlot i.short{background:#c47a00}
+nav.hud button{font-size:10px}
 </style>
 </head>
 <body>
@@ -1343,7 +1396,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.38";
+const APP_VERSION = "4.39";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -1546,8 +1599,9 @@ function refreshHealthSummary(force) {
     if (r && r.ok !== false) {
       healthSummaryCache = r;
       healthSummaryAt = Date.now();
-      if (r.sleepHours != null && state.sleepHours == null) {
-        state.sleepHours = Number(r.sleepHours);
+      if (r.sleepHours != null && !sleepEntry(todayISO())) {
+        setLastNightHours(Math.round(Number(r.sleepHours) * 100) / 100);
+        ensureSleep()[todayISO()].src = "health";
         try { persist(); } catch (e) {}
       }
     }
@@ -1786,6 +1840,8 @@ function defaults() {
     feetCookedWeek: "",
     hamWeirdWeek: "",
     sleepHours: null,
+    sleepLog: {},
+    sleepGoal: {hours: 7.5, wake: 360},
     healthConnected: false,
     healthWriteWeight: false,
     quietReminder: false,
@@ -2002,6 +2058,8 @@ function load() {
         data.hamWeirdWeek = "";
       }
       try { delete data.hamWeird; } catch (e) {}
+      if (!data.sleepLog || typeof data.sleepLog !== "object" || Array.isArray(data.sleepLog)) data.sleepLog = {};
+      if (!data.sleepGoal || typeof data.sleepGoal !== "object") data.sleepGoal = {hours: 7.5, wake: 360};
       if (data.sleepHours != null) data.sleepHours = Number(data.sleepHours);
       else data.sleepHours = null;
       if (typeof data.healthConnected !== "boolean") data.healthConnected = false;
@@ -2359,7 +2417,7 @@ function crowdTagHtml() {
 
 function sleepCueHtml(plan) {
   if (!plan || plan.key !== "upper-a") return "";
-  const hrs = state.sleepHours;
+  const hrs = lastNightHours();
   if (hrs == null || hrs >= 6) return "";
   return '<div class="card cue mt"><b>Short sleep · ' + hrs + 'h</b><br>Same pin, no hero. Laterals stay.</div>';
 }
@@ -3595,6 +3653,7 @@ function go(v) {
   if (v === "week" || v === "day") tab = "week";
   if (v === "fuel") tab = "fuel";
   if (v === "recovery") tab = "recovery";
+  if (v === "sleep") tab = "sleep";
   if (v === "shop") tab = "shop";
   if (v === "more" || v === "link" || v === "log" || v === "session" || v === "backfill") tab = "more";
   if (v === "cal" || v === "calday") tab = "recovery";
@@ -4000,7 +4059,8 @@ const PF_ICONS = {
   command: '<path class="f" d="M12 3l7.8 4.5v9L12 21l-7.8-4.5v-9z"/><circle cx="12" cy="12" r="3"/>',
   training: '<path d="M6.5 7v10M17.5 7v10M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/><rect class="f" x="5" y="7" width="3" height="10" rx="1"/><rect class="f" x="16" y="7" width="3" height="10" rx="1"/>',
   nutrition: '<path class="f" d="M3.5 11.5h17a8.5 8.5 0 0 1-17 0z"/><path d="M9 8c0-1.5 1-2 1-3.5M13 8c0-1.5 1-2 1-3.5"/>',
-  recovery: '<path class="f" d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z"/>',
+  recovery: '<path class="f" d="M12 20s-7.5-4.4-7.5-10.2A4.3 4.3 0 0 1 12 7.2a4.3 4.3 0 0 1 7.5 2.6C19.5 15.6 12 20 12 20z"/><path d="M7 12.5h2.5l1.5-2.5 2 4 1.5-1.5H17"/>',
+  sleep: '<path class="f" d="M18.5 15.5A7.5 7.5 0 0 1 8.5 5.5a7.5 7.5 0 1 0 10 10z"/><path d="M14.5 3.5h4l-4 4.5h4"/>',
   shop: '<path class="f" d="M6 4h12l3.5 5L12 20.5 2.5 9z"/><path d="M2.5 9h19M9 4l3 16.5L15 4"/>',
   more: '<circle class="f" cx="6" cy="12" r="1.6"/><circle class="f" cx="12" cy="12" r="1.6"/><circle class="f" cx="18" cy="12" r="1.6"/>',
   link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
@@ -4038,6 +4098,7 @@ function nav(active) {
     {id: "week", ico: pfIcon("training"), label: "Training", go: "week"},
     {id: "fuel", ico: pfIcon("nutrition"), label: "Nutrition", go: "fuel"},
     {id: "recovery", ico: pfIcon("recovery"), label: "Recovery", go: "recovery"},
+    {id: "sleep", ico: pfIcon("sleep"), label: "Sleep", go: "sleep"},
     {id: "shop", ico: pfIcon("shop"), label: "Shop", go: "shop"},
     {id: "more", ico: pfIcon("more"), label: "More", go: "more"}
   ];
@@ -5390,7 +5451,7 @@ function tabHeroHtml(ico, eyebrow, title, sub, tone) {
 function screenRecovery() {
   const plan = todayPlan();
   let html = statusbar();
-  html += tabHeroHtml("recovery", "Body cues", "Recovery", "Feet up · sleep · walk", "cyan");
+  html += tabHeroHtml("recovery", "Body cues", "Recovery", "Feet · ham · heat · walk", "cyan");
   if (plan && isWorkDay(plan.d)) {
     html += '<div class="stack">';
     html += '<button class="btn pri big" id="walkLog">Log walk</button>';
@@ -5404,9 +5465,8 @@ function screenRecovery() {
   if (!plan.key && isWorkDay(plan.d)) {
     html += heatBannerHtml(plan);
   }
-  html += '<div class="card mt"><div class="lbl">Last night sleep (hours)</div>';
-  html += '<p class="sub" style="margin-top:0">Manual override · Health fill when bridged + empty.</p>';
-  html += '<div class="step"><button class="mini" id="sleepMinus">−</button><b id="sleepVal">' + (state.sleepHours != null ? state.sleepHours : "—") + '</b><button class="mini" id="sleepPlus">+</button></div></div>';
+  { const ln = sleepEntry(todayISO());
+    html += '<div class="card mt"><div class="lbl">Sleep</div><p class="sub" style="margin:6px 0 12px">' + (ln ? "Last night · " + fmtDur(ln.h) + (ln.q ? " · " + SLEEP_Q[ln.q - 1] : "") : "Last night not logged yet.") + '</p><button class="btn" type="button" data-nav="sleep">Open Sleep</button></div>'; }
   html += '<div class="card mt">';
   html += '<div class="toggle ' + (isFeetCooked() ? "on" : "") + '" id="feetLockToggle"><div><b>Feet cooked</b><span>Pre-skips Lower B calf · no guilt' + (isFeetCooked() ? ' <span class="chip">clears next Sat</span>' : "") + '</span></div><div class="sw"></div></div>';
   html += '<div class="toggle ' + (isHamWeird() ? "on" : "") + '" id="hamWeirdToggle"><div><b>Ham weird</b><span>Pre-skips Lower B seated curl' + (isHamWeird() ? ' <span class="chip">clears next Sat</span>' : "") + '</span></div><div class="sw"></div></div>';
@@ -5417,6 +5477,269 @@ function screenRecovery() {
   html += healthMetricsCardHtml();
   html += nav("recovery");
   return html;
+}
+
+/* ---------- v4.39 Sleep tab ---------- */
+const SLEEP_TAGS = [
+  {id: "woke", label: "Woke up"},
+  {id: "caff", label: "Late caffeine"},
+  {id: "feet", label: "Feet aching"},
+  {id: "late", label: "Late shift"},
+  {id: "phone", label: "Phone in bed"},
+  {id: "hot", label: "Room hot"}
+];
+const SLEEP_Q = ["Wrecked", "Rough", "OK", "Good", "Great"];
+let sleepDraft = null;
+
+function ensureSleep() {
+  if (!state.sleepLog || typeof state.sleepLog !== "object" || Array.isArray(state.sleepLog)) state.sleepLog = {};
+  if (!state.sleepGoal || typeof state.sleepGoal !== "object") state.sleepGoal = {hours: 7.5, wake: 360};
+  if (!(Number(state.sleepGoal.hours) > 0)) state.sleepGoal.hours = 7.5;
+  if (state.sleepGoal.wake == null || isNaN(Number(state.sleepGoal.wake))) state.sleepGoal.wake = 360;
+  return state.sleepLog;
+}
+function wrapMin(m) { return ((Math.round(m) % 1440) + 1440) % 1440; }
+function fmtClock(m) {
+  m = wrapMin(m);
+  let h = Math.floor(m / 60);
+  const mm = String(m % 60).padStart(2, "0");
+  const ap = h >= 12 ? "PM" : "AM";
+  h = h % 12; if (h === 0) h = 12;
+  return h + ":" + mm + " " + ap;
+}
+function sleepHoursBetween(bed, wake) { return Math.round(((wrapMin(wake) - wrapMin(bed) + 1440) % 1440) / 60 * 100) / 100; }
+function fmtDur(h) {
+  if (h == null || isNaN(h)) return "—";
+  const t = Math.round(h * 60);
+  const hh = Math.floor(t / 60), mm = t % 60;
+  if (!hh) return mm + "m";
+  return hh + "h" + (mm ? " " + String(mm).padStart(2, "0") + "m" : "");
+}
+function isoShift(iso, n) { const d = parseLocalDate(iso); d.setDate(d.getDate() + n); return isoFromDate(d); }
+function sleepEntry(iso) { const e = ensureSleep()[iso]; return e && e.h != null ? e : null; }
+function lastNightHours() { const e = sleepEntry(todayISO()); return e ? e.h : null; }
+function setLastNightHours(h) {
+  const log = ensureSleep();
+  const t = todayISO();
+  const e = log[t] || {};
+  const wake = e.wake != null ? e.wake : state.sleepGoal.wake;
+  log[t] = {bed: wrapMin(wake - h * 60), wake: wake, q: e.q || 0, tags: e.tags || [], h: h, src: e.src || "quick"};
+  state.sleepHours = h;
+}
+function bedRel(m) { m = wrapMin(m); return m < 720 ? m + 1440 : m; }
+function median(a) { const s = a.slice().sort(function(x, y) { return x - y; }); const n = s.length; if (!n) return null; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; }
+function sleepNights(n) {
+  const out = [];
+  const t = todayISO();
+  for (let i = n - 1; i >= 0; i--) { const iso = isoShift(t, -i); out.push({iso: iso, e: sleepEntry(iso)}); }
+  return out;
+}
+function usualSleep() {
+  const got = sleepNights(14).filter(function(x) { return x.e && x.e.bed != null && x.e.wake != null; }).slice(-7);
+  if (got.length < 2) return null;
+  return {bed: wrapMin(median(got.map(function(x) { return bedRel(x.e.bed); }))), wake: wrapMin(median(got.map(function(x) { return x.e.wake; })))};
+}
+function sleepStats(n) {
+  const g = Number(state.sleepGoal.hours) || 7.5;
+  const got = sleepNights(n).filter(function(x) { return x.e; });
+  if (!got.length) return {count: 0, goal: g};
+  const hs = got.map(function(x) { return x.e.h; });
+  const avg = hs.reduce(function(a, b) { return a + b; }, 0) / hs.length;
+  const debt = hs.reduce(function(a, h) { return a + Math.max(0, g - h); }, 0);
+  const beds = got.filter(function(x) { return x.e.bed != null; }).map(function(x) { return bedRel(x.e.bed); });
+  let spread = null;
+  if (beds.length >= 3) {
+    const mb = beds.reduce(function(a, b) { return a + b; }, 0) / beds.length;
+    spread = Math.round(Math.sqrt(beds.reduce(function(a, b) { return a + (b - mb) * (b - mb); }, 0) / beds.length));
+  }
+  const qs = got.filter(function(x) { return x.e.q; }).map(function(x) { return x.e.q; });
+  const avgQ = qs.length ? qs.reduce(function(a, b) { return a + b; }, 0) / qs.length : null;
+  return {count: got.length, goal: g, avg: avg, debt: debt, spread: spread, avgQ: avgQ};
+}
+function sleepDraftFor(iso) {
+  const e = sleepEntry(iso);
+  if (e && e.bed != null) return {iso: iso, bed: e.bed, wake: e.wake, q: e.q || 0, tags: (e.tags || []).slice(), saved: true};
+  const g = state.sleepGoal;
+  const u = usualSleep();
+  let wake = u ? u.wake : g.wake;
+  let bed = u ? u.bed : wrapMin(g.wake - g.hours * 60);
+  if (e && e.h != null) bed = wrapMin(wake - e.h * 60);
+  else if (iso === todayISO()) {
+    const hs = getSleepSample();
+    if (hs != null) bed = wrapMin(wake - Number(hs) * 60);
+  }
+  return {iso: iso, bed: bed, wake: wake, q: e ? (e.q || 0) : 0, tags: e ? (e.tags || []).slice() : [], saved: !!e};
+}
+function sleepTips() {
+  const tips = [];
+  const s7 = sleepStats(7);
+  const plan = todayPlan();
+  const last = lastNightHours();
+  if (!sleepStats(28).count) {
+    tips.push({ico: "sleep", t: "Log 3 nights", b: "Patterns and tips show up after that. No streaks, no pressure."});
+    return tips;
+  }
+  if (last != null && last < 6 && plan && plan.key) tips.push({ico: "training", t: "Short night, lift day", b: "Same pin, no hero. Laterals stay. Tonight is the fix."});
+  if (s7.debt >= 3) tips.push({ico: "alert", t: "Sleep debt " + fmtDur(s7.debt) + " this week", b: "Get to bed 30 min earlier tonight instead of sleeping in. Your wake time stays put."});
+  if (s7.spread != null && s7.spread > 60) tips.push({ico: "calendar", t: "Bedtime swings about ±" + s7.spread + " min", b: "Keep your wake time the same every day, even off days. Bedtime settles after that."});
+  const s28 = sleepNights(28).filter(function(x) { return x.e; });
+  let best = null;
+  SLEEP_TAGS.forEach(function(tg) {
+    const yes = s28.filter(function(x) { return (x.e.tags || []).indexOf(tg.id) >= 0; });
+    const no = s28.filter(function(x) { return (x.e.tags || []).indexOf(tg.id) < 0; });
+    if (yes.length < 2 || no.length < 2) return;
+    const avg = function(a) { return a.reduce(function(m, x) { return m + x.e.h; }, 0) / a.length; };
+    const diff = avg(no) - avg(yes);
+    if (diff >= 0.5 && (!best || diff > best.diff)) best = {tg: tg, diff: diff};
+  });
+  if (best) tips.push({ico: "stats", t: best.tg.label + " nights run " + fmtDur(best.diff) + " shorter", b: "That pattern comes from your own log. Worth one week of testing without it."});
+  if (s7.avgQ != null && s7.avgQ <= 2.5 && s7.avg >= s7.goal - 0.5) tips.push({ico: "sleep", t: "Enough hours, rough quality", b: "Make the room cool, dark and quiet, and charge the phone across the room."});
+  if (typeof isFeetCooked === "function" && isFeetCooked()) tips.push({ico: "walk", t: "Feet cooked this week", b: "Before bed, lie with your legs up the wall for 10 minutes."});
+  if (!tips.length) tips.push({ico: "check", t: "Steady week", b: "Same wake time tomorrow. That's the whole job."});
+  return tips.slice(0, 3);
+}
+function sleepBarsHtml() {
+  const nights = sleepNights(14);
+  const g = Number(state.sleepGoal.hours) || 7.5;
+  const max = 10;
+  const t = todayISO();
+  let html = '<div class="sleepPlot"><div class="goalLine" style="bottom:' + Math.round(g / max * 100) + '%"><span>' + fmtDur(g) + '</span></div>';
+  nights.forEach(function(n) {
+    const h = n.e ? n.e.h : null;
+    const cls = h == null ? "none" : (h >= g ? "good" : (h >= g - 1 ? "near" : "short"));
+    const pct = h == null ? 4 : Math.max(6, Math.min(100, Math.round(h / max * 100)));
+    html += '<i class="' + cls + '" style="height:' + pct + '%" title="' + n.iso + " · " + (h == null ? "not logged" : fmtDur(h)) + '"></i>';
+  });
+  html += '</div><div class="sleepDays">';
+  nights.forEach(function(n) {
+    const d = parseLocalDate(n.iso).getDay();
+    html += '<small class="' + (n.iso === t ? "on" : "") + '">' + "SMTWTFS"[d] + "</small>";
+  });
+  return html + "</div>";
+}
+function screenSleep() {
+  ensureSleep();
+  const t = todayISO();
+  if (!sleepDraft || (sleepDraft.iso !== t && sleepDraft.iso !== isoShift(t, -1))) sleepDraft = sleepDraftFor(t);
+  const d = sleepDraft;
+  const last = sleepEntry(t);
+  const g = state.sleepGoal;
+  let html = statusbar();
+  html += tabHeroHtml("sleep", "Rest cycle", "Sleep", last ? ("Last night · " + fmtDur(last.h) + (last.q ? " · " + SLEEP_Q[last.q - 1] : "")) : "Log last night in one tap", "cyan");
+
+  // Log card
+  const dur = sleepHoursBetween(d.bed, d.wake);
+  html += '<div class="card sleepLog">';
+  html += '<div class="seg two" id="sleepNight"><button type="button" data-sleep-night="0" class="' + (d.iso === t ? "on" : "") + '">Last night</button><button type="button" data-sleep-night="1" class="' + (d.iso !== t ? "on" : "") + '">Night before</button></div>';
+  html += '<div class="sleepDur"><b>' + fmtDur(dur) + '</b><small>' + (dur >= g.hours ? "at or over goal" : fmtDur(g.hours - dur) + " under goal") + '</small></div>';
+  html += '<div class="sleepTime">';
+  html += '<div class="tbox"><div class="lbl">Bed</div><div class="step"><button class="mini" data-sleep-adj="bed:-15" aria-label="Bed 15 min earlier">−</button><b>' + fmtClock(d.bed) + '</b><button class="mini" data-sleep-adj="bed:15" aria-label="Bed 15 min later">+</button></div></div>';
+  html += '<div class="tbox"><div class="lbl">Wake</div><div class="step"><button class="mini" data-sleep-adj="wake:-15" aria-label="Wake 15 min earlier">−</button><b>' + fmtClock(d.wake) + '</b><button class="mini" data-sleep-adj="wake:15" aria-label="Wake 15 min later">+</button></div></div>';
+  html += "</div>";
+  html += '<div class="lbl" style="margin-top:16px">How did it feel?</div><div class="qRow">';
+  for (let q = 1; q <= 5; q++) html += '<button type="button" data-sleep-q="' + q + '" class="' + (d.q === q ? "on" : "") + '" aria-label="' + SLEEP_Q[q - 1] + '">' + q + "<small>" + SLEEP_Q[q - 1] + "</small></button>";
+  html += "</div>";
+  html += '<details class="bodyFold sleepTagsFold"' + (d.tags.length ? " open" : "") + '><summary>What got in the way?' + (d.tags.length ? " · " + d.tags.length : "") + '</summary><div class="tagRow">';
+  SLEEP_TAGS.forEach(function(tg) { html += '<button type="button" data-sleep-tag="' + tg.id + '" class="' + (d.tags.indexOf(tg.id) >= 0 ? "on" : "") + '">' + tg.label + "</button>"; });
+  html += "</div></details>";
+  html += '<div class="stack" style="margin-top:14px"><button class="btn pri" type="button" id="sleepSave">' + (d.saved ? "Update" : "Log") + " " + (d.iso === t ? "last night" : "night before") + "</button></div>";
+  if (d.iso === t && !d.saved && getSleepSample() != null) html += '<p class="sub" style="margin:10px 0 0">Prefilled from Apple Health · ' + fmtDur(Number(getSleepSample())) + "</p>";
+  html += "</div>";
+
+  // Tips
+  html += '<div class="card mt"><div class="lbl">Coach notes</div><div class="tipList">';
+  sleepTips().forEach(function(tp) {
+    html += '<div class="tip"><span class="tipIco">' + pfIcon(tp.ico) + '</span><div><b>' + esc(tp.t) + "</b><span>" + esc(tp.b) + "</span></div></div>";
+  });
+  html += "</div></div>";
+
+  // Tonight plan
+  const lights = wrapMin(g.wake - g.hours * 60);
+  const tmr = WEEK.find(function(w) { return w.d === (new Date().getDay() + 1) % 7; });
+  const tmrProg = tmr && tmr.key && PROGRAMS[tmr.key];
+  html += '<div class="card mt"><div class="lbl">Tonight</div>';
+  if (tmrProg) html += '<p class="sub" style="margin:6px 0 0">Tomorrow is ' + esc(tmr.label) + " · " + esc(tmrProg.name) + ". Sleep is part of the session.</p>";
+  html += '<div class="plan">';
+  const rows = [
+    ["Caffeine cutoff", wrapMin(lights - 480)],
+    ["Last plate", Math.min(wrapMin(lights - 150), 20 * 60)],
+    ["Wind down · phone away", wrapMin(lights - 45)],
+    ["Lights out", lights],
+    ["Wake", g.wake]
+  ];
+  rows.forEach(function(r, i) { html += '<div class="planRow' + (i === 3 ? " key" : "") + '"><span>' + r[0] + "</span><b>" + fmtClock(r[1]) + "</b></div>"; });
+  html += "</div></div>";
+
+  // Patterns
+  const s7 = sleepStats(7);
+  html += '<div class="card mt"><div class="lbl">Last 14 nights</div>' + sleepBarsHtml();
+  html += '<div class="sleepStats">';
+  html += '<div><small>7-night avg</small><b>' + (s7.count ? fmtDur(s7.avg) : "—") + "</b></div>";
+  html += '<div><small>Sleep debt</small><b>' + (s7.count ? fmtDur(s7.debt) : "—") + "</b></div>";
+  html += '<div><small>Bedtime</small><b>' + (s7.spread == null ? "—" : (s7.spread <= 30 ? "Steady" : (s7.spread <= 60 ? "Okay" : "Drifting"))) + "</b></div>";
+  html += '<div><small>Feel</small><b>' + (s7.avgQ == null ? "—" : SLEEP_Q[Math.round(s7.avgQ) - 1]) + "</b></div>";
+  html += "</div>";
+  const u = usualSleep();
+  if (u) html += '<p class="sub" style="margin:12px 0 0">Usual · bed ' + fmtClock(u.bed) + " · up " + fmtClock(u.wake) + "</p>";
+  html += "</div>";
+
+  // Goal
+  html += '<div class="card mt"><details class="bodyFold sleepGoalFold"><summary>Goal · ' + fmtDur(g.hours) + " · up " + fmtClock(g.wake) + "</summary>";
+  html += '<div class="lbl" style="margin-top:12px">Sleep goal</div><div class="step"><button class="mini" data-sleep-goal="hours:-0.25" aria-label="Less sleep goal">−</button><b>' + fmtDur(g.hours) + '</b><button class="mini" data-sleep-goal="hours:0.25" aria-label="More sleep goal">+</button></div>';
+  html += '<div class="lbl" style="margin-top:12px">Wake time</div><div class="step"><button class="mini" data-sleep-goal="wake:-15" aria-label="Wake earlier">−</button><b>' + fmtClock(g.wake) + '</b><button class="mini" data-sleep-goal="wake:15" aria-label="Wake later">+</button></div>';
+  html += '<p class="sub" style="margin:12px 0 0">Adults do best on 7+ hours. Lifters recover better nearer 8.</p></details></div>';
+  html += nav("sleep");
+  return html;
+}
+function bindSleep() {
+  document.querySelectorAll("[data-sleep-night]").forEach(function(b) {
+    b.onclick = function() {
+      const back = b.getAttribute("data-sleep-night") === "1";
+      sleepDraft = sleepDraftFor(back ? isoShift(todayISO(), -1) : todayISO());
+      sfxTap(); render();
+    };
+  });
+  document.querySelectorAll("[data-sleep-adj]").forEach(function(b) {
+    b.onclick = function() {
+      const p = b.getAttribute("data-sleep-adj").split(":");
+      sleepDraft[p[0]] = wrapMin(sleepDraft[p[0]] + Number(p[1]));
+      sfxTap(); render();
+    };
+  });
+  document.querySelectorAll("[data-sleep-q]").forEach(function(b) {
+    b.onclick = function() {
+      const q = Number(b.getAttribute("data-sleep-q"));
+      sleepDraft.q = sleepDraft.q === q ? 0 : q;
+      sfxTap(); render();
+    };
+  });
+  document.querySelectorAll("[data-sleep-tag]").forEach(function(b) {
+    b.onclick = function() {
+      const id = b.getAttribute("data-sleep-tag");
+      const i = sleepDraft.tags.indexOf(id);
+      if (i >= 0) sleepDraft.tags.splice(i, 1); else sleepDraft.tags.push(id);
+      sfxTap(); render();
+    };
+  });
+  document.querySelectorAll("[data-sleep-goal]").forEach(function(b) {
+    b.onclick = function() {
+      const p = b.getAttribute("data-sleep-goal").split(":");
+      const g = state.sleepGoal;
+      if (p[0] === "hours") g.hours = Math.max(5, Math.min(10, Math.round((g.hours + Number(p[1])) * 4) / 4));
+      else g.wake = wrapMin(g.wake + Number(p[1]));
+      sfxTap(); persist(); render();
+    };
+  });
+  if ($("sleepSave")) $("sleepSave").onclick = function() {
+    const d = sleepDraft;
+    const h = sleepHoursBetween(d.bed, d.wake);
+    ensureSleep()[d.iso] = {bed: d.bed, wake: d.wake, q: d.q, tags: d.tags.slice(), h: h, src: "manual"};
+    if (d.iso === todayISO()) state.sleepHours = h;
+    sleepDraft = sleepDraftFor(d.iso);
+    sfxConfirm(); persist();
+    toast("Sleep logged · " + fmtDur(h));
+    render();
+  };
 }
 
 function screenShop() {
@@ -5517,7 +5840,8 @@ function bubbleDefs() {
   return [
     {go: "week", ico: pfIcon("training"), label: "Training", note: "Week rotation · Sat→Fri · Deploy from Command."},
     {go: "fuel", ico: pfIcon("nutrition"), label: "Nutrition", note: "2pm–8pm window · meal locks · scale."},
-    {go: "recovery", ico: pfIcon("recovery"), label: "Recovery", note: "Sleep · feet · ham · heat · Cal shortcut."},
+    {go: "recovery", ico: pfIcon("recovery"), label: "Recovery", note: "Feet · ham · heat · walk · Cal shortcut."},
+    {go: "sleep", ico: pfIcon("sleep"), label: "Sleep", note: "Bed and wake · patterns · tonight plan."},
     {go: "shop", ico: pfIcon("shop"), label: "Shop", note: "Cosmetic camos only · no pay-to-win."},
     {go: "more", ico: pfIcon("more"), label: "More", note: "Link · Stats · Settings · Companion · Export."},
     {go: "pet", ico: pfIcon("companion"), label: "Pet", note: "Embers & companion cosmetics · reflective only."}
@@ -5645,7 +5969,7 @@ function screenHome() {
   else if (!plan.key) mark = "–";
 
   let html = statusbar();
-  const heroIco = plan.key ? "training" : (isWorkDay(plan.d) ? "walk" : "recovery");
+  const heroIco = plan.key ? "training" : (isWorkDay(plan.d) ? "walk" : "sleep");
   const heroState = restDay ? "rest" : ((done || walked) ? "done" : (plan.key ? "lift" : "walk"));
   const heroTitle = plan.key ? doctrine : (isWorkDay(plan.d) ? "Walk day" : "Rest day");
   const heroSub = done ? "Session logged" : (walked ? "Walk logged" : (restDay ? "Recover · feet up · sleep" : (plan.key ? "2×10–15 · same pin" : "Easy pace · loosen up")));
@@ -5702,7 +6026,7 @@ function screenHome() {
   html += '<div class="toggle ' + (isFeetCooked() ? "on" : "") + '" id="feetLockToggle"><div><b>Feet cooked</b><span>Pre-skips Lower B calf · no guilt' + (isFeetCooked() ? ' <span class="chip">clears next Sat</span>' : "") + '</span></div><div class="sw"></div></div>';
   html += '<div class="toggle ' + (isHamWeird() ? "on" : "") + '" id="hamWeirdToggle"><div><b>Ham weird</b><span>Pre-skips Lower B seated curl' + (isHamWeird() ? ' <span class="chip">clears next Sat</span>' : "") + '</span></div><div class="sw"></div></div>';
   html += '<div class="lbl" style="margin-top:12px">Last night sleep (hours)</div>';
-  html += '<div class="step"><button class="mini" id="sleepMinus">−</button><b id="sleepVal">' + (state.sleepHours != null ? state.sleepHours : "—") + '</b><button class="mini" id="sleepPlus">+</button></div>';
+  html += '<div class="step"><button class="mini" id="sleepMinus">−</button><b id="sleepVal">' + (lastNightHours() != null ? lastNightHours() : "—") + '</b><button class="mini" id="sleepPlus">+</button></div>';
   html += "</details></div>";
 
   html += '<p class="sub" style="margin-top:14px;margin-bottom:0">2×10–15 · same pin until 15 twice · cramp = leave</p>';
@@ -6006,7 +6330,7 @@ function screenLog() {
   html += '<div class="r"><div class="lbl">Into next</div><div class="stat" style="font-size:22px">' + xpInto() + "<small>/40</small></div></div>";
   html += '</div><div class="bar"><i style="width:' + (xpInto() / 40 * 100) + '%"></i></div>';
   html += '<div class="lbl" style="margin-top:12px">Last night sleep (h)</div>';
-  html += '<div class="step"><button class="mini" id="sleepMinus">−</button><b id="sleepVal">' + (state.sleepHours != null ? state.sleepHours : "—") + '</b><button class="mini" id="sleepPlus">+</button></div></div>';
+  html += '<div class="step"><button class="mini" id="sleepMinus">−</button><b id="sleepVal">' + (lastNightHours() != null ? lastNightHours() : "—") + '</b><button class="mini" id="sleepPlus">+</button></div></div>';
   html += recentWeekPathHtml();
   html += '<div class="card mt"><h2>Recent Sessions</h2>';
   if (!state.sessions.length) {
@@ -6268,6 +6592,7 @@ function render() {
   else if (view === "log") html = screenLog();
   else if (view === "session") html = screenSession();
   else if (view === "recovery") html = screenRecovery();
+  else if (view === "sleep") html = screenSleep();
   else if (view === "shop") html = screenShop();
   else if (view === "more") html = screenMore();
   else if (view === "backfill") html = screenBackfill();
@@ -6436,6 +6761,7 @@ function wipeAll() {
 }
 
 function bind() {
+  if (view === "sleep") bindSleep();
   document.querySelectorAll("[data-nav]").forEach(function(btn) {
     btn.onclick = function() {
       sfxTap();
@@ -6445,6 +6771,7 @@ function bind() {
         else if (v === "week") go("week");
         else if (v === "fuel") go("fuel");
         else if (v === "recovery") go("recovery");
+        else if (v === "sleep") go("sleep");
         else if (v === "shop") go("shop");
         else if (v === "more") go("more");
         else if (v === "cal") go("cal");
@@ -6635,17 +6962,17 @@ function bind() {
     render();
   };
   if ($("sleepMinus")) $("sleepMinus").onclick = function() {
-    let h = state.sleepHours == null ? 7 : state.sleepHours;
+    let h = lastNightHours() == null ? 7 : lastNightHours();
     h = Math.max(0, Math.round((h - 0.5) * 2) / 2);
-    state.sleepHours = h;
+    setLastNightHours(h);
     sfxTap();
     persist();
     render();
   };
   if ($("sleepPlus")) $("sleepPlus").onclick = function() {
-    let h = state.sleepHours == null ? 7 : state.sleepHours;
+    let h = lastNightHours() == null ? 7 : lastNightHours();
     h = Math.min(14, Math.round((h + 0.5) * 2) / 2);
-    state.sleepHours = h;
+    setLastNightHours(h);
     sfxTap();
     persist();
     render();
