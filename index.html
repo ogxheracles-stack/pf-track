@@ -1394,7 +1394,13 @@ html[data-env="day"] .sleepKey i.short{background:#c47a00}
 .sleepStats div{padding:12px;border-radius:12px;background:color-mix(in srgb,var(--panel2) 80%,transparent);border:1px solid var(--line)}
 .sleepStats small{display:block;font:600 12px/1 var(--font);color:var(--dim)}
 .sleepStats b{display:block;margin-top:6px;font:800 20px/1 var(--font);color:var(--text)}
-.sleepGoalFold summary{min-height:44px}
+.card.sleepGoalCard{padding-top:9px;padding-bottom:9px}
+details.bodyFold.sleepGoalFold > summary{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;padding:0}
+details.bodyFold.sleepGoalFold > summary::before{display:none}
+.sleepGoalFold > summary .pfi{width:16px;height:16px;color:var(--dim);transform:rotate(90deg)}
+.sleepGoalFold[open] > summary .pfi{transform:rotate(-90deg)}
+.sleepGoalFold[open]{padding-bottom:8px}
+.sleepGoalFold .mini{min-width:44px;min-height:44px}
 .step b{color:var(--text)}
 html[data-env="day"] .sleepPlot i.good{background:#5a9a00}
 html[data-env="day"] .sleepPlot i.near{background:#0a8aa3}
@@ -1438,7 +1444,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.54";
+const APP_VERSION = "4.55";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -3696,7 +3702,7 @@ function go(v) {
   if (v === "week" || v === "day") tab = "week";
   if (v === "fuel") tab = "fuel";
   if (v === "recovery") tab = "recovery";
-  if (v === "sleep") { tab = "sleep"; sleepTagsOpen = false; sleepBarSel = null; sleepPlanOpen = false; }
+  if (v === "sleep") { tab = "sleep"; sleepTagsOpen = false; sleepBarSel = null; sleepPlanOpen = false; sleepGoalOpen = false; }
   if (v === "shop") tab = "shop";
   if (v === "more" || v === "link" || v === "log" || v === "session" || v === "backfill") tab = "more";
   if (v === "cal" || v === "calday") tab = "recovery";
@@ -5668,6 +5674,7 @@ function sleepTips() {
 }
 let sleepBarSel = null;
 let sleepPlanOpen = false;
+let sleepGoalOpen = false;
 function sleepNightLabel(iso) {
   return parseLocalDate(iso).toLocaleDateString("en-US", {weekday: "short", month: "short", day: "numeric"});
 }
@@ -5782,7 +5789,7 @@ function screenSleep() {
   html += "</div></div>";
 
   // Goal
-  html += '<div class="card mt"><details class="bodyFold sleepGoalFold"><summary>Goal · ' + fmtDur(g.hours) + " · up " + fmtClock(g.wake) + "</summary>";
+  html += '<div class="card mt sleepGoalCard"><details class="bodyFold sleepGoalFold" id="sleepGoalFold"' + (sleepGoalOpen ? " open" : "") + '><summary aria-expanded="' + sleepGoalOpen + '"><span>Goal · ' + fmtDur(g.hours) + " · up " + fmtClock(g.wake) + "</span>" + pfIcon("chevron", "sm") + "</summary>";
   html += '<div class="lbl" style="margin-top:12px">Sleep goal</div><div class="step"><button class="mini" data-sleep-goal="hours:-0.25" aria-label="Less sleep goal">−</button><b>' + fmtDur(g.hours) + '</b><button class="mini" data-sleep-goal="hours:0.25" aria-label="More sleep goal">+</button></div>';
   html += '<div class="lbl" style="margin-top:12px">Wake time</div><div class="step"><button class="mini" data-sleep-goal="wake:-15" aria-label="Wake earlier">−</button><b>' + fmtClock(g.wake) + '</b><button class="mini" data-sleep-goal="wake:15" aria-label="Wake later">+</button></div>';
   html += '<p class="sub" style="margin:12px 0 0">Adults do best on 7+ hours. Lifters recover better nearer 8.</p></details></div>';
@@ -5790,6 +5797,11 @@ function screenSleep() {
   return html;
 }
 function bindSleep() {
+  if ($("sleepGoalFold")) $("sleepGoalFold").addEventListener("toggle", function() {
+    sleepGoalOpen = this.open;
+    const sm = this.querySelector("summary");
+    if (sm) sm.setAttribute("aria-expanded", this.open ? "true" : "false");
+  });
   if ($("sleepPlanMore")) $("sleepPlanMore").onclick = function() {
     sleepPlanOpen = !sleepPlanOpen;
     document.querySelectorAll("#sleepPlan .planRow.opt").forEach(function(r) { r.hidden = !sleepPlanOpen; });
