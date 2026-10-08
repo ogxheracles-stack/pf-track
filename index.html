@@ -1314,9 +1314,10 @@ html[data-env="day"] input,html[data-env="day"] textarea,html[data-env="day"] se
 .sleepTime{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-top:12px}
 .sleepTime .tbox{min-width:0;padding:10px 6px;border-radius:14px;background:color-mix(in srgb,var(--panel2) 80%,transparent);border:1px solid var(--line)}
 .sleepTime .tbox .lbl{text-align:center}
-.sleepTime .step{gap:2px;min-width:0;width:100%;justify-content:space-between}
-.sleepTime .step b{font-size:clamp(13px,3.4vw,15px);letter-spacing:-.02em;min-width:0;overflow:hidden;text-align:center;white-space:nowrap;flex:1}
-.sleepTime .mini{width:44px;height:44px;min-width:44px;min-height:44px;font-size:22px}
+.sleepTime .tval{margin:6px 0 2px;text-align:center;font:700 24px/1.1 var(--mono,ui-monospace,monospace);font-variant-numeric:tabular-nums;letter-spacing:-.02em;color:var(--text);white-space:nowrap}
+.sleepTime .tval small{margin-left:4px;font:700 12px/1 var(--font);letter-spacing:.06em;color:var(--dim)}
+.sleepTime .step{margin-top:6px;gap:8px;min-width:0;width:100%;justify-content:space-between}
+.sleepTime .mini{flex:1;max-width:72px;height:44px;min-width:44px;min-height:44px;font-size:22px}
 .qRow{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:8px}
 .qRow button{min-height:56px;border-radius:12px;border:1px solid var(--line2);background:var(--panel2);color:var(--text);font:800 18px/1 var(--font);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;cursor:pointer}
 .qRow button small{font:600 10px/1 var(--font);color:var(--dim)}
@@ -1396,7 +1397,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.40";
+const APP_VERSION = "4.41";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -5617,6 +5618,11 @@ function sleepBarsHtml() {
   });
   return html + "</div>";
 }
+function sleepClockHtml(m) {
+  const p = fmtClock(m).split(" ");
+  return p[0] + "<small>" + (p[1] || "") + "</small>";
+}
+
 function screenSleep() {
   ensureSleep();
   const t = todayISO();
@@ -5633,8 +5639,8 @@ function screenSleep() {
   html += '<div class="seg two" id="sleepNight"><button type="button" data-sleep-night="0" class="' + (d.iso === t ? "on" : "") + '">Last night</button><button type="button" data-sleep-night="1" class="' + (d.iso !== t ? "on" : "") + '">Night before</button></div>';
   html += '<div class="sleepDur"><b>' + fmtDur(dur) + '</b><small>' + (dur >= g.hours ? "at or over goal" : fmtDur(g.hours - dur) + " under goal") + '</small></div>';
   html += '<div class="sleepTime">';
-  html += '<div class="tbox"><div class="lbl">Bed</div><div class="step"><button class="mini" data-sleep-adj="bed:-15" aria-label="Bed 15 min earlier">−</button><b>' + fmtClock(d.bed) + '</b><button class="mini" data-sleep-adj="bed:15" aria-label="Bed 15 min later">+</button></div></div>';
-  html += '<div class="tbox"><div class="lbl">Wake</div><div class="step"><button class="mini" data-sleep-adj="wake:-15" aria-label="Wake 15 min earlier">−</button><b>' + fmtClock(d.wake) + '</b><button class="mini" data-sleep-adj="wake:15" aria-label="Wake 15 min later">+</button></div></div>';
+  html += '<div class="tbox"><div class="lbl">Bed</div><div class="tval">' + sleepClockHtml(d.bed) + '</div><div class="step"><button class="mini" data-sleep-adj="bed:-15" aria-label="Bed 15 minutes earlier">−</button><button class="mini" data-sleep-adj="bed:15" aria-label="Bed 15 minutes later">+</button></div></div>';
+  html += '<div class="tbox"><div class="lbl">Wake</div><div class="tval">' + sleepClockHtml(d.wake) + '</div><div class="step"><button class="mini" data-sleep-adj="wake:-15" aria-label="Wake 15 minutes earlier">−</button><button class="mini" data-sleep-adj="wake:15" aria-label="Wake 15 minutes later">+</button></div></div>';
   html += "</div>";
   html += '<div class="lbl" style="margin-top:16px">How did it feel?</div><div class="qRow">';
   for (let q = 1; q <= 5; q++) html += '<button type="button" data-sleep-q="' + q + '" class="' + (d.q === q ? "on" : "") + '" aria-label="' + SLEEP_Q[q - 1] + '">' + q + "<small>" + SLEEP_Q[q - 1] + "</small></button>";
