@@ -1378,6 +1378,7 @@ html[data-env="day"] .sleepKey i.near{background:#0a8aa3}
 html[data-env="day"] .sleepKey i.short{background:#c47a00}
 .sleepPlot{position:relative;display:flex;align-items:stretch;height:112px;margin-top:10px;border-radius:10px;cursor:pointer;touch-action:pan-y;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;outline:none}
 .sleepPlot:focus-visible{box-shadow:0 0 0 2px var(--text)}
+.srOnly{position:absolute!important;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
 .sleepPlot .sbar{flex:1;min-width:0;height:100%;display:flex;align-items:flex-end;padding:0 2px;margin:0;border-radius:6px;pointer-events:none}
 .sleepPlot .sbar.sel{background:color-mix(in srgb,var(--text) 8%,transparent)}
 .sleepPlot .sbar.sel i{outline:2px solid var(--text);outline-offset:1px}
@@ -1445,7 +1446,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.57";
+const APP_VERSION = "4.58";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -5687,6 +5688,10 @@ function sleepReadText(iso) {
   const st = e.h >= g ? "Goal met" : (e.h >= g - 1 ? "Near goal" : "Short");
   return sleepNightLabel(iso) + " · " + fmtDur(e.h) + " · " + st + (e.q ? " · " + SLEEP_Q[e.q - 1] : "");
 }
+function sleepSliderText(sel, isos) {
+  if (sel) return sleepReadText(sel);
+  return "No night picked. Latest: " + sleepReadText(isos[isos.length - 1]);
+}
 function sleepBarsHtml() {
   const nights = sleepNights(14);
   const g = Number(state.sleepGoal.hours) || 7.5;
@@ -5697,7 +5702,9 @@ function sleepBarsHtml() {
   let html = '<div class="lbl">Last 14 nights</div>';
   html += '<div class="sleepKey"><span><i class="good"></i>Goal</span><span><i class="near"></i>Near</span><span><i class="short"></i>Short</span><span class="sleepGoalKey" aria-label="Goal line ' + fmtDur(g) + '"><i></i>' + fmtDur(g) + '</span></div>';
   const selIdx = nights.findIndex(function(n) { return n.iso === sleepBarSel; });
-  html += '<div class="sleepPlot" id="sleepPlot" role="slider" tabindex="0" aria-label="Last 14 nights. Tap or drag to pick a night; arrow keys step." aria-valuemin="0" aria-valuemax="' + (nights.length - 1) + '" aria-valuenow="' + (selIdx < 0 ? nights.length - 1 : selIdx) + '" aria-valuetext="' + sleepReadText(sleepBarSel) + '" data-nights="' + nights.map(function(n) { return n.iso; }).join(",") + '"><div class="goalLine" style="bottom:' + (g / max * 100).toFixed(1) + '%"></div>';
+  const isoList = nights.map(function(n) { return n.iso; });
+  html += '<span class="srOnly" id="sleepPlotHelp">Tap or drag to pick a night. Arrow keys step one night, Home and End jump to the ends, Escape clears.</span>';
+  html += '<div class="sleepPlot" id="sleepPlot" role="slider" tabindex="0" aria-label="Last 14 nights" aria-describedby="sleepPlotHelp" aria-orientation="horizontal" aria-valuemin="0" aria-valuemax="' + (nights.length - 1) + '" aria-valuenow="' + (selIdx < 0 ? nights.length - 1 : selIdx) + '" aria-valuetext="' + sleepSliderText(sleepBarSel, isoList) + '" data-nights="' + nights.map(function(n) { return n.iso; }).join(",") + '"><div class="goalLine" style="bottom:' + (g / max * 100).toFixed(1) + '%"></div>';
   nights.forEach(function(n) {
     const h = n.e ? n.e.h : null;
     const cls = h == null ? "none" : (h >= g ? "good" : (h >= g - 1 ? "near" : "short"));
@@ -5710,7 +5717,7 @@ function sleepBarsHtml() {
     const d = parseLocalDate(n.iso).getDay();
     html += '<small class="' + (n.iso === t ? "on" : "") + (sleepBarSel === n.iso ? " sel" : "") + '">' + "SMTWTFS"[d] + "</small>";
   });
-  return html + '</div><p class="sleepRead' + (sleepBarSel ? " on" : "") + '" id="sleepRead" aria-live="polite">' + sleepReadText(sleepBarSel) + '</p>';
+  return html + '</div><p class="sleepRead' + (sleepBarSel ? " on" : "") + '" id="sleepRead">' + sleepReadText(sleepBarSel) + '</p>';
 }
 function sleepClockHtml(m) {
   const p = fmtClock(m).split(" ");
@@ -5827,7 +5834,7 @@ function bindSleep() {
       const txt = sleepReadText(sleepBarSel);
       const ix = isos.indexOf(sleepBarSel);
       plot.setAttribute("aria-valuenow", String(ix < 0 ? isos.length - 1 : ix));
-      plot.setAttribute("aria-valuetext", txt);
+      plot.setAttribute("aria-valuetext", sleepSliderText(sleepBarSel, isos));
       const r = $("sleepRead");
       if (r) { r.textContent = txt; r.classList.toggle("on", !!sleepBarSel); }
       if (sound) sfxTap();
@@ -5866,8 +5873,9 @@ function bindSleep() {
     plot.addEventListener("keydown", function(ev) {
       const ix = isos.indexOf(sleepBarSel);
       let n = null;
-      if (ev.key === "ArrowLeft" || ev.key === "ArrowDown") n = ix < 0 ? isos.length - 1 : Math.max(0, ix - 1);
-      else if (ev.key === "ArrowRight" || ev.key === "ArrowUp") n = ix < 0 ? isos.length - 1 : Math.min(isos.length - 1, ix + 1);
+      const at = ix < 0 ? isos.length - 1 : ix;
+      if (ev.key === "ArrowLeft" || ev.key === "ArrowDown") n = Math.max(0, at - 1);
+      else if (ev.key === "ArrowRight" || ev.key === "ArrowUp") n = Math.min(isos.length - 1, at + (ix < 0 ? 0 : 1));
       else if (ev.key === "Home") n = 0;
       else if (ev.key === "End") n = isos.length - 1;
       else if (ev.key === "Escape" && sleepBarSel) { ev.preventDefault(); pick(null, true); return; }
