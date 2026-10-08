@@ -1356,7 +1356,17 @@ html[data-env="day"] input,html[data-env="day"] textarea,html[data-env="day"] se
 .sleepHead{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
 .sleepGoalKey{display:inline-flex;align-items:center;gap:6px;font:700 12px/1 var(--mono);color:var(--neon);white-space:nowrap}
 .sleepGoalKey i{width:14px;border-top:2px dashed currentColor}
-.sleepPlot{position:relative;display:flex;align-items:stretch;height:112px;margin-top:12px}
+.sleepKey{display:flex;align-items:center;gap:12px;margin-top:6px;min-height:14px;font:600 11px/1 var(--font);color:var(--dim);white-space:nowrap}
+.sleepKey span{display:inline-flex;align-items:center;gap:5px}
+.sleepKey .sleepGoalKey{margin-left:auto;gap:6px}
+.sleepKey .sleepGoalKey i{width:14px;height:0;border-radius:0;background:none;border-top:2px dashed currentColor}
+.sleepKey i{width:10px;height:10px;border-radius:3px;background:var(--neon)}
+.sleepKey i.near{background:var(--cyan)}
+.sleepKey i.short{background:var(--amber)}
+html[data-env="day"] .sleepKey i.good{background:#5a9a00}
+html[data-env="day"] .sleepKey i.near{background:#0a8aa3}
+html[data-env="day"] .sleepKey i.short{background:#c47a00}
+.sleepPlot{position:relative;display:flex;align-items:stretch;height:112px;margin-top:10px}
 .sleepPlot .sbar{flex:1;min-width:0;height:100%;display:flex;align-items:flex-end;padding:0 2px;margin:0;background:none;border:0;border-radius:6px;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .sleepPlot .sbar.sel{background:color-mix(in srgb,var(--text) 8%,transparent)}
 .sleepPlot .sbar.sel i{outline:2px solid var(--text);outline-offset:1px}
@@ -1418,7 +1428,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.51";
+const APP_VERSION = "4.52";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -5652,7 +5662,10 @@ function sleepNightLabel(iso) {
 function sleepReadText(iso) {
   if (!iso) return "Tap a night to see it";
   const e = sleepEntry(iso);
-  return sleepNightLabel(iso) + " · " + (e ? fmtDur(e.h) + (e.q ? " · " + SLEEP_Q[e.q - 1] : "") : "not logged");
+  if (!e) return sleepNightLabel(iso) + " · not logged";
+  const g = Number(state.sleepGoal.hours) || 7.5;
+  const st = e.h >= g ? "Goal met" : (e.h >= g - 1 ? "Near goal" : "Short");
+  return sleepNightLabel(iso) + " · " + fmtDur(e.h) + " · " + st + (e.q ? " · " + SLEEP_Q[e.q - 1] : "");
 }
 function sleepBarsHtml() {
   const nights = sleepNights(14);
@@ -5661,7 +5674,8 @@ function sleepBarsHtml() {
   nights.forEach(function(n) { if (n.e && n.e.h > top) top = n.e.h; });
   const max = Math.max(10, g + 1, Math.ceil(top + 0.5));
   const t = todayISO();
-  let html = '<div class="sleepHead"><span class="lbl">Last 14 nights</span><span class="sleepGoalKey"><i></i>Goal ' + fmtDur(g) + '</span></div>';
+  let html = '<div class="lbl">Last 14 nights</div>';
+  html += '<div class="sleepKey"><span><i class="good"></i>Goal</span><span><i class="near"></i>Near</span><span><i class="short"></i>Short</span><span class="sleepGoalKey" aria-label="Goal line ' + fmtDur(g) + '"><i></i>' + fmtDur(g) + '</span></div>';
   html += '<div class="sleepPlot" role="group" aria-label="Last 14 nights"><div class="goalLine" style="bottom:' + (g / max * 100).toFixed(1) + '%"></div>';
   nights.forEach(function(n) {
     const h = n.e ? n.e.h : null;
