@@ -1336,10 +1336,13 @@ html[data-env="day"] input,html[data-env="day"] textarea,html[data-env="day"] se
 .tipIco{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;color:var(--cyan);background:color-mix(in srgb,var(--cyan) 12%,transparent)}
 .tipIco .pfi{width:20px;height:20px}
 .tip b{display:block;font:700 15px/1.3 var(--font);color:var(--text)}
-.tip .sleepProg{display:inline-flex;align-items:center;gap:5px;margin-left:10px;vertical-align:2px}
+.tip .sleepProg,.sleepSaved .sleepProg{display:inline-flex;align-items:center;gap:5px;margin-left:10px;vertical-align:2px}
 .sleepProg i{width:8px;height:8px;border-radius:50%;border:1.5px solid var(--cyan);opacity:.7}
 .sleepProg i.on{background:var(--cyan);opacity:1}
-.tip .sleepProg em{display:inline;margin:0 0 0 3px;font:600 12px/1 var(--font);font-style:normal;color:var(--dim)}
+.sleepSaved{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px;margin:12px 0 0;font:600 14px/1.3 var(--font);color:var(--dim)}
+.sleepSaved .ok{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--ok);color:var(--bg)}
+.sleepSaved .ok .pfi{width:13px;height:13px;stroke-width:3}
+.tip .sleepProg em,.sleepSaved .sleepProg em{display:inline;margin:0 0 0 3px;font:600 12px/1 var(--font);font-style:normal;color:var(--dim)}
 .sleepStats.waiting b.wait{color:var(--muted)}
 .tip span{display:block;margin-top:3px;font:500 14px/1.4 var(--font);color:var(--dim)}
 .plan{display:grid;gap:0;margin-top:10px}
@@ -1406,7 +1409,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.45";
+const APP_VERSION = "4.46";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -5649,7 +5652,8 @@ function screenSleep() {
   const last = sleepEntry(t);
   const g = state.sleepGoal;
   let html = statusbar();
-  html += tabHeroHtml("sleep", "Rest cycle", "Sleep", last ? ("Last night · " + fmtDur(last.h) + (last.q ? " · " + SLEEP_Q[last.q - 1] : "")) : "Log last night in one tap", "cyan");
+  const nLog = sleepLoggedCount();
+  html += tabHeroHtml("sleep", "Rest cycle", "Sleep", last ? ("Last night · " + fmtDur(last.h) + (nLog < SLEEP_MIN_NIGHTS ? " · " + nLog + " of " + SLEEP_MIN_NIGHTS + " nights" : (last.q ? " · " + SLEEP_Q[last.q - 1] : ""))) : "Log last night in one tap", "cyan");
 
   // Log card
   const dur = sleepHoursBetween(d.bed, d.wake);
@@ -5667,6 +5671,8 @@ function screenSleep() {
   SLEEP_TAGS.forEach(function(tg) { html += '<button type="button" data-sleep-tag="' + tg.id + '" class="' + (d.tags.indexOf(tg.id) >= 0 ? "on" : "") + '">' + tg.label + "</button>"; });
   html += "</div></details>";
   html += '<div class="stack" style="margin-top:14px"><button class="btn pri" type="button" id="sleepSave">' + (d.saved ? "Update" : "Log") + " " + (d.iso === t ? "last night" : "night before") + "</button></div>";
+  { const se = sleepEntry(d.iso);
+    if (se && se.h != null) html += '<p class="sleepSaved" role="status"><span class="ok">' + pfIcon("check", "sm") + "</span>Logged · " + fmtDur(se.h) + (nLog < SLEEP_MIN_NIGHTS ? sleepProgressHtml() : "") + "</p>"; }
   if (d.iso === t && !d.saved && getSleepSample() != null) html += '<p class="sub" style="margin:10px 0 0">Prefilled from Apple Health · ' + fmtDur(Number(getSleepSample())) + "</p>";
   html += "</div>";
 
@@ -5764,8 +5770,6 @@ function bindSleep() {
     if (d.iso === todayISO()) state.sleepHours = h;
     sleepDraft = sleepDraftFor(d.iso);
     sfxConfirm(); persist();
-    const nLogged = sleepLoggedCount();
-    toast("Sleep logged · " + fmtDur(h) + (nLogged < SLEEP_MIN_NIGHTS ? " · " + nLogged + " of " + SLEEP_MIN_NIGHTS + " nights" : ""), {top: true});
     render();
   };
 }
