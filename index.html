@@ -1335,6 +1335,11 @@ html[data-env="day"] input,html[data-env="day"] textarea,html[data-env="day"] se
 .tipIco{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;color:var(--cyan);background:color-mix(in srgb,var(--cyan) 12%,transparent)}
 .tipIco .pfi{width:20px;height:20px}
 .tip b{display:block;font:700 15px/1.3 var(--font);color:var(--text)}
+.tip .sleepProg{display:inline-flex;align-items:center;gap:5px;margin-left:10px;vertical-align:2px}
+.sleepProg i{width:8px;height:8px;border-radius:50%;border:1.5px solid var(--cyan);opacity:.7}
+.sleepProg i.on{background:var(--cyan);opacity:1}
+.tip .sleepProg em{display:inline;margin:0 0 0 3px;font:600 12px/1 var(--font);font-style:normal;color:var(--dim)}
+.sleepStats.waiting b.wait{color:var(--muted)}
 .tip span{display:block;margin-top:3px;font:500 14px/1.4 var(--font);color:var(--dim)}
 .plan{display:grid;gap:0;margin-top:10px}
 .planRow{display:flex;justify-content:space-between;align-items:center;min-height:44px;border-bottom:1px solid color-mix(in srgb,var(--line) 70%,transparent);font:600 14px/1.2 var(--font);color:var(--dim)}
@@ -1400,7 +1405,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.43";
+const APP_VERSION = "4.44";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -5538,6 +5543,15 @@ function sleepNights(n) {
   for (let i = n - 1; i >= 0; i--) { const iso = isoShift(t, -i); out.push({iso: iso, e: sleepEntry(iso)}); }
   return out;
 }
+const SLEEP_MIN_NIGHTS = 3;
+function sleepLoggedCount() { return sleepStats(14).count; }
+function sleepReady() { return sleepLoggedCount() >= SLEEP_MIN_NIGHTS; }
+function sleepProgressHtml() {
+  const n = Math.min(sleepLoggedCount(), SLEEP_MIN_NIGHTS);
+  let dots = "";
+  for (let i = 0; i < SLEEP_MIN_NIGHTS; i++) dots += '<i class="' + (i < n ? "on" : "") + '"></i>';
+  return '<span class="sleepProg" aria-label="' + n + " of " + SLEEP_MIN_NIGHTS + ' nights logged">' + dots + "<em>" + n + " of " + SLEEP_MIN_NIGHTS + "</em></span>";
+}
 function usualSleep() {
   const got = sleepNights(14).filter(function(x) { return x.e && x.e.bed != null && x.e.wake != null; }).slice(-7);
   if (got.length < 2) return null;
@@ -5579,8 +5593,8 @@ function sleepTips() {
   const s7 = sleepStats(7);
   const plan = todayPlan();
   const last = lastNightHours();
-  if (!sleepStats(28).count) {
-    tips.push({ico: "sleep", t: "Log 3 nights", b: "Patterns and tips show up after that. No streaks, no pressure."});
+  if (!sleepReady()) {
+    tips.push({ico: "sleep", t: "Log 3 nights", prog: true, b: "Patterns and tips show up after that. No streaks, no pressure."});
     return tips;
   }
   if (last != null && last < 6 && plan && plan.key) tips.push({ico: "training", t: "Short night, lift day", b: "Same pin, no hero. Laterals stay. Tonight is the fix."});
@@ -5657,21 +5671,24 @@ function screenSleep() {
 
   // Patterns
   const s7 = sleepStats(7);
+  const ready = sleepReady();
+  const W = '<b class="wait">—</b>';
   html += '<div class="card mt"><div class="lbl">Last 14 nights</div>' + sleepBarsHtml();
-  html += '<div class="sleepStats">';
-  html += '<div><small>7-night avg</small><b>' + (s7.count ? fmtDur(s7.avg) : "—") + "</b></div>";
-  html += '<div><small>Sleep debt</small><b>' + (s7.count ? fmtDur(s7.debt) : "—") + "</b></div>";
-  html += '<div><small>Bedtime</small><b>' + (s7.spread == null ? "—" : (s7.spread <= 30 ? "Steady" : (s7.spread <= 60 ? "Okay" : "Drifting"))) + "</b></div>";
-  html += '<div><small>Feel</small><b>' + (s7.avgQ == null ? "—" : SLEEP_Q[Math.round(s7.avgQ) - 1]) + "</b></div>";
+  html += '<div class="sleepStats' + (ready ? "" : " waiting") + '">';
+  html += '<div><small>7-night avg</small>' + (ready && s7.count ? "<b>" + fmtDur(s7.avg) + "</b>" : W) + "</div>";
+  html += '<div><small>Sleep debt</small>' + (ready && s7.count ? "<b>" + fmtDur(s7.debt) + "</b>" : W) + "</div>";
+  html += '<div><small>Bedtime</small>' + (ready && s7.spread != null ? "<b>" + (s7.spread <= 30 ? "Steady" : (s7.spread <= 60 ? "Okay" : "Drifting")) + "</b>" : W) + "</div>";
+  html += '<div><small>Feel</small>' + (ready && s7.avgQ != null ? "<b>" + SLEEP_Q[Math.round(s7.avgQ) - 1] + "</b>" : W) + "</div>";
   html += "</div>";
-  const u = usualSleep();
+  const u = ready ? usualSleep() : null;
   if (u) html += '<p class="sub" style="margin:12px 0 0">Usual · bed ' + fmtClock(u.bed) + " · up " + fmtClock(u.wake) + "</p>";
+  else if (!ready) html += '<p class="sub" style="margin:12px 0 0">Averages, bedtime and usual times fill in at 3 nights.</p>';
   html += "</div>";
 
   // Tips
   html += '<div class="card mt"><div class="lbl">Coach notes</div><div class="tipList">';
   sleepTips().forEach(function(tp) {
-    html += '<div class="tip"><span class="tipIco">' + pfIcon(tp.ico) + '</span><div><b>' + esc(tp.t) + "</b><span>" + esc(tp.b) + "</span></div></div>";
+    html += '<div class="tip"><span class="tipIco">' + pfIcon(tp.ico) + '</span><div><b>' + esc(tp.t) + (tp.prog ? sleepProgressHtml() : "") + "</b><span>" + esc(tp.b) + "</span></div></div>";
   });
   html += "</div></div>";
 
