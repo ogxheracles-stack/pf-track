@@ -1312,22 +1312,24 @@ html[data-env="day"] input,html[data-env="day"] textarea,html[data-env="day"] se
 
 /* v4.39 Sleep tab */
 .seg.two{grid-template-columns:1fr 1fr;margin-top:0}
-.sleepDur{text-align:center;margin:18px 0 6px}
-.sleepDur b{display:block;font:800 44px/1 var(--font);letter-spacing:-0.03em;color:var(--text)}
-.sleepDur small{display:block;margin-top:6px;font:600 13px/1.2 var(--font);color:var(--dim)}
+.sleepDur{text-align:center;margin:12px 0 2px}
+.sleepDur b{display:block;font:800 40px/1 var(--font);letter-spacing:-0.03em;color:var(--text)}
+.sleepDur small{display:block;margin-top:4px;font:600 13px/1.2 var(--font);color:var(--dim)}
 .sleepTime{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-top:12px}
 .sleepTime .tbox{min-width:0;padding:10px 6px;border-radius:14px;background:color-mix(in srgb,var(--panel2) 80%,transparent);border:1px solid var(--line)}
-.sleepTime .tbox .lbl{text-align:center}
-.sleepTime .tval{margin:6px 0 2px;text-align:center;font:700 24px/1.1 var(--mono,ui-monospace,monospace);font-variant-numeric:tabular-nums;letter-spacing:-.02em;color:var(--text);white-space:nowrap}
+.sleepTime .tbox .lbl{margin:0;flex:none}
+.sleepTime .thead{display:flex;align-items:baseline;justify-content:center;gap:8px;min-width:0}
+.sleepTime .tval{margin:0;text-align:center;font:700 22px/1.1 var(--mono,ui-monospace,monospace);font-variant-numeric:tabular-nums;letter-spacing:-.02em;color:var(--text);white-space:nowrap}
 .sleepTime .tval small{margin-left:4px;font:700 12px/1 var(--font);letter-spacing:.06em;color:var(--dim)}
 .sleepTime .step{margin-top:6px;gap:8px;min-width:0;width:100%;justify-content:space-between}
 .sleepTime .mini{flex:1;max-width:72px;height:44px;min-width:44px;min-height:44px;font-size:22px}
 .qRow{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:8px}
-.qRow button{min-height:56px;border-radius:12px;border:1px solid var(--line2);background:var(--panel2);color:var(--text);font:800 18px/1 var(--font);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;cursor:pointer}
+.qRow button{min-height:52px;border-radius:12px;border:1px solid var(--line2);background:var(--panel2);color:var(--text);font:800 18px/1 var(--font);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;cursor:pointer}
 .qRow button small{font:600 10px/1 var(--font);color:var(--dim)}
 .qRow button.on{background:var(--neon-dim);border-color:var(--neon);box-shadow:0 0 0 3px color-mix(in srgb,var(--neon) 12%,transparent)}
 .qRow button.on small{color:var(--text)}
-.sleepTagsFold{margin-top:14px}
+.sleepTagsFold{margin-top:10px}
+.sleepTagsFold > summary{min-height:44px;display:flex;align-items:center;padding:0!important}
 .tagRow{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .tagRow button{min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--line2);background:var(--panel2);color:var(--dim);font:600 13px/1 var(--font);cursor:pointer}
 .tagRow button.on{border-color:var(--cyan);color:var(--text);background:color-mix(in srgb,var(--cyan) 16%,transparent)}
@@ -1409,7 +1411,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.46";
+const APP_VERSION = "4.47";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -5661,13 +5663,13 @@ function screenSleep() {
   html += '<div class="seg two" id="sleepNight"><button type="button" data-sleep-night="0" class="' + (d.iso === t ? "on" : "") + '">Last night</button><button type="button" data-sleep-night="1" class="' + (d.iso !== t ? "on" : "") + '">Night before</button></div>';
   html += '<div class="sleepDur"><b>' + fmtDur(dur) + '</b><small>' + (dur >= g.hours ? "at or over goal" : fmtDur(g.hours - dur) + " under goal") + '</small></div>';
   html += '<div class="sleepTime">';
-  html += '<div class="tbox"><div class="lbl">Bed</div><div class="tval">' + sleepClockHtml(d.bed) + '</div><div class="step"><button class="mini" data-sleep-adj="bed:-15" aria-label="Bed 15 minutes earlier">−</button><button class="mini" data-sleep-adj="bed:15" aria-label="Bed 15 minutes later">+</button></div></div>';
-  html += '<div class="tbox"><div class="lbl">Wake</div><div class="tval">' + sleepClockHtml(d.wake) + '</div><div class="step"><button class="mini" data-sleep-adj="wake:-15" aria-label="Wake 15 minutes earlier">−</button><button class="mini" data-sleep-adj="wake:15" aria-label="Wake 15 minutes later">+</button></div></div>';
+  html += '<div class="tbox"><div class="thead"><span class="lbl">Bed</span><span class="tval">' + sleepClockHtml(d.bed) + '</span></div><div class="step"><button class="mini" data-sleep-adj="bed:-15" aria-label="Bed 15 minutes earlier">−</button><button class="mini" data-sleep-adj="bed:15" aria-label="Bed 15 minutes later">+</button></div></div>';
+  html += '<div class="tbox"><div class="thead"><span class="lbl">Wake</span><span class="tval">' + sleepClockHtml(d.wake) + '</span></div><div class="step"><button class="mini" data-sleep-adj="wake:-15" aria-label="Wake 15 minutes earlier">−</button><button class="mini" data-sleep-adj="wake:15" aria-label="Wake 15 minutes later">+</button></div></div>';
   html += "</div>";
-  html += '<div class="lbl" style="margin-top:16px">How did it feel?</div><div class="qRow">';
+  html += '<div class="lbl" style="margin-top:12px">How did it feel?</div><div class="qRow">';
   for (let q = 1; q <= 5; q++) html += '<button type="button" data-sleep-q="' + q + '" class="' + (d.q === q ? "on" : "") + '" aria-label="' + SLEEP_Q[q - 1] + '">' + q + "<small>" + SLEEP_Q[q - 1] + "</small></button>";
   html += "</div>";
-  html += '<details class="bodyFold sleepTagsFold"' + (d.tags.length ? " open" : "") + '><summary>What got in the way?' + (d.tags.length ? " · " + d.tags.length : "") + '</summary><div class="tagRow">';
+  html += '<details class="bodyFold sleepTagsFold" id="sleepTagsFold"' + (sleepTagsOpen ? " open" : "") + '><summary>What got in the way?' + (d.tags.length ? " · " + d.tags.length : "") + '</summary><div class="tagRow">';
   SLEEP_TAGS.forEach(function(tg) { html += '<button type="button" data-sleep-tag="' + tg.id + '" class="' + (d.tags.indexOf(tg.id) >= 0 ? "on" : "") + '">' + tg.label + "</button>"; });
   html += "</div></details>";
   html += '<div class="stack" style="margin-top:14px"><button class="btn pri" type="button" id="sleepSave">' + (d.saved ? "Update" : "Log") + " " + (d.iso === t ? "last night" : "night before") + "</button></div>";
@@ -5724,7 +5726,9 @@ function screenSleep() {
   html += nav("sleep");
   return html;
 }
+let sleepTagsOpen = false;
 function bindSleep() {
+  if ($("sleepTagsFold")) $("sleepTagsFold").addEventListener("toggle", function() { sleepTagsOpen = this.open; });
   document.querySelectorAll("[data-sleep-night]").forEach(function(b) {
     b.onclick = function() {
       const back = b.getAttribute("data-sleep-night") === "1";
