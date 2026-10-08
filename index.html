@@ -1200,6 +1200,8 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
 .bfDay b{display:block;font-size:15px}
 .bfDay .n{margin-top:2px}
 
+/* v4.31 tabular figures: digits never jitter (clock, weight, macros, steppers, rings, heatmap) */
+*,*::before,*::after{font-variant-numeric:tabular-nums lining-nums !important;font-feature-settings:"tnum" 1,"lnum" 1}
 /* v4.30 unified motion: one press, one screen timing */
 button,.btn,.daybtn,.mini,.pet-item,.calCell,.hubTile,.bubble,.plateBtn,.criollaTile,.starBtn,.toggle,.moreList a,.moreList button,summary{
   -webkit-tap-highlight-color:transparent;
@@ -1253,7 +1255,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.30";
+const APP_VERSION = "4.31";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
