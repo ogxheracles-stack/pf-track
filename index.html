@@ -1086,10 +1086,29 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
 <div id="pet-backdrop" class="pet-backdrop" hidden></div>
 <div id="pet-panel" class="pet-panel" hidden></div>
 <script>
+// Test clock: ?asof=YYYY-MM-DD shifts the app's date and uses a separate sandbox store.
+var PF_ASOF = (function() {
+  try {
+    var m = /[?&]asof=(\d{4}-\d{2}-\d{2})/.exec(location.search || "");
+    if (!m) return "";
+    var R = Date, now = new R(), t = new R(m[1] + "T00:00:00");
+    if (isNaN(t)) return "";
+    t.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+    var off = t.getTime() - now.getTime();
+    var D = function() {
+      if (!(this instanceof D)) return new R(R.now() + off).toString();
+      if (!arguments.length) return new R(R.now() + off);
+      return new (Function.prototype.bind.apply(R, [null].concat([].slice.call(arguments))))();
+    };
+    D.prototype = R.prototype; D.now = function() { return R.now() + off; }; D.parse = R.parse; D.UTC = R.UTC;
+    window.Date = D;
+    return m[1];
+  } catch (e) { return ""; }
+})();
 
-const STORAGE_KEY = "pftrack_v3";
-const LIVE_KEY = "pftrack_live";
-const APP_VERSION = "4.24";
+const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
+const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
+const APP_VERSION = "4.25";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -3743,7 +3762,7 @@ function statusbar() {
   const mm = String(now.getMinutes()).padStart(2, "0");
   const ss = String(now.getSeconds()).padStart(2, "0");
   const live = state.live ? '<span class="dotlive"></span>LIVE' : "OFFLINE";
-  return '<div class="sb"><span><b>PF//TRACK</b> · v' + APP_VERSION + '</span><span id="sbClock">' + live + " · " + hh + ":" + mm + ":" + ss + "</span></div>";
+  return '<div class="sb"><span><b>PF//TRACK</b> · v' + APP_VERSION + (PF_ASOF ? " · TEST " + PF_ASOF : "") + '</span><span id="sbClock">' + live + " · " + hh + ":" + mm + ":" + ss + "</span></div>";
 }
 
 function nav(active) {
