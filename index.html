@@ -1353,16 +1353,23 @@ html[data-env="day"] input,html[data-env="day"] textarea,html[data-env="day"] se
 .planRow b{font:700 15px/1 var(--mono);color:var(--text)}
 .planRow.key{color:var(--text)}
 .planRow.key b{color:var(--neon);font-size:17px}
-.sleepPlot{position:relative;display:flex;align-items:flex-end;gap:4px;height:104px;margin-top:14px}
-.sleepPlot i{flex:1;border-radius:5px 5px 2px 2px;background:var(--well);border:1px solid var(--line)}
+.sleepHead{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.sleepGoalKey{display:inline-flex;align-items:center;gap:6px;font:700 12px/1 var(--mono);color:var(--neon);white-space:nowrap}
+.sleepGoalKey i{width:14px;border-top:2px dashed currentColor}
+.sleepPlot{position:relative;display:flex;align-items:stretch;height:112px;margin-top:12px}
+.sleepPlot .sbar{flex:1;min-width:0;height:100%;display:flex;align-items:flex-end;padding:0 2px;margin:0;background:none;border:0;border-radius:6px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.sleepPlot .sbar.sel{background:color-mix(in srgb,var(--text) 8%,transparent)}
+.sleepPlot .sbar.sel i{outline:2px solid var(--text);outline-offset:1px}
+.sleepPlot i{display:block;width:100%;border-radius:5px 5px 2px 2px;background:var(--well);border:1px solid var(--line)}
 .sleepPlot i.good{background:var(--neon);border-color:transparent}
 .sleepPlot i.near{background:var(--cyan);border-color:transparent}
 .sleepPlot i.short{background:var(--amber);border-color:transparent}
 .sleepPlot .goalLine{position:absolute;left:0;right:0;border-top:1.5px dashed color-mix(in srgb,var(--text) 40%,transparent);pointer-events:none;z-index:1}
-.sleepPlot .goalLine span{position:absolute;right:0;top:-18px;font:700 10px/1 var(--mono);color:var(--dim)}
-.sleepDays{display:flex;gap:4px;margin-top:6px}
-.sleepDays small{flex:1;text-align:center;font:600 10px/1 var(--font);color:var(--muted)}
-.sleepDays small.on{color:var(--text);font-weight:800}
+.sleepDays{display:flex;margin-top:6px}
+.sleepDays small{flex:1;min-width:0;text-align:center;font:600 11px/1 var(--font);color:var(--dim)}
+.sleepDays small.on,.sleepDays small.sel{color:var(--text);font-weight:800}
+.sleepRead{margin:10px 0 0;min-height:20px;font:600 13px/20px var(--font);color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sleepRead.on{color:var(--text)}
 .sleepStats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
 .sleepStats div{padding:12px;border-radius:12px;background:color-mix(in srgb,var(--panel2) 80%,transparent);border:1px solid var(--line)}
 .sleepStats small{display:block;font:600 12px/1 var(--font);color:var(--dim)}
@@ -1411,7 +1418,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.50";
+const APP_VERSION = "4.51";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -3669,7 +3676,7 @@ function go(v) {
   if (v === "week" || v === "day") tab = "week";
   if (v === "fuel") tab = "fuel";
   if (v === "recovery") tab = "recovery";
-  if (v === "sleep") { tab = "sleep"; sleepTagsOpen = false; }
+  if (v === "sleep") { tab = "sleep"; sleepTagsOpen = false; sleepBarSel = null; }
   if (v === "shop") tab = "shop";
   if (v === "more" || v === "link" || v === "log" || v === "session" || v === "backfill") tab = "more";
   if (v === "cal" || v === "calday") tab = "recovery";
@@ -5638,24 +5645,37 @@ function sleepTips() {
   if (!tips.length) tips.push({ico: "check", t: "Steady week", b: "Same wake time tomorrow. That's the whole job."});
   return tips.slice(0, 3);
 }
+let sleepBarSel = null;
+function sleepNightLabel(iso) {
+  return parseLocalDate(iso).toLocaleDateString("en-US", {weekday: "short", month: "short", day: "numeric"});
+}
+function sleepReadText(iso) {
+  if (!iso) return "Tap a night to see it";
+  const e = sleepEntry(iso);
+  return sleepNightLabel(iso) + " · " + (e ? fmtDur(e.h) + (e.q ? " · " + SLEEP_Q[e.q - 1] : "") : "not logged");
+}
 function sleepBarsHtml() {
   const nights = sleepNights(14);
   const g = Number(state.sleepGoal.hours) || 7.5;
-  const max = 10;
+  let top = 0;
+  nights.forEach(function(n) { if (n.e && n.e.h > top) top = n.e.h; });
+  const max = Math.max(10, g + 1, Math.ceil(top + 0.5));
   const t = todayISO();
-  let html = '<div class="sleepPlot"><div class="goalLine" style="bottom:' + Math.round(g / max * 100) + '%"><span>' + fmtDur(g) + '</span></div>';
+  let html = '<div class="sleepHead"><span class="lbl">Last 14 nights</span><span class="sleepGoalKey"><i></i>Goal ' + fmtDur(g) + '</span></div>';
+  html += '<div class="sleepPlot" role="group" aria-label="Last 14 nights"><div class="goalLine" style="bottom:' + (g / max * 100).toFixed(1) + '%"></div>';
   nights.forEach(function(n) {
     const h = n.e ? n.e.h : null;
     const cls = h == null ? "none" : (h >= g ? "good" : (h >= g - 1 ? "near" : "short"));
-    const pct = h == null ? 4 : Math.max(6, Math.min(100, Math.round(h / max * 100)));
-    html += '<i class="' + cls + '" style="height:' + pct + '%" title="' + n.iso + " · " + (h == null ? "not logged" : fmtDur(h)) + '"></i>';
+    const pct = h == null ? 4 : Math.max(6, Math.min(100, h / max * 100));
+    const sel = sleepBarSel === n.iso;
+    html += '<button type="button" class="sbar' + (sel ? " sel" : "") + '" data-sleep-bar="' + n.iso + '" aria-pressed="' + sel + '" aria-label="' + sleepReadText(n.iso) + '"><i class="' + cls + '" style="height:' + pct.toFixed(1) + '%"></i></button>';
   });
-  html += '</div><div class="sleepDays">';
+  html += '</div><div class="sleepDays" aria-hidden="true">';
   nights.forEach(function(n) {
     const d = parseLocalDate(n.iso).getDay();
-    html += '<small class="' + (n.iso === t ? "on" : "") + '">' + "SMTWTFS"[d] + "</small>";
+    html += '<small class="' + (n.iso === t ? "on" : "") + (sleepBarSel === n.iso ? " sel" : "") + '">' + "SMTWTFS"[d] + "</small>";
   });
-  return html + "</div>";
+  return html + '</div><p class="sleepRead' + (sleepBarSel ? " on" : "") + '" id="sleepRead" aria-live="polite">' + sleepReadText(sleepBarSel) + '</p>';
 }
 function sleepClockHtml(m) {
   const p = fmtClock(m).split(" ");
@@ -5698,7 +5718,7 @@ function screenSleep() {
   const s7 = sleepStats(7);
   const ready = sleepReady();
   const W = '<b class="wait">—</b>';
-  html += '<div class="card mt"><div class="lbl">Last 14 nights</div>' + sleepBarsHtml();
+  html += '<div class="card mt">' + sleepBarsHtml();
   html += '<div class="sleepStats' + (ready ? "" : " waiting") + '">';
   html += '<div><small>7-night avg</small>' + (ready && s7.count ? "<b>" + fmtDur(s7.avg) + "</b>" : W) + "</div>";
   html += '<div><small>Sleep debt</small>' + (ready && s7.count ? "<b>" + fmtDur(s7.debt) + "</b>" : W) + "</div>";
@@ -5743,6 +5763,22 @@ function screenSleep() {
   return html;
 }
 function bindSleep() {
+  document.querySelectorAll("[data-sleep-bar]").forEach(function(b) {
+    b.onclick = function() {
+      const iso = b.getAttribute("data-sleep-bar");
+      sleepBarSel = sleepBarSel === iso ? null : iso;
+      document.querySelectorAll("[data-sleep-bar]").forEach(function(x, i) {
+        const on = x.getAttribute("data-sleep-bar") === sleepBarSel;
+        x.classList.toggle("sel", on);
+        x.setAttribute("aria-pressed", on ? "true" : "false");
+        const dl = document.querySelectorAll(".sleepDays small")[i];
+        if (dl) dl.classList.toggle("sel", on);
+      });
+      const r = $("sleepRead");
+      if (r) { r.textContent = sleepReadText(sleepBarSel); r.classList.toggle("on", !!sleepBarSel); }
+      sfxTap();
+    };
+  });
   if ($("sleepTagsFold")) $("sleepTagsFold").addEventListener("toggle", function() {
     sleepTagsOpen = this.open;
     if (this.open) sleepKeepVisible($("sleepSave"));
