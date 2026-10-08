@@ -1376,8 +1376,9 @@ html[data-env="day"] input,html[data-env="day"] textarea,html[data-env="day"] se
 html[data-env="day"] .sleepKey i.good{background:#5a9a00}
 html[data-env="day"] .sleepKey i.near{background:#0a8aa3}
 html[data-env="day"] .sleepKey i.short{background:#c47a00}
-.sleepPlot{position:relative;display:flex;align-items:stretch;height:112px;margin-top:10px}
-.sleepPlot .sbar{flex:1;min-width:0;height:100%;display:flex;align-items:flex-end;padding:0 2px;margin:0;background:none;border:0;border-radius:6px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.sleepPlot{position:relative;display:flex;align-items:stretch;height:112px;margin-top:10px;border-radius:10px;cursor:pointer;touch-action:pan-y;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;outline:none}
+.sleepPlot:focus-visible{box-shadow:0 0 0 2px var(--text)}
+.sleepPlot .sbar{flex:1;min-width:0;height:100%;display:flex;align-items:flex-end;padding:0 2px;margin:0;border-radius:6px;pointer-events:none}
 .sleepPlot .sbar.sel{background:color-mix(in srgb,var(--text) 8%,transparent)}
 .sleepPlot .sbar.sel i{outline:2px solid var(--text);outline-offset:1px}
 .sleepPlot i{display:block;width:100%;border-radius:5px 5px 2px 2px;background:var(--well);border:1px solid var(--line)}
@@ -1444,7 +1445,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.56";
+const APP_VERSION = "4.57";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -5695,13 +5696,14 @@ function sleepBarsHtml() {
   const t = todayISO();
   let html = '<div class="lbl">Last 14 nights</div>';
   html += '<div class="sleepKey"><span><i class="good"></i>Goal</span><span><i class="near"></i>Near</span><span><i class="short"></i>Short</span><span class="sleepGoalKey" aria-label="Goal line ' + fmtDur(g) + '"><i></i>' + fmtDur(g) + '</span></div>';
-  html += '<div class="sleepPlot" role="group" aria-label="Last 14 nights"><div class="goalLine" style="bottom:' + (g / max * 100).toFixed(1) + '%"></div>';
+  const selIdx = nights.findIndex(function(n) { return n.iso === sleepBarSel; });
+  html += '<div class="sleepPlot" id="sleepPlot" role="slider" tabindex="0" aria-label="Last 14 nights. Tap or drag to pick a night; arrow keys step." aria-valuemin="0" aria-valuemax="' + (nights.length - 1) + '" aria-valuenow="' + (selIdx < 0 ? nights.length - 1 : selIdx) + '" aria-valuetext="' + sleepReadText(sleepBarSel) + '" data-nights="' + nights.map(function(n) { return n.iso; }).join(",") + '"><div class="goalLine" style="bottom:' + (g / max * 100).toFixed(1) + '%"></div>';
   nights.forEach(function(n) {
     const h = n.e ? n.e.h : null;
     const cls = h == null ? "none" : (h >= g ? "good" : (h >= g - 1 ? "near" : "short"));
     const pct = h == null ? 4 : Math.max(6, Math.min(100, h / max * 100));
     const sel = sleepBarSel === n.iso;
-    html += '<button type="button" class="sbar' + (sel ? " sel" : "") + '" data-sleep-bar="' + n.iso + '" aria-pressed="' + sel + '" aria-label="' + sleepReadText(n.iso) + '"><i class="' + cls + '" style="height:' + pct.toFixed(1) + '%"></i></button>';
+    html += '<span class="sbar' + (sel ? " sel" : "") + '" data-sleep-bar="' + n.iso + '" aria-hidden="true"><i class="' + cls + '" style="height:' + pct.toFixed(1) + '%"></i></span>';
   });
   html += '</div><div class="sleepDays" aria-hidden="true">';
   nights.forEach(function(n) {
@@ -5810,22 +5812,70 @@ function bindSleep() {
     this.firstChild.textContent = sleepPlanOpen ? "Less" : "Full plan";
     sfxTap();
   };
-  document.querySelectorAll("[data-sleep-bar]").forEach(function(b) {
-    b.onclick = function() {
-      const iso = b.getAttribute("data-sleep-bar");
-      sleepBarSel = sleepBarSel === iso ? null : iso;
-      document.querySelectorAll("[data-sleep-bar]").forEach(function(x, i) {
+  const plot = $("sleepPlot");
+  if (plot) {
+    const isos = plot.getAttribute("data-nights").split(",");
+    const pick = function(iso, sound) {
+      if (iso === sleepBarSel) return;
+      sleepBarSel = iso;
+      plot.querySelectorAll("[data-sleep-bar]").forEach(function(x, i) {
         const on = x.getAttribute("data-sleep-bar") === sleepBarSel;
         x.classList.toggle("sel", on);
-        x.setAttribute("aria-pressed", on ? "true" : "false");
         const dl = document.querySelectorAll(".sleepDays small")[i];
         if (dl) dl.classList.toggle("sel", on);
       });
+      const txt = sleepReadText(sleepBarSel);
+      const ix = isos.indexOf(sleepBarSel);
+      plot.setAttribute("aria-valuenow", String(ix < 0 ? isos.length - 1 : ix));
+      plot.setAttribute("aria-valuetext", txt);
       const r = $("sleepRead");
-      if (r) { r.textContent = sleepReadText(sleepBarSel); r.classList.toggle("on", !!sleepBarSel); }
-      sfxTap();
+      if (r) { r.textContent = txt; r.classList.toggle("on", !!sleepBarSel); }
+      if (sound) sfxTap();
     };
-  });
+    const nearest = function(x) {
+      const rc = plot.getBoundingClientRect();
+      const i = Math.max(0, Math.min(isos.length - 1, Math.floor((x - rc.left) / rc.width * isos.length)));
+      return isos[i];
+    };
+    // One touch area: tap picks the nearest night (tap it again to clear); a sideways drag scrubs.
+    let down = null;
+    plot.addEventListener("pointerdown", function(ev) {
+      if (ev.button > 0) return;
+      down = { x: ev.clientX, y: ev.clientY, id: ev.pointerId, start: sleepBarSel, moved: false };
+      // Touch waits for a tap or a sideways drag, so scrolling the page past the chart never picks a night.
+      if (ev.pointerType !== "touch" && sleepBarSel !== nearest(ev.clientX)) pick(nearest(ev.clientX), true);
+    });
+    plot.addEventListener("pointermove", function(ev) {
+      if (!down || ev.pointerId !== down.id) return;
+      if (!down.moved && Math.abs(ev.clientX - down.x) > 8 && Math.abs(ev.clientX - down.x) > Math.abs(ev.clientY - down.y)) {
+        down.moved = true;
+        try { plot.setPointerCapture(ev.pointerId); } catch (e) {}
+      }
+      if (down.moved) pick(nearest(ev.clientX), true);
+    });
+    const end = function(ev) {
+      if (!down || ev.pointerId !== down.id) return;
+      if (ev.type === "pointerup" && !down.moved) {
+        const iso = nearest(ev.clientX);
+        pick(down.start && down.start === iso ? null : iso, true);
+      }
+      down = null;
+    };
+    plot.addEventListener("pointerup", end);
+    plot.addEventListener("pointercancel", end);
+    plot.addEventListener("keydown", function(ev) {
+      const ix = isos.indexOf(sleepBarSel);
+      let n = null;
+      if (ev.key === "ArrowLeft" || ev.key === "ArrowDown") n = ix < 0 ? isos.length - 1 : Math.max(0, ix - 1);
+      else if (ev.key === "ArrowRight" || ev.key === "ArrowUp") n = ix < 0 ? isos.length - 1 : Math.min(isos.length - 1, ix + 1);
+      else if (ev.key === "Home") n = 0;
+      else if (ev.key === "End") n = isos.length - 1;
+      else if (ev.key === "Escape" && sleepBarSel) { ev.preventDefault(); pick(null, true); return; }
+      if (n == null) return;
+      ev.preventDefault();
+      pick(isos[n], true);
+    });
+  }
   if ($("sleepTagsFold")) $("sleepTagsFold").addEventListener("toggle", function() {
     sleepTagsOpen = this.open;
     if (this.open) sleepKeepVisible($("sleepSave"));
