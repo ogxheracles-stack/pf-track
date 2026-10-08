@@ -1400,7 +1400,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.42";
+const APP_VERSION = "4.43";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -5655,6 +5655,19 @@ function screenSleep() {
   if (d.iso === t && !d.saved && getSleepSample() != null) html += '<p class="sub" style="margin:10px 0 0">Prefilled from Apple Health · ' + fmtDur(Number(getSleepSample())) + "</p>";
   html += "</div>";
 
+  // Patterns
+  const s7 = sleepStats(7);
+  html += '<div class="card mt"><div class="lbl">Last 14 nights</div>' + sleepBarsHtml();
+  html += '<div class="sleepStats">';
+  html += '<div><small>7-night avg</small><b>' + (s7.count ? fmtDur(s7.avg) : "—") + "</b></div>";
+  html += '<div><small>Sleep debt</small><b>' + (s7.count ? fmtDur(s7.debt) : "—") + "</b></div>";
+  html += '<div><small>Bedtime</small><b>' + (s7.spread == null ? "—" : (s7.spread <= 30 ? "Steady" : (s7.spread <= 60 ? "Okay" : "Drifting"))) + "</b></div>";
+  html += '<div><small>Feel</small><b>' + (s7.avgQ == null ? "—" : SLEEP_Q[Math.round(s7.avgQ) - 1]) + "</b></div>";
+  html += "</div>";
+  const u = usualSleep();
+  if (u) html += '<p class="sub" style="margin:12px 0 0">Usual · bed ' + fmtClock(u.bed) + " · up " + fmtClock(u.wake) + "</p>";
+  html += "</div>";
+
   // Tips
   html += '<div class="card mt"><div class="lbl">Coach notes</div><div class="tipList">';
   sleepTips().forEach(function(tp) {
@@ -5678,19 +5691,6 @@ function screenSleep() {
   ];
   rows.forEach(function(r, i) { html += '<div class="planRow' + (i === 3 ? " key" : "") + '"><span>' + r[0] + "</span><b>" + fmtClock(r[1]) + "</b></div>"; });
   html += "</div></div>";
-
-  // Patterns
-  const s7 = sleepStats(7);
-  html += '<div class="card mt"><div class="lbl">Last 14 nights</div>' + sleepBarsHtml();
-  html += '<div class="sleepStats">';
-  html += '<div><small>7-night avg</small><b>' + (s7.count ? fmtDur(s7.avg) : "—") + "</b></div>";
-  html += '<div><small>Sleep debt</small><b>' + (s7.count ? fmtDur(s7.debt) : "—") + "</b></div>";
-  html += '<div><small>Bedtime</small><b>' + (s7.spread == null ? "—" : (s7.spread <= 30 ? "Steady" : (s7.spread <= 60 ? "Okay" : "Drifting"))) + "</b></div>";
-  html += '<div><small>Feel</small><b>' + (s7.avgQ == null ? "—" : SLEEP_Q[Math.round(s7.avgQ) - 1]) + "</b></div>";
-  html += "</div>";
-  const u = usualSleep();
-  if (u) html += '<p class="sub" style="margin:12px 0 0">Usual · bed ' + fmtClock(u.bed) + " · up " + fmtClock(u.wake) + "</p>";
-  html += "</div>";
 
   // Goal
   html += '<div class="card mt"><details class="bodyFold sleepGoalFold"><summary>Goal · ' + fmtDur(g.hours) + " · up " + fmtClock(g.wake) + "</summary>";
