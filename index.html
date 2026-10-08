@@ -578,6 +578,7 @@ nav.hud button.on .ico .pfi{filter:drop-shadow(0 0 6px var(--neon-dim))}
   padding:14px 18px;font-size:14px;font-weight:600;
   max-width:min(390px,92vw);text-align:center;
 }
+.toast.top{bottom:auto;top:calc(64px + env(safe-area-inset-top,0px));width:max-content;max-width:min(390px,92vw)}
 .boot{padding-top:calc(48px + env(safe-area-inset-top,0px))}
 .bootline{
   font-size:14px;color:var(--ok);margin:0 0 10px;opacity:0;
@@ -1405,7 +1406,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.44";
+const APP_VERSION = "4.45";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -3548,7 +3549,7 @@ function isWorkDay(d) {
   return d === 1 || d === 5;
 }
 
-function toast(msg) {
+function toast(msg, opts) {
   toastMsg = msg;
   if (toastTimer) clearTimeout(toastTimer);
   toastTimer = setTimeout(function() {
@@ -3560,9 +3561,9 @@ function toast(msg) {
   if (!el) {
     el = document.createElement("div");
     el.id = "toastEl";
-    el.className = "toast";
     document.body.appendChild(el);
   }
+  el.className = "toast" + (opts && opts.top ? " top" : "");
   el.textContent = msg;
 }
 
@@ -5763,7 +5764,8 @@ function bindSleep() {
     if (d.iso === todayISO()) state.sleepHours = h;
     sleepDraft = sleepDraftFor(d.iso);
     sfxConfirm(); persist();
-    toast("Sleep logged · " + fmtDur(h));
+    const nLogged = sleepLoggedCount();
+    toast("Sleep logged · " + fmtDur(h) + (nLogged < SLEEP_MIN_NIGHTS ? " · " + nLogged + " of " + SLEEP_MIN_NIGHTS + " nights" : ""), {top: true});
     render();
   };
 }
