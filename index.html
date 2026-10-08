@@ -1031,7 +1031,7 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
   background:var(--panel2);border:1px solid var(--line2);border-radius:12px;
   color:var(--text);font:600 14px/1.25 var(--font);cursor:pointer;
 }
-.plateBtn small{display:block;font-weight:500;color:var(--dim);font-size:12px;margin-top:4px}
+.plateBtn small{display:block;font-weight:500;color:var(--dim);font-size:12px;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .plateBtn:active{border-color:var(--neon);background:var(--neon-dim)}
 .recentRow{display:flex;gap:8px;overflow-x:auto;padding:2px 0 4px;-webkit-overflow-scrolling:touch}
 .recentRow button{
@@ -1052,6 +1052,19 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
 .codeRow{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:10px}
 .codeRow input{text-transform:uppercase;letter-spacing:.04em}
 .codeRow .btn{width:auto;min-width:88px;padding:0 16px}
+.searchField{position:relative;grid-template-columns:1fr auto;align-items:center;gap:0;padding:4px;border-radius:16px;
+  background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.01)),color-mix(in srgb,var(--panel2) 72%,transparent);
+  border:1px solid color-mix(in srgb,var(--text) 14%,transparent);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),inset 0 -1px 0 rgba(0,0,0,.25);
+  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+  transition:border-color var(--t-press) var(--ease),box-shadow var(--t-screen) var(--ease)}
+.searchField:focus-within{border-color:var(--neon);box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 0 0 3px var(--neon-dim)}
+.searchField .searchIco{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--dim);display:flex;pointer-events:none}
+.searchField .searchIco .pfi{width:20px;height:20px}
+.searchField input{width:100%;min-height:44px;background:transparent;border:0;outline:none;color:var(--text);
+  font:600 16px/1.2 var(--font);padding:10px 10px 10px 40px;text-transform:none;letter-spacing:0;-webkit-appearance:none;appearance:none}
+.searchField input::placeholder{color:var(--dim);opacity:.85}
+.searchField .btn{min-height:44px;min-width:72px;border-radius:12px;font-size:15px}
 .goalCard{
   display:flex;align-items:center;gap:14px;
   margin:12px 0 6px;padding:12px 14px;
@@ -1267,7 +1280,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.34";
+const APP_VERSION = "4.35";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -4584,7 +4597,7 @@ function quickAddHtml(iso, opts) {
   const q = String(foodQuery || "").trim();
   histPlateCache = historyPlateHits(q);
   let html = '<div class="card mt"><div class="lbl">Quick add</div>';
-  html += '<p class="sub" style="margin-top:0">Tap a plate, a favorite, or search what you have logged before.</p>';
+  html += '<p class="sub" style="margin-top:0">Tap a plate, or type a name or code.</p>';
   const again = opts.noAgain ? null : againPlate(iso);
   if (again) {
     html += '<div class="stack" style="margin-top:8px"><button class="btn pri" type="button" id="againPlate" data-again-plate="1" data-plate-iso="' + iso + '">Again · ' + esc(again.name) + "</button></div>";
@@ -4619,8 +4632,7 @@ function quickAddHtml(iso, opts) {
       html += '<button type="button" data-tpl-del="' + esc(t.id) + '">Remove</button></div>';
     });
   }
-  html += '<div class="stack" style="margin-top:10px"><button class="btn gho" type="button" id="saveTemplate" data-plate-iso="' + iso + '">Save diary as template</button></div>';
-  html += '<div class="codeRow"><input type="text" id="foodSearch" placeholder="Search · arroz, tostones, rice, beans" maxlength="48" autocomplete="off" value="' + esc(q) + '"/>';
+  html += '<div class="codeRow searchField"><span class="searchIco" aria-hidden="true"><svg class="pfi" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg></span><input type="text" id="foodSearch" placeholder="Name or code · arroz, RH, PO" maxlength="48" autocomplete="off" enterkeyhint="done" aria-label="Search food by name or code" value="' + esc(q) + '"/>';
   html += '<button class="btn pri" type="button" id="foodSearchAdd" data-plate-iso="' + iso + '">Add</button></div>';
   if (histPlateCache.length) {
     html += '<div class="lbl" style="margin-top:12px">From your diary</div><div class="recentRow">';
@@ -4629,8 +4641,6 @@ function quickAddHtml(iso, opts) {
     });
     html += "</div>";
   }
-  html += '<div class="codeRow"><input type="text" id="plateCode" data-plate-iso="' + iso + '" placeholder="Code · RH PO CA EG" maxlength="24" autocomplete="off"/>';
-  html += '<button class="btn pri" type="button" id="plateCodeAdd" data-plate-iso="' + iso + '">Add</button></div>';
   html += '<div class="plateGrid">';
   let shown = 0;
   PLATES.forEach(function(p) {
@@ -4640,7 +4650,7 @@ function quickAddHtml(iso, opts) {
     if (shown >= 12) return;
     shown++;
     const fav = (state.favPlates || []).indexOf(p.id) >= 0;
-    const meta = pr ? (esc(p.serv) + " · " + p.cal + " cal · P" + p.protein) : (p.code + " · " + p.cal + " cal · P" + p.protein + " · " + plateProteinShare(p) + "% protein");
+    const meta = pr ? (esc(p.serv) + " · " + p.cal + " cal · P" + p.protein) : (p.cal + " cal · P" + p.protein + (p.code ? " · " + p.code : ""));
     html += '<div class="plateCell">';
     html += '<button type="button" class="plateBtn" data-plate="' + p.id + '" data-plate-iso="' + iso + '">' +
       esc(p.name) + "<small>" + meta + "</small></button>";
@@ -4649,6 +4659,7 @@ function quickAddHtml(iso, opts) {
   });
   html += "</div>";
   if (!shown && q) html += '<p class="sub">No catalog plate matches. Add from diary, or type name calories protein.</p>';
+  html += '<div class="stack" style="margin-top:10px"><button class="btn gho" type="button" id="saveTemplate" data-plate-iso="' + iso + '">Save diary as template</button></div>';
   if (iso === todayISO()) {
     html += '<div class="stack" style="margin-top:10px"><button class="btn gho" type="button" id="copyYday">Copy yesterday</button></div>';
   }
@@ -4842,6 +4853,19 @@ function trainHeatHtml() {
   }
   html += '</div><p class="sub" style="margin:8px 0 0">Filled when a session or walk is logged. Empty stays empty.</p></div>';
   return html;
+}
+
+function weekHasFoodData() {
+  for (let i = 0; i < 7; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const iso = isoFromDate(d);
+    const dm = dayMacrosFor(iso);
+    if ((Number(dm.cal) || 0) > 0 || (Number(dm.protein) || 0) > 0) return true;
+    const f = (iso === todayISO()) ? ensureFood() : foodForISO(iso);
+    if (f && ((f.items && f.items.length) || Number(f.waterOz) > 0)) return true;
+  }
+  return false;
 }
 
 function proteinWeekBarsHtml() {
@@ -5805,8 +5829,12 @@ function screenFuel() {
   html += criollaCardHtml(todayISO());
   html += quickAddHtml(todayISO(), {noAgain: true});
   html += waterBlockHtml(todayISO());
-  html += proteinWeekBarsHtml();
-  html += weekNutritionHtml();
+  if (weekHasFoodData()) {
+    html += proteinWeekBarsHtml();
+    html += weekNutritionHtml();
+  } else {
+    html += '<div class="card mt weekEmpty"><div class="lbl">This week</div><p class="sub" style="margin:4px 0 0">Charts fill in after your first logged plate.</p></div>';
+  }
   html += '<div class="card mt"><details class="bodyFold"><summary>Adjust targets &amp; today\'s numbers</summary><div class="macroTargets">';
   [
     {k: "cal", tk: "calTarget", label: "Calories", step: 50},
