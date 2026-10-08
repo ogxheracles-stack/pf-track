@@ -478,6 +478,62 @@ nav.hud button{
 nav.hud button .ico{font-size:18px;opacity:.8;line-height:1}
 nav.hud button.on{color:var(--neon);background:var(--neon-dim)}
 nav.hud button.on .ico{opacity:1}
+/* v4.28 depth + glass + Command hero */
+.card,.hubMetric{
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,0) 42%),
+    color-mix(in srgb,var(--panel) 78%,transparent);
+  border:1px solid color-mix(in srgb,var(--line2) 80%,transparent);
+  -webkit-backdrop-filter:blur(18px) saturate(1.25);backdrop-filter:blur(18px) saturate(1.25);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.09),
+    inset 0 -1px 0 rgba(0,0,0,.25),
+    0 1px 2px rgba(0,0,0,.25),
+    0 12px 32px -8px rgba(0,0,0,.45);
+}
+.btn:not(.pri):not(.ok):not(.dan):not(.gho){
+  background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,0)),color-mix(in srgb,var(--panel2) 85%,transparent);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 6px 16px -6px rgba(0,0,0,.45);
+}
+.btn{transition:transform .12s ease,filter .12s ease,box-shadow .18s ease}
+.btn.pri,.btn.ok{box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -2px 0 rgba(0,0,0,.18),0 10px 26px -8px var(--reactive-glow),0 0 0 1px rgba(0,0,0,.2)}
+.hero{
+  position:relative;z-index:1;display:flex;align-items:center;gap:16px;
+  margin:6px 0 14px;padding:22px 20px;min-height:128px;border-radius:20px;overflow:hidden;
+  background:
+    radial-gradient(120% 140% at 0% 0%,color-mix(in srgb,var(--neon) 16%,transparent),transparent 55%),
+    radial-gradient(90% 120% at 100% 100%,color-mix(in srgb,var(--cyan) 14%,transparent),transparent 60%),
+    linear-gradient(160deg,rgba(255,255,255,.07),rgba(255,255,255,0) 50%),
+    color-mix(in srgb,var(--panel) 82%,transparent);
+  border:1px solid color-mix(in srgb,var(--neon) 34%,var(--line2));
+  -webkit-backdrop-filter:blur(20px) saturate(1.3);backdrop-filter:blur(20px) saturate(1.3);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 18px 44px -14px rgba(0,0,0,.6),0 0 0 1px rgba(0,0,0,.25);
+}
+.hero::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.06) 45%,transparent 60%);
+}
+.heroCorner{position:absolute;width:14px;height:14px;border-color:var(--neon);border-style:solid;opacity:.75}
+.heroCorner.tl{top:8px;left:8px;border-width:2px 0 0 2px;border-top-left-radius:6px}
+.heroCorner.tr{top:8px;right:8px;border-width:2px 2px 0 0;border-top-right-radius:6px}
+.heroCorner.bl{bottom:8px;left:8px;border-width:0 0 2px 2px;border-bottom-left-radius:6px}
+.heroCorner.br{bottom:8px;right:8px;border-width:0 2px 2px 0;border-bottom-right-radius:6px}
+.heroEmblem{
+  flex:none;width:76px;height:76px;border-radius:50%;display:grid;place-items:center;color:var(--neon);
+  background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.14),transparent 60%),color-mix(in srgb,var(--neon) 12%,transparent);
+  box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--neon) 60%,transparent),0 0 24px -4px var(--neon-dim),inset 0 0 18px var(--neon-dim);
+}
+.heroEmblem .pfi{width:38px;height:38px;stroke-width:1.6}
+.heroEmblem .pfi .f{fill-opacity:.22}
+.heroText{min-width:0}
+.heroEyebrow{font:700 11px/1 var(--font);letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.heroTitle{margin-top:8px;font:800 34px/1.02 var(--font);letter-spacing:-0.03em;color:var(--text);text-shadow:0 2px 18px rgba(0,0,0,.35)}
+.heroSub{margin-top:8px;font:600 14px/1.3 var(--font);color:var(--cyan);display:flex;align-items:center;gap:6px}
+.heroCheck{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--neon);color:#0a1408}
+.heroCheck .pfi.sm{width:13px;height:13px;stroke-width:3}
+.hero-rest .heroEmblem,.hero-rest .heroCorner{color:var(--cyan);border-color:var(--cyan)}
+.hero-rest .heroEmblem{background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.14),transparent 60%),color-mix(in srgb,var(--cyan) 12%,transparent);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--cyan) 60%,transparent),0 0 24px -4px color-mix(in srgb,var(--cyan) 35%,transparent)}
+@media (prefers-reduced-motion: reduce){.btn,.pfi .f{transition:none}}
 /* PF icon set */
 .pfi{width:22px;height:22px;flex:none;display:inline-block;vertical-align:middle;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
 .pfi .f{fill:currentColor;fill-opacity:0;transition:fill-opacity .18s ease}
@@ -620,9 +676,9 @@ details.bodyFold > summary,details.pet-cosmetics > summary{
 details.bodyFold > summary::-webkit-details-marker,
 details.pet-cosmetics > summary::-webkit-details-marker{display:none}
 details.bodyFold > summary::before,
-details.pet-cosmetics > summary::before{content:"▸ ";color:var(--neon)}
+details.pet-cosmetics > summary::before{content:"";display:inline-block;width:7px;height:7px;margin:0 10px 1px 2px;border-right:2px solid var(--neon);border-bottom:2px solid var(--neon);transform:rotate(-45deg);transition:transform .18s ease}
 details.bodyFold[open] > summary::before,
-details.pet-cosmetics[open] > summary::before{content:"▾ "}
+details.pet-cosmetics[open] > summary::before{transform:rotate(45deg)}
 details.bodyFold .toggle{margin-top:4px}
 details.pet-cosmetics{margin-top:4px}
 details.pet-cosmetics > summary{margin-bottom:4px;color:var(--text)}
@@ -1172,7 +1228,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.27";
+const APP_VERSION = "4.28";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -3844,7 +3900,8 @@ const PF_ICONS = {
   alert: '<path d="M12 7v6M12 17v.01"/>',
   star: '<path class="f" d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.8z"/>',
   share: '<path d="M12 14V3.5M8 7.5l4-4 4 4"/><path d="M7 10.5H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-1"/>',
-  chevron: '<path d="M9.5 6l6 6-6 6"/>'
+  chevron: '<path d="M9.5 6l6 6-6 6"/>',
+  walk: '<circle class="f" cx="13" cy="4.5" r="1.8"/><path d="M10 21l2.5-6.5L15 17v4M12.5 14.5l1-5.5-3.5 1.5-1.5 3M13.5 9l2 3 3 1"/>'
 };
 function pfIcon(name, cls) {
   const d = PF_ICONS[name] || "";
@@ -5196,8 +5253,6 @@ function screenRecovery() {
     html += "</div>";
   } else if (plan && plan.key) {
     html += '<p class="nextLine">' + esc(todayDoctrine()) + "</p>";
-  } else {
-    html += '<p class="nextLine">Rest</p>';
   }
   html += '<p class="sub">Sleep · feet · ham · heat. Cal edits the day grid.</p>';
   html += trainHeatHtml();
@@ -5449,9 +5504,18 @@ function screenHome() {
   else if (!plan.key) mark = "–";
 
   let html = statusbar();
-  html += '<div class="path leadPath" aria-label="Today on the path">';
-  html += '<div class="' + nodeCls + '"><span>' + esc(plan.short) + "</span><small>" + esc(doctrine) + " · " + mark + "</small></div>";
-  html += "</div>";
+  const heroIco = plan.key ? "training" : (isWorkDay(plan.d) ? "walk" : "recovery");
+  const heroState = restDay ? "rest" : ((done || walked) ? "done" : (plan.key ? "lift" : "walk"));
+  const heroTitle = plan.key ? doctrine : (isWorkDay(plan.d) ? "Walk day" : "Rest day");
+  const heroSub = done ? "Session logged" : (walked ? "Walk logged" : (restDay ? "Recover · feet up · sleep" : (plan.key ? "2×10–15 · same pin" : "Easy pace · loosen up")));
+  const heroDate = new Date().toLocaleDateString("en-US", {weekday: "long", month: "short", day: "numeric"});
+  html += '<section class="hero hero-' + heroState + '" aria-label="Today">';
+  html += '<span class="heroCorner tl"></span><span class="heroCorner tr"></span><span class="heroCorner bl"></span><span class="heroCorner br"></span>';
+  html += '<div class="heroEmblem">' + pfIcon(heroIco) + '</div>';
+  html += '<div class="heroText"><div class="heroEyebrow">' + esc(heroDate) + '</div>';
+  html += '<div class="heroTitle">' + esc(heroTitle) + '</div>';
+  html += '<div class="heroSub">' + esc(heroSub) + ((done || restDay || walked) ? ' <span class="heroCheck">' + pfIcon("check", "sm") + '</span>' : "") + '</div></div>';
+  html += '</section>';
 
   if (state.live) {
     html += '<div class="stack"><button class="btn ok big" data-go="lift">Resume</button></div>';
