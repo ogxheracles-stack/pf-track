@@ -180,7 +180,7 @@ body{
   margin:0 auto;
   min-height:100vh;
   min-height:100dvh;
-  padding:0 16px calc(72px + env(safe-area-inset-bottom,0px));
+  padding:0 16px calc(var(--nav-clear,104px) + env(safe-area-inset-bottom,0px));
 }
 
 /* Neo-Vice City global ambient — navy→magenta→black / Verde Monte day */
@@ -1168,6 +1168,10 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
 .setLine{margin:0 0 2px;font-size:17px;font-weight:650;color:var(--text)}
 .nextMove{margin:0 0 12px;font-size:15px;font-weight:600;color:var(--dim)}
 .heatGrid{margin-top:10px}
+.heatEarlier{margin:0 0 6px}
+.heatEarlier[open]{margin-bottom:12px}
+.heatEarlier > summary{padding:10px 0 4px;min-height:24px}
+.heatEarlier[open] > summary{padding-bottom:0}
 .heatDow,.heatRow{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
 .heatDow span{text-align:center;font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--dim)}
 .heatRow{margin-top:6px}
@@ -1263,7 +1267,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.32";
+const APP_VERSION = "4.33";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -4816,10 +4820,12 @@ function trainHeatHtml() {
   start.setDate(start.getDate() - 11 * 7);
   const today = todayISO();
   const heads = ["Sa", "Su", "Mo", "Tu", "We", "Th", "Fr"];
-  let html = '<div class="card mt"><div class="lbl">Training · 12 weeks</div>';
+  let html = '<div class="card mt"><div class="lbl">Training · last 6 weeks</div>';
   html += '<div class="heatGrid" role="grid" aria-label="Logged sessions and walks, last 12 weeks">';
-  html += '<div class="heatDow">' + heads.map(function(h) { return "<span>" + h + "</span>"; }).join("") + "</div>";
+  const dowRow = '<div class="heatDow">' + heads.map(function(h) { return "<span>" + h + "</span>"; }).join("") + "</div>";
   for (let w = 0; w < 12; w++) {
+    if (w === 0) html += '<details class="bodyFold heatEarlier"><summary>Earlier weeks</summary>' + dowRow;
+    if (w === 6) html += '</details>' + dowRow;
     html += '<div class="heatRow">';
     for (let d = 0; d < 7; d++) {
       const dt = new Date(start.getFullYear(), start.getMonth(), start.getDate() + w * 7 + d);
@@ -5300,16 +5306,12 @@ function screenRecovery() {
   } else if (plan && plan.key) {
     html += '<p class="nextLine">' + esc(todayDoctrine()) + "</p>";
   }
-  html += '<p class="sub">Sleep · feet · ham · heat. Cal edits the day grid.</p>';
-  html += trainHeatHtml();
   if (plan && isWorkDay(plan.d)) {
     html += '<div class="step mt"><button class="mini" id="walkMinus">−</button><b>' + walkMinutes + '</b><button class="mini" id="walkPlus">+</button></div>';
   }
   if (!plan.key && isWorkDay(plan.d)) {
     html += heatBannerHtml(plan);
   }
-  html += healthConnectHtml();
-  html += healthMetricsCardHtml();
   html += '<div class="card mt"><div class="lbl">Last night sleep (hours)</div>';
   html += '<p class="sub" style="margin-top:0">Manual override · Health fill when bridged + empty.</p>';
   html += '<div class="step"><button class="mini" id="sleepMinus">−</button><b id="sleepVal">' + (state.sleepHours != null ? state.sleepHours : "—") + '</b><button class="mini" id="sleepPlus">+</button></div></div>';
@@ -5318,6 +5320,9 @@ function screenRecovery() {
   html += '<div class="toggle ' + (isHamWeird() ? "on" : "") + '" id="hamWeirdToggle"><div><b>Ham weird</b><span>Pre-skips Lower B seated curl' + (isHamWeird() ? ' <span class="chip">clears next Sat</span>' : "") + '</span></div><div class="sw"></div></div>';
   html += "</div>";
   if (plan && isWorkDay(plan.d)) html += waterBlockHtml(todayISO());
+  html += trainHeatHtml();
+  html += healthConnectHtml();
+  html += healthMetricsCardHtml();
   html += nav("recovery");
   return html;
 }
