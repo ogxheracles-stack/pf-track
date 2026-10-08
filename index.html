@@ -100,7 +100,7 @@ html[data-env="night"]{
   --line:#2a2438;
   --line2:#3a3450;
   --text:#ece8f4;
-  --dim:#9a8bab;
+  --dim:#c0b4cd; /* v4.59: 7:1+ on the lightest Night glass (hero #2c233b), still quieter than --text */
   --muted:#7a6b8c;
   --neon:#c4a0ff;
   --neon-dim:rgba(196,160,255,.2);
@@ -167,6 +167,7 @@ html.reactive-low .card{box-shadow:none}
   background:var(--panel2);color:var(--dim);font:600 13px/1 var(--font);cursor:pointer;
 }
 .seg button.on{background:var(--neon-dim);border-color:var(--neon);color:var(--neon)}
+html[data-env="night"] .seg button.on{color:color-mix(in srgb,var(--neon) 60%,#fff)} /* v4.59: label on the tinted pill reaches 7:1; accent token untouched */
 .moreList{display:grid;gap:10px;margin-top:8px}
 .moreList .btn{justify-content:flex-start;gap:12px;padding-left:16px;text-align:left}
 .moreList .btn .ico{opacity:.85;width:22px;text-align:center}
@@ -489,6 +490,7 @@ nav.hud button{
 }
 nav.hud button .ico{font-size:18px;opacity:.8;line-height:1}
 nav.hud button.on{color:var(--neon);background:var(--neon-dim)}
+html[data-env="night"] nav.hud button.on{color:color-mix(in srgb,var(--neon) 60%,#fff)} /* v4.59: active tab label 7:1+ */
 nav.hud button.on .ico{opacity:1}
 /* v4.28 depth + glass + Command hero */
 .card,.hubMetric{
@@ -1446,7 +1448,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.58";
+const APP_VERSION = "4.59";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -5703,7 +5705,7 @@ function sleepBarsHtml() {
   html += '<div class="sleepKey"><span><i class="good"></i>Goal</span><span><i class="near"></i>Near</span><span><i class="short"></i>Short</span><span class="sleepGoalKey" aria-label="Goal line ' + fmtDur(g) + '"><i></i>' + fmtDur(g) + '</span></div>';
   const selIdx = nights.findIndex(function(n) { return n.iso === sleepBarSel; });
   const isoList = nights.map(function(n) { return n.iso; });
-  html += '<span class="srOnly" id="sleepPlotHelp">Tap or drag to pick a night. Arrow keys step one night, Home and End jump to the ends, Escape clears.</span>';
+  html += '<span class="srOnly" id="sleepPlotHelp">Pick a night to see its sleep.</span>';
   html += '<div class="sleepPlot" id="sleepPlot" role="slider" tabindex="0" aria-label="Last 14 nights" aria-describedby="sleepPlotHelp" aria-orientation="horizontal" aria-valuemin="0" aria-valuemax="' + (nights.length - 1) + '" aria-valuenow="' + (selIdx < 0 ? nights.length - 1 : selIdx) + '" aria-valuetext="' + sleepSliderText(sleepBarSel, isoList) + '" data-nights="' + nights.map(function(n) { return n.iso; }).join(",") + '"><div class="goalLine" style="bottom:' + (g / max * 100).toFixed(1) + '%"></div>';
   nights.forEach(function(n) {
     const h = n.e ? n.e.h : null;
