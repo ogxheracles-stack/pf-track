@@ -1224,7 +1224,7 @@ button:active,.btn:active,.daybtn:active,.mini:active,.pet-item:active,.calCell:
 }
 button:disabled:active,.btn:disabled:active{transform:none;filter:none}
 @keyframes screenIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-#app.screenIn > *:not(.sb){animation:screenIn var(--t-screen) var(--ease) both}
+#app.screenIn > *:not(.sb):not(nav):not(.hud){animation:screenIn var(--t-screen) var(--ease) backwards}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;animation-delay:0s !important;transition-duration:.01ms !important;transition-delay:0s !important;scroll-behavior:auto !important}
   button:active,.btn:active,.daybtn:active,.mini:active,.pet-item:active,.calCell:active,.hubTile:active,.bubble:active,.plateBtn:active,.criollaTile:active,.starBtn:active,.toggle:active,.moreList a:active,.moreList button:active,summary:active{transform:none}
@@ -1267,7 +1267,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.33";
+const APP_VERSION = "4.34";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
