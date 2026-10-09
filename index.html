@@ -1293,6 +1293,16 @@ html[data-env="day"] .hero{
 html[data-env="day"] .hero::after{background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.5) 45%,transparent 60%)}
 html[data-env="day"] .heroTitle{text-shadow:none}
 html[data-env="day"] .heroSub{color:#004d5f} /* v4.60: --cyan #005a6e at 90% OKLCH lightness+chroma, same hue; 7:1+ on hero glass */
+/* v4.61 (Gap 5): Command secondary text sits straight on the city-art backdrop. Day gets a soft frosted plate
+   behind each line (text keeps --dim, so it still reads quieter than --text); Night lifts --dim a step. */
+.hintDismiss{color:var(--neon);font-weight:600}
+html[data-env="day"] .cmdSub{position:relative;isolation:isolate}
+html[data-env="day"] .cmdSub::before{content:"";position:absolute;inset:-5px -8px;z-index:-1;border-radius:12px;background:rgba(248,250,249,.92)}
+html[data-env="day"] .hintDismiss{color:#2b4b00} /* same darker --neon step as the v4.60 active tab */
+html[data-env="day"] .crowdTag.on{background:#e4f2eb;color:#004d2e}
+html[data-env="day"] .cmdInspect{background:rgba(248,250,249,.92)}
+html[data-env="night"] .cmdSub,html[data-env="night"] .cmdInspect{color:#d4cae0} /* --dim #c0b4cd lifted, same hue, still under --text #ece8f4 */
+html[data-env="night"] .hintDismiss{color:color-mix(in srgb,var(--neon) 60%,#fff)} /* as the v4.59 active tab */
 html[data-env="day"] .heroEmblem{background:radial-gradient(circle at 35% 30%,#fff,transparent 60%),rgba(120,190,0,.12);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--neon) 55%,transparent),0 6px 16px -8px rgba(16,40,50,.35)}
 html[data-env="day"] .mini:active,html[data-env="day"] .heroCheck{color:#fff}
 html[data-env="day"] .cue{background:rgba(255,176,32,.14);border-color:rgba(160,100,0,.35);color:#5e3a00}
@@ -1451,7 +1461,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.60";
+const APP_VERSION = "4.61";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -4248,7 +4258,7 @@ function installHintHtml() {
   if (isIOS) copy = "Share (□↑) → Add to Home Screen → turn ON \"Open as Web App\" → Add.";
   else if (isAndroid) copy = "Browser menu → Install app / Add to Home screen.";
   else return "";
-  return '<p class="sub mt" id="installHint">' + copy + ' <span style="color:var(--neon);font-weight:600">Dismiss</span></p>';
+  return '<p class="sub mt cmdSub" id="installHint">' + copy + ' <span class="hintDismiss">Dismiss</span></p>';
 }
 
 function lastPinsLine(prog) {
@@ -6211,17 +6221,17 @@ function screenHome() {
   html += shieldNoteHtml();
   html += crowdTagHtml();
   if (prog && plan.key && (plan.key === "lower-a" || plan.key === "lower-b")) {
-    html += '<p class="sub" style="margin-top:8px">' + esc(lowerDayOneLiner(plan.key)) + "</p>";
+    html += '<p class="sub cmdSub" style="margin-top:8px">' + esc(lowerDayOneLiner(plan.key)) + "</p>";
   }
   html += sleepCueHtml(plan);
   if (prog && plan.key && !state.live) {
     html += pinStripHtml(prog, {key: plan.key});
-    html += '<div class="stack"><button class="btn gho" data-day="' + plan.d + '">Inspect manifest</button></div>';
+    html += '<div class="stack"><button class="btn gho cmdInspect" data-day="' + plan.d + '">Inspect manifest</button></div>';
   }
   if (!plan.key && isWorkDay(plan.d)) {
     const walk = walkForDate(todayISO());
     if (!state.live && walk) {
-      html += '<p class="sub" style="margin-top:8px">Walk on the node · ' + walk.minutes + " min</p>";
+      html += '<p class="sub cmdSub" style="margin-top:8px">Walk on the node · ' + walk.minutes + " min</p>";
     }
     html += '<div class="toggle ' + ((walk && walk.feetCooked) || isFeetCooked() ? "on" : "") + '" id="feetCookedToggle" style="margin-top:12px"><div><b>Feet cooked</b><span>Locks Lower B calf this week</span></div><div class="sw"></div></div>';
     html += heatBannerHtml(plan);
@@ -6235,7 +6245,7 @@ function screenHome() {
   html += '<div class="step"><button class="mini" id="sleepMinus">−</button><b id="sleepVal">' + (lastNightHours() != null ? lastNightHours() : "—") + '</b><button class="mini" id="sleepPlus">+</button></div>';
   html += "</details></div>";
 
-  html += '<p class="sub" style="margin-top:14px;margin-bottom:0">2×10–15 · same pin until 15 twice · cramp = leave</p>';
+  html += '<p class="sub cmdSub" style="margin-top:14px;margin-bottom:0">2×10–15 · same pin until 15 twice · cramp = leave</p>';
   html += installHintHtml();
   html += nav("home");
   return html;
