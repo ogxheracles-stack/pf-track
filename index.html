@@ -816,7 +816,7 @@ html[data-env="day"] #pet-root .pet-badge{color:#fff} /* v4.60: Day amber is dar
 .pet-item .cost{font-family:var(--mono);font-size:13px;color:var(--amber);white-space:nowrap}
 .pet-item.owned .cost{color:var(--ok)}
 .pet-item.equipped{border-color:rgba(184,255,46,.55);background:rgba(184,255,46,.08)}
-.pet-item:disabled{opacity:.45;pointer-events:none}
+.pet-item:disabled{opacity:.7;pointer-events:none;background:transparent;border:1px dashed var(--line2);color:var(--dim)} .pet-item:disabled .meta,.pet-item:disabled .cost{color:var(--dim)} /* v4.73: same disabled look as .btn:disabled (was .45 = 2.2-2.8:1) */
 .pet-close{
   margin-top:12px;
 }
@@ -1291,6 +1291,7 @@ html[data-env="day"] .btn:not(.pri):not(.ok):not(.dan):not(.gho){
   box-shadow:inset 0 1px 0 #fff,0 1px 2px rgba(16,40,50,.1),0 6px 14px -8px rgba(16,40,50,.3);
 }
 html[data-env="day"] .btn.pri{border-color:#86b814}
+html[data-env="day"] .btn:disabled,html[data-env="day"] .btn.disabled{background:transparent;border:1px dashed var(--line2);box-shadow:none;color:var(--dim)} /* v4.73: Day disabled primary drops its lime fill/edge too: one disabled look */
 html[data-env="day"] .btn.pri,html[data-env="day"] .btn.ok{box-shadow:inset 0 1px 0 rgba(255,255,255,.7),inset 0 -2px 0 rgba(0,0,0,.12),0 10px 22px -10px rgba(60,110,0,.45),0 0 0 1px rgba(40,80,0,.18)}
 html[data-env="day"] .btn.dan{color:var(--danger-ink);background:rgba(168,0,47,.06);border-color:rgba(168,0,47,.35)}
 html[data-env="day"] .hero{
@@ -1500,7 +1501,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.72";
+const APP_VERSION = "4.73";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
