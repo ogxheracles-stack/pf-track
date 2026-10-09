@@ -176,7 +176,7 @@ html.reactive-low .card{box-shadow:none}
   background:var(--panel2);color:var(--dim);font:600 13px/1 var(--font);cursor:pointer;
 }
 .seg button.on{background:var(--neon-dim);border-color:var(--neon);color:var(--neon)}
-html[data-env="night"] .seg button.on{color:color-mix(in srgb,var(--neon) 60%,#fff)} /* v4.59: label on the tinted pill reaches 7:1; accent token untouched */
+html[data-env="night"] .seg button.on{color:color-mix(in srgb,var(--neon) 45%,#fff)} /* v4.72: 60% -> 45% neon so every Night selected segment reaches 7.5:1 (Fuel/Calday "Home" was 6.97) */ /* v4.59: label on the tinted pill reaches 7:1; accent token untouched */
 .moreList{display:grid;gap:10px;margin-top:8px}
 .moreList .btn{justify-content:flex-start;gap:12px;padding-left:16px;text-align:left}
 .moreList .btn .ico{opacity:.85;width:22px;text-align:center}
@@ -369,7 +369,7 @@ h2{
   min-height:48px;
 }
 .btn.big{min-height:56px;font-size:17px}
-.btn:disabled,.btn.disabled{opacity:.4;pointer-events:none}
+.btn:disabled,.btn.disabled{opacity:.7;pointer-events:none;background:transparent;border:1px dashed var(--line2);color:var(--dim);box-shadow:none;filter:none} /* v4.72: disabled = no fill + dashed edge + --dim label (was the whole button at .4 = 1.6-2.5:1); label >= 3:1 */
 .stack{display:grid;gap:10px;margin-top:16px}
 .bar{
   height:10px;background:var(--well);border:1px solid var(--line);
@@ -1330,7 +1330,7 @@ html[data-env="night"] .btn.gho.glass{box-shadow:none} /* v4.68: Night .card has
 html[data-env="day"] .crowdTag.on,html[data-env="day"] .pill.on{--ok-bg:#e4f2eb;color:var(--ok-ink)} /* v4.70: + .pill.on (Session/Day/Shop "on" pills): solid tint + --ok-ink, was --ok on a translucent tint (5.31) */
 html[data-env="day"] .bootline:not(.dim){color:var(--ok-ink)} /* v4.70: boot lines were --ok #00603a (5.93) */
 /* (crowdTag/pill --ok-bg scoped here: the global Day value also feeds Week/shop tints) */
-html[data-env="night"] .btn.dan{background:linear-gradient(rgba(255,47,110,.1),rgba(255,47,110,.1)),var(--panel)} /* v4.71: opaque base so lit windows behind it can't drop the text below 7:1; no red fill, no glow */
+html[data-env="night"] .btn.dan{background:linear-gradient(rgba(255,47,110,.1),rgba(255,47,110,.1)),color-mix(in srgb,var(--panel) 55%,transparent);-webkit-backdrop-filter:blur(18px) saturate(1.25);backdrop-filter:blur(18px) saturate(1.25)} /* v4.72: .card glass recipe, base 55% (lowest passing step: 50% = 6.90) instead of the opaque slab; text 7:1+ at the lit-window probe in rest/hover/focus/pressed */
 html[data-env="day"] .boottitle,html[data-env="day"] .seg button.on{color:var(--neon-ink)} /* v4.71: --neon text -> --neon-ink (Boot title 6.42, More "Day" 6.97) */
 html[data-env="day"] .sb b{color:var(--neon-ink)} /* header brand, matches the active tab */
 html[data-env="day"] .heroEmblem{background:radial-gradient(circle at 35% 30%,#fff,transparent 60%),rgba(120,190,0,.12);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--neon) 55%,transparent),0 6px 16px -8px rgba(16,40,50,.35)}
@@ -1500,7 +1500,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.71";
+const APP_VERSION = "4.72";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -6067,7 +6067,7 @@ function screenMore() {
   if (navigator.vibrate) {
     html += '<div class="toggle ' + (state.haptics ? "on" : "") + '" id="hapticsToggle"><div><b>Haptics</b><span>Buzz on tap / rest / done</span></div><div class="sw"></div></div>';
   } else {
-    html += '<div class="toggle" id="hapticsToggle" style="opacity:.55;pointer-events:none"><div><b>Haptics: unsupported on Safari</b><span>Visual + SFX only</span></div><div class="sw"></div></div>';
+    html += '<div class="toggle" id="hapticsToggle" style="pointer-events:none"><div><b>Haptics: unsupported on Safari</b><span>Visual + SFX only</span></div></div>'; /* v4.72: info row, not a control: full opacity, no fake switch */
   }
   html += "</div>";
   html += healthConnectHtml();
@@ -6609,7 +6609,7 @@ function screenLog() {
   if (navigator.vibrate) {
     html += '<div class="toggle ' + (state.haptics ? "on" : "") + '" id="hapticsToggle"><div><b>Haptics</b><span>Buzz on tap / rest / done</span></div><div class="sw"></div></div>';
   } else {
-    html += '<div class="toggle" id="hapticsToggle" style="opacity:.55;pointer-events:none"><div><b>Haptics: unsupported on Safari</b><span>Visual + SFX only · vibrate API missing</span></div><div class="sw"></div></div>';
+    html += '<div class="toggle" id="hapticsToggle" style="pointer-events:none"><div><b>Haptics: unsupported on Safari</b><span>Visual + SFX only · vibrate API missing</span></div></div>'; /* v4.72: info row, not a control: full opacity, no fake switch */
   }
   html += '<div class="stack mt">';
   html += '<button class="btn gho" id="dumpLog">Export backup</button>';
@@ -6691,7 +6691,7 @@ function screenCal() {
     html += "</span></button>";
   }
   html += "</div>";
-  html += '<p class="sub mt">Tap a day to edit lifts, food, walk.</p>';
+  html += '<p class="sub mt onArt">Tap a day to edit lifts, food, walk.</p>';
   html += '<div class="stack"><button class="btn pri" data-go="backfill">Backfill notes</button></div>';
   html += nav("recovery");
   return html;
