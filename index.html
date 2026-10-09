@@ -791,7 +791,7 @@ html[data-env="day"] #pet-root .pet-badge{color:#fff} /* v4.60: Day amber is dar
 }
 .pet-panel .pet-hero .art svg{width:80px;height:80px}
 .pet-panel .pet-hero h2{margin:0 0 4px;font-size:20px}
-.pet-panel .pet-hero .stage{color:var(--neon);font-weight:700;font-size:13px}
+.pet-panel .pet-hero .stage{color:var(--neon-ink);font-weight:700;font-size:13px}
 .pet-panel .contract{
   font-size:13px;color:var(--dim);line-height:1.5;margin:0 0 14px;
   padding:12px 14px;background:rgba(184,255,46,.06);
@@ -816,6 +816,7 @@ html[data-env="day"] #pet-root .pet-badge{color:#fff} /* v4.60: Day amber is dar
 .pet-item .cost{font-family:var(--mono);font-size:13px;color:var(--amber);white-space:nowrap}
 .pet-item.owned .cost{color:var(--ok)}
 .pet-item.equipped{border-color:rgba(184,255,46,.55);background:rgba(184,255,46,.08)}
+.pet-item.equipped .meta,.btn.gho.pet-close{color:var(--dim-onart)} /* v4.74: Companion panel, 7:1 on its glass */
 .pet-item:disabled{opacity:.7;pointer-events:none;background:transparent;border:1px dashed var(--line2);color:var(--dim)} .pet-item:disabled .meta,.pet-item:disabled .cost{color:var(--dim)} /* v4.73: same disabled look as .btn:disabled (was .45 = 2.2-2.8:1) */
 .pet-close{
   margin-top:12px;
@@ -1501,7 +1502,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.73";
+const APP_VERSION = "4.74";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
