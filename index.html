@@ -1294,6 +1294,7 @@ html[data-env="day"] .btn:not(.pri):not(.ok):not(.dan):not(.gho){
 html[data-env="day"] .btn.pri{border-color:#86b814}
 html[data-env="day"] .btn:disabled,html[data-env="day"] .btn.disabled{background:transparent;border:1px dashed var(--line2);box-shadow:none;color:var(--dim)} /* v4.73: Day disabled primary drops its lime fill/edge too: one disabled look */
 html[data-env="day"] .btn.pri,html[data-env="day"] .btn.ok{box-shadow:inset 0 1px 0 rgba(255,255,255,.7),inset 0 -2px 0 rgba(0,0,0,.12),0 10px 22px -10px rgba(60,110,0,.45),0 0 0 1px rgba(40,80,0,.18)}
+html[data-env="day"] .btn.pri:disabled,html[data-env="day"] .btn.pri.disabled{box-shadow:none} /* v4.75: beats the Day .btn.pri glow (same specificity, later) */
 html[data-env="day"] .btn.dan{color:var(--danger-ink);background:rgba(168,0,47,.06);border-color:rgba(168,0,47,.35)}
 html[data-env="day"] .hero{
   background:
@@ -1502,7 +1503,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.74";
+const APP_VERSION = "4.75";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
