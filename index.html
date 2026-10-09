@@ -413,9 +413,10 @@ h2{
 }
 .daybtn .l b{display:block;font-size:16px;font-weight:700}
 .daybtn .l span{display:block;font-size:13px;color:var(--dim);margin-top:4px;line-height:1.35}
-.setbox{display:flex;gap:12px;margin-top:14px}
+.setbox{display:flex;flex-wrap:wrap;gap:12px;margin-top:14px} /* v4.68: wraps to one stepper per row below ~370px */
 .setbox>div{
-  flex:1;background:var(--panel);border:1px solid var(--line);
+  flex:1 1 165px;min-width:0; /* v4.68: was flex:1 (min-width:auto) -> Reps card overflowed 18px at 390 */
+  background:var(--panel);border:1px solid var(--line);
   border-radius:var(--radius-sm);padding:14px 10px;text-align:center;
 }
 .step{display:flex;align-items:center;justify-content:space-between;margin-top:10px;gap:8px}
@@ -1308,7 +1309,7 @@ html[data-env="day"] .hintDismiss{color:var(--neon-ink)}
 .onArt,.btn.gho.cmdInspect,.btn.gho.onArt{color:var(--dim-onart)} /* v4.67: + ghost buttons on art (Lift, Done) */
 /* v4.67: glass ghost button = the .card glass recipe as a button surface (no accent fill, no glow; quieter than .btn.pri) */
 .btn.gho.glass{
-  border-radius:var(--radius);color:var(--dim-onart); /* height unchanged: .btn.gho 48px, .big 56px */
+  border-radius:var(--radius-sm);color:var(--dim-onart); /* v4.68: radius 12 = button family; height unchanged: .btn.gho 48px, .big 56px */
   background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,0) 42%),color-mix(in srgb,var(--panel) 78%,transparent);
   border:1px solid color-mix(in srgb,var(--line2) 80%,transparent);
   -webkit-backdrop-filter:blur(18px) saturate(1.25);backdrop-filter:blur(18px) saturate(1.25);
@@ -1319,6 +1320,7 @@ html[data-env="day"] .btn.gho.glass{
   border-color:color-mix(in srgb,var(--line2) 70%,transparent);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 1px 2px rgba(16,40,50,.08),0 12px 28px -14px rgba(16,40,50,.28);
 }
+html[data-env="night"] .btn.gho.glass{box-shadow:none} /* v4.68: Night .card has no shadow either; it bled onto the primary button */
 .foodCard .foodDots{margin:12px 0 0} /* v4.67 */
 .foodCard .foodDots+.toggle{margin-top:16px} /* v4.67: the existing 16px spacing (.mt) between the header and the meals */
 html[data-env="day"] .crowdTag.on{--ok-bg:#e4f2eb;color:var(--ok-ink)} /* --ok-bg scoped here: the global Day value also feeds Week/shop pills */
@@ -1439,6 +1441,13 @@ details.bodyFold.sleepGoalFold > summary::before{display:none}
 .sleepGoalFold[open]{padding-bottom:8px}
 .sleepGoalFold .mini{min-width:44px;min-height:44px}
 .step b{color:var(--text)}
+.setbox .step{gap:4px} /* v4.68 */
+.setbox .mini{width:44px;min-width:44px} /* v4.68: 44px wide (height stays --tap 52px) so both steppers fit side by side at 390 */
+/* v4.68 narrow phones only (no effect at 390/440): remove horizontal overflow found by the all-screen check */
+#app:has(> .bootArt){overflow-x:clip} /* Boot: .hubGlow's -20% insets made the page 446px wide at 390; clip = viewport edge, so nothing visible changes */
+@media (max-width:389px){.macroRow .macroSteps{grid-template-columns:minmax(0,1fr)}} /* Fuel targets: today/target steppers stack (was 12px past the edge at 360) */
+@media (max-width:359px){.plateGrid{grid-template-columns:minmax(0,1fr)}} /* Fuel/Calday plates: one per row at 320 (was 24px past the edge) */
+@media (max-width:339px){nav.hud{padding-left:0;padding-right:0;gap:0}} /* 7 tabs x 44px = 308px; the last tab sat 2px off-screen at 320 */
 html[data-env="day"] .sleepPlot i.good{background:#5a9a00}
 html[data-env="day"] .sleepPlot i.near{background:#0a8aa3}
 html[data-env="day"] .sleepPlot i.short{background:#c47a00}
@@ -1481,7 +1490,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.67";
+const APP_VERSION = "4.68";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
