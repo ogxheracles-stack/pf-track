@@ -1466,7 +1466,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.64";
+const APP_VERSION = "4.65";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -2493,9 +2493,9 @@ function sleepCueHtml(plan) {
   return '<div class="card cue mt"><b>Short sleep · ' + hrs + 'h</b><br>Same pin, no hero. Laterals stay.</div>';
 }
 
-function heatBannerHtml(plan) {
+function heatBannerHtml(plan, onArt) {
   if (!plan || !isWorkDay(plan.d)) return "";
-  return '<p class="sub heatLine">Heat · salt · water · no incline · no quick PF</p>';
+  return '<p class="sub heatLine' + (onArt ? " onArt" : "") + '">Heat · salt · water · no incline · no quick PF</p>';
 }
 
 function fuelWindowMeta() {
@@ -6214,7 +6214,7 @@ function screenHome() {
     html += '<div class="step"><button class="mini" id="walkMinus">−</button><b>' + walkMinutes + '</b><button class="mini" id="walkPlus">+</button></div>';
     html += "</div>";
   } else {
-    html += '<p class="nextLine">Rest</p>';
+    html += '<p class="nextLine onArt">Rest</p>'; /* v4.65: on art -> --dim-onart (Day was 6.67) */
   }
 
   html += '<div class="hubMetrics quietPair">';
@@ -6239,7 +6239,7 @@ function screenHome() {
       html += '<p class="sub onArt" style="margin-top:8px">Walk on the node · ' + walk.minutes + " min</p>";
     }
     html += '<div class="toggle ' + ((walk && walk.feetCooked) || isFeetCooked() ? "on" : "") + '" id="feetCookedToggle" style="margin-top:12px"><div><b>Feet cooked</b><span>Locks Lower B calf this week</span></div><div class="sw"></div></div>';
-    html += heatBannerHtml(plan);
+    html += heatBannerHtml(plan, true); /* v4.65: on art on Command -> --dim-onart (was --muted, Night 2.5) */
   }
 
   html += '<div class="card mt"><details class="bodyFold">';
