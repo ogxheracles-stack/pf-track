@@ -105,6 +105,7 @@ html[data-env="night"]{
   --text:#ece8f4;
   --dim:#c0b4cd; /* v4.59: 7:1+ on the lightest Night glass (hero #2c233b), still quieter than --text */
   --dim-onart:#d4cae0; /* v4.62: --dim lifted (same hue) for text straight on the city art; --dim itself unchanged */
+  --neon-ink:color-mix(in srgb,var(--neon) 60%,#fff); /* v4.63: Night twin of the Day --neon-ink (active tab, "next"); follows camo --neon */
   --muted:#7a6b8c;
   --neon:#c4a0ff;
   --neon-dim:rgba(196,160,255,.2);
@@ -494,7 +495,7 @@ nav.hud button{
 }
 nav.hud button .ico{font-size:18px;opacity:.8;line-height:1}
 nav.hud button.on{color:var(--neon);background:var(--neon-dim)}
-html[data-env="night"] nav.hud button.on{color:color-mix(in srgb,var(--neon) 60%,#fff)} /* v4.59: active tab label 7:1+ */
+html[data-env="night"] nav.hud button.on{color:var(--neon-ink)} /* v4.59: active tab label 7:1+ */
 html[data-env="day"] nav.hud button.on{color:var(--neon-ink)} /* v4.60: --neon #335800 at 90% OKLCH lightness+chroma, same hue; 7:1+ on the tinted pill */
 nav.hud button.on .ico{opacity:1}
 /* v4.28 depth + glass + Command hero */
@@ -1202,6 +1203,7 @@ html.reactive-low .hubGlow,html.reactive-low .hubArt{opacity:.34}
   box-shadow:0 0 0 3px color-mix(in srgb,var(--neon) 14%,transparent),0 8px 22px -10px var(--reactive-glow);
 }
 .path .node.now small{color:var(--neon);font-weight:700}
+.path .node.now small.nextMark{color:var(--neon-ink)} /* v4.63: the "next" label on the lead node, 7:1+ on the neon tint */
 .nextLine{margin:2px 0 14px;font-size:22px;font-weight:700;color:var(--dim)}
 
 .regionLine{margin:0 0 12px;font-size:20px;line-height:1.2;font-weight:700;color:var(--text);letter-spacing:-0.02em}
@@ -1464,7 +1466,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.62";
+const APP_VERSION = "4.63";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
@@ -4890,7 +4892,7 @@ function weekPathHtml() {
     else if (walked) mark = "W";
     else if (ck != null && w.d === ck) mark = "next";
     else if (!w.key) mark = "–";
-    html += '<button type="button" class="' + cls + '" data-day="' + w.d + '"><span>' + esc(w.short) + "</span><small>" + mark + "</small></button>";
+    html += '<button type="button" class="' + cls + '" data-day="' + w.d + '"><span>' + esc(w.short) + "</span><small" + (mark === "next" ? ' class="nextMark"' : "") + ">" + mark + "</small></button>";
   });
   html += "</div>";
   html += '<p class="nextLine">' + esc(todayDoctrine()) + "</p>";
@@ -6248,7 +6250,7 @@ function screenHome() {
   html += '<div class="step"><button class="mini" id="sleepMinus">−</button><b id="sleepVal">' + (lastNightHours() != null ? lastNightHours() : "—") + '</b><button class="mini" id="sleepPlus">+</button></div>';
   html += "</details></div>";
 
-  html += '<div class="card cmdNotes"><p class="sub">2×10–15 · same pin until 15 twice · cramp = leave</p>' + installHintHtml() + '</div>';
+  html += '<div class="card mt cmdNotes"><p class="sub">2×10–15 · same pin until 15 twice · cramp = leave</p>' + installHintHtml() + '</div>';
   html += nav("home");
   return html;
 }
