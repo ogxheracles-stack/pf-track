@@ -106,7 +106,7 @@ html[data-env="night"]{
   --dim:#c0b4cd; /* v4.59: 7:1+ on the lightest Night glass (hero #2c233b), still quieter than --text */
   --dim-onart:#d4cae0; /* v4.62: --dim lifted (same hue) for text straight on the city art; --dim itself unchanged */
   --neon-ink:color-mix(in srgb,var(--neon) 60%,#fff); /* v4.63: Night twin of the Day --neon-ink (active tab, "next"); follows camo --neon */
-  --muted:#7a6b8c;
+  --muted:#9a8aad; /* v4.70: decoration-only (toggle OFF knob is its only user); OKLCH L .554 -> .66, same C/H: knob vs track 3.19 -> 4.89 */
   --neon:#c4a0ff;
   --neon-dim:rgba(196,160,255,.2);
   --cyan:#00e5ff;
@@ -1323,7 +1323,9 @@ html[data-env="day"] .btn.gho.glass{
 html[data-env="night"] .btn.gho.glass{box-shadow:none} /* v4.68: Night .card has no shadow either; it bled onto the primary button */
 .foodCard .foodDots{margin:12px 0 0} /* v4.67 */
 .foodCard .foodDots+.toggle{margin-top:16px} /* v4.67: the existing 16px spacing (.mt) between the header and the meals */
-html[data-env="day"] .crowdTag.on{--ok-bg:#e4f2eb;color:var(--ok-ink)} /* --ok-bg scoped here: the global Day value also feeds Week/shop pills */
+html[data-env="day"] .crowdTag.on,html[data-env="day"] .pill.on{--ok-bg:#e4f2eb;color:var(--ok-ink)} /* v4.70: + .pill.on (Session/Day/Shop "on" pills): solid tint + --ok-ink, was --ok on a translucent tint (5.31) */
+html[data-env="day"] .bootline:not(.dim){color:var(--ok-ink)} /* v4.70: boot lines were --ok #00603a (5.93) */
+/* (crowdTag/pill --ok-bg scoped here: the global Day value also feeds Week/shop tints) */
 html[data-env="day"] .sb b{color:var(--neon-ink)} /* header brand, matches the active tab */
 html[data-env="day"] .heroEmblem{background:radial-gradient(circle at 35% 30%,#fff,transparent 60%),rgba(120,190,0,.12);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--neon) 55%,transparent),0 6px 16px -8px rgba(16,40,50,.35)}
 html[data-env="day"] .mini:active,html[data-env="day"] .heroCheck{color:#fff}
@@ -1453,7 +1455,8 @@ html[data-env="day"] .sleepPlot i.near{background:#0a8aa3}
 html[data-env="day"] .sleepPlot i.short{background:#c47a00}
 nav.hud button{font-size:10px}
 nav.hud button:focus-visible{outline:2px solid var(--text);outline-offset:-3px} /* v4.69: inset ring, fully on-screen on the outer tabs at every width */
-@media (max-width:339px){nav.hud button{font-size:9.5px;letter-spacing:0}} /* v4.69: "Command" 47.5px > 45.7px tab at 320; 9.5px keeps 4px+ between labels */
+@media (max-width:339px){nav.hud button{font-size:9.5px;letter-spacing:0}}
+@media (max-width:339px){nav.hud button:focus-visible{outline:none}nav.hud button:focus-visible .ico{outline:2px solid var(--text);outline-offset:1px;border-radius:8px}} /* v4.70: <340 the inset ring cut through "Command"; ring the 24px icon only (30px across, clear of the label) */ /* v4.69: "Command" 47.5px > 45.7px tab at 320; 9.5px keeps 4px+ between labels */
 </style>
 </head>
 <body>
@@ -1492,7 +1495,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.69";
+const APP_VERSION = "4.70";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
