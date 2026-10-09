@@ -74,6 +74,8 @@ html[data-env="day"]{
   --ok:#00603a;
   --ok-bg:rgba(0,150,80,.1);
   --ok-ink:#004d2e; /* v4.62: --ok one step darker, for ok text on a solid --ok tint (low crowd pill) */
+  --danger-ink:#820022; /* v4.71: --hot ink for danger TEXT (same hue 18, OKLCH L .464 -> .384) */
+  --warn-ink:#462904; /* v4.71: amber ink for warning TEXT (hue 67, between --amber 64 and the cue 71) */
   --neon-ink:#2b4b00; /* v4.62: --neon one step darker for small neon text on glass (active tab, header brand, Dismiss) */
   --dim-onart:#1e3540; /* v4.62: --dim for text sitting straight on the city art (no card behind it) */
   --env-glow-a:rgba(255,200,120,.38);
@@ -105,6 +107,8 @@ html[data-env="night"]{
   --text:#ece8f4;
   --dim:#c0b4cd; /* v4.59: 7:1+ on the lightest Night glass (hero #2c233b), still quieter than --text */
   --dim-onart:#d4cae0; /* v4.62: --dim lifted (same hue) for text straight on the city art; --dim itself unchanged */
+  --danger-ink:#ff9cb6; /* v4.71: Night danger text (hue 3, OKLCH L .77 -> .80), on an opaque .btn.dan base */
+  --warn-ink:#ffb020; /* v4.71: Night warning text = the Night --amber value (already 7:1+) */
   --neon-ink:color-mix(in srgb,var(--neon) 60%,#fff); /* v4.63: Night twin of the Day --neon-ink (active tab, "next"); follows camo --neon */
   --muted:#9a8aad; /* v4.70: decoration-only (toggle OFF knob is its only user); OKLCH L .554 -> .66, same C/H: knob vs track 3.19 -> 4.89 */
   --neon:#c4a0ff;
@@ -358,7 +362,7 @@ h2{
 }
 .btn.dan{
   min-height:48px;
-  background:rgba(255,47,110,.1);color:#ff8aab;border-color:rgba(255,47,110,.35);
+  background:rgba(255,47,110,.1);color:var(--danger-ink);border-color:rgba(255,47,110,.35); /* v4.71: text -> --danger-ink */
 }
 .btn.gho{
   background:transparent;color:var(--dim);border-color:var(--line);
@@ -388,7 +392,7 @@ h2{
   border-radius:999px;color:var(--dim);white-space:nowrap;
 }
 .pill.on{background:var(--ok-bg);border-color:#2a7a52;color:var(--ok)}
-.pill.hot{background:rgba(255,176,32,.12);border-color:#5a4018;color:var(--amber)}
+.pill.hot{background:rgba(255,176,32,.12);border-color:#5a4018;color:var(--warn-ink)} /* v4.71: text -> --warn-ink */
 .pill.today{background:var(--neon-dim);border-color:#6f9a12;color:var(--neon)}
 .row{
   display:flex;justify-content:space-between;gap:12px;
@@ -1288,7 +1292,7 @@ html[data-env="day"] .btn:not(.pri):not(.ok):not(.dan):not(.gho){
 }
 html[data-env="day"] .btn.pri{border-color:#86b814}
 html[data-env="day"] .btn.pri,html[data-env="day"] .btn.ok{box-shadow:inset 0 1px 0 rgba(255,255,255,.7),inset 0 -2px 0 rgba(0,0,0,.12),0 10px 22px -10px rgba(60,110,0,.45),0 0 0 1px rgba(40,80,0,.18)}
-html[data-env="day"] .btn.dan{color:var(--hot);background:rgba(168,0,47,.06);border-color:rgba(168,0,47,.35)}
+html[data-env="day"] .btn.dan{color:var(--danger-ink);background:rgba(168,0,47,.06);border-color:rgba(168,0,47,.35)}
 html[data-env="day"] .hero{
   background:
     radial-gradient(120% 140% at 0% 0%,rgba(140,210,20,.2),transparent 55%),
@@ -1326,10 +1330,12 @@ html[data-env="night"] .btn.gho.glass{box-shadow:none} /* v4.68: Night .card has
 html[data-env="day"] .crowdTag.on,html[data-env="day"] .pill.on{--ok-bg:#e4f2eb;color:var(--ok-ink)} /* v4.70: + .pill.on (Session/Day/Shop "on" pills): solid tint + --ok-ink, was --ok on a translucent tint (5.31) */
 html[data-env="day"] .bootline:not(.dim){color:var(--ok-ink)} /* v4.70: boot lines were --ok #00603a (5.93) */
 /* (crowdTag/pill --ok-bg scoped here: the global Day value also feeds Week/shop tints) */
+html[data-env="night"] .btn.dan{background:linear-gradient(rgba(255,47,110,.1),rgba(255,47,110,.1)),var(--panel)} /* v4.71: opaque base so lit windows behind it can't drop the text below 7:1; no red fill, no glow */
+html[data-env="day"] .boottitle,html[data-env="day"] .seg button.on{color:var(--neon-ink)} /* v4.71: --neon text -> --neon-ink (Boot title 6.42, More "Day" 6.97) */
 html[data-env="day"] .sb b{color:var(--neon-ink)} /* header brand, matches the active tab */
 html[data-env="day"] .heroEmblem{background:radial-gradient(circle at 35% 30%,#fff,transparent 60%),rgba(120,190,0,.12);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--neon) 55%,transparent),0 6px 16px -8px rgba(16,40,50,.35)}
 html[data-env="day"] .mini:active,html[data-env="day"] .heroCheck{color:#fff}
-html[data-env="day"] .cue{background:rgba(255,176,32,.14);border-color:rgba(160,100,0,.35);color:#5e3a00}
+html[data-env="day"] .cue{background:rgba(255,176,32,.14);border-color:rgba(160,100,0,.35);color:var(--warn-ink)} /* v4.71: was #5e3a00 */
 html[data-env="day"] .cue b{color:#4a2c00}
 html[data-env="day"] .heat{background:rgba(168,0,47,.07);border-color:rgba(168,0,47,.3);color:var(--hot)}
 html[data-env="day"] .heat b{color:#7a0022}
@@ -1454,9 +1460,8 @@ html[data-env="day"] .sleepPlot i.good{background:#5a9a00}
 html[data-env="day"] .sleepPlot i.near{background:#0a8aa3}
 html[data-env="day"] .sleepPlot i.short{background:#c47a00}
 nav.hud button{font-size:10px}
-nav.hud button:focus-visible{outline:2px solid var(--text);outline-offset:-3px} /* v4.69: inset ring, fully on-screen on the outer tabs at every width */
 @media (max-width:339px){nav.hud button{font-size:9.5px;letter-spacing:0}}
-@media (max-width:339px){nav.hud button:focus-visible{outline:none}nav.hud button:focus-visible .ico{outline:2px solid var(--text);outline-offset:1px;border-radius:8px}} /* v4.70: <340 the inset ring cut through "Command"; ring the 24px icon only (30px across, clear of the label) */ /* v4.69: "Command" 47.5px > 45.7px tab at 320; 9.5px keeps 4px+ between labels */
+nav.hud button:focus-visible{outline:none}nav.hud button:focus-visible .ico{outline:2px solid var(--text);outline-offset:1px;border-radius:8px} /* v4.71: icon-only ring at every width (v4.70: <340 only); 30px across, clear of the label */ /* v4.69: "Command" 47.5px > 45.7px tab at 320; 9.5px keeps 4px+ between labels */
 </style>
 </head>
 <body>
@@ -1495,7 +1500,7 @@ var PF_ASOF = (function() {
 
 const STORAGE_KEY = PF_ASOF ? "pftrack_test" : "pftrack_v3";
 const LIVE_KEY = PF_ASOF ? "pftrack_test_live" : "pftrack_live";
-const APP_VERSION = "4.70";
+const APP_VERSION = "4.71";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
