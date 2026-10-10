@@ -3769,7 +3769,7 @@ function isWorkDay(d) {
 }
 
 function toast(msg, opts) {
-  if (typeof quickUndo !== "undefined" && quickUndo && !(opts && opts.top)) return; /* v4.78: the Undo bar already says what was saved */
+  if (((typeof quickUndo !== "undefined" && quickUndo) || (typeof plateUndo !== "undefined" && plateUndo)) && !(opts && opts.top)) return; /* v4.78: the Undo bar already says what was saved */
   toastMsg = msg;
   if (toastTimer) clearTimeout(toastTimer);
   toastTimer = setTimeout(function() {
@@ -5586,6 +5586,7 @@ document.addEventListener("click", function(e) {
 
 function showPlateUndo() {
   if (!plateUndo) return;
+  { const t = document.getElementById("toastEl"); if (t) t.remove(); toastMsg = ""; } /* v4.82: the toast sat on top of this Undo */
   let el = document.getElementById("plateUndoGhost");
   if (!el) {
     el = document.createElement("div");
