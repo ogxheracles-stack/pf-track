@@ -1466,9 +1466,9 @@ nav.hud button{font-size:10px}
 @media (max-width:339px){nav.hud button{font-size:9.5px;letter-spacing:0}}
 nav.hud button:focus-visible{outline:none}nav.hud button:focus-visible .ico{outline:2px solid var(--text);outline-offset:1px;border-radius:8px} /* v4.71: icon-only ring at every width (v4.70: <340 only); 30px across, clear of the label */ /* v4.69: "Command" 47.5px > 45.7px tab at 320; 9.5px keeps 4px+ between labels */
 
-/* v4.76 daily verse ticker: 32px band, 44px hit box, sits ON TOP of nav.hud (never over its tap area), quiet --dim ink on solid --bg */
-#verseTicker{pointer-events:none;position:fixed;left:50%;transform:translateX(-50%);width:100%;max-width:440px;bottom:var(--vt-bottom,calc(71px + env(safe-area-inset-bottom,0px)));z-index:44;height:44px;display:flex;align-items:flex-end;margin:0;padding:0;border:0;background:transparent;cursor:pointer;font:inherit;text-align:left;-webkit-tap-highlight-color:transparent}
-#verseTicker .vtBand{pointer-events:auto;display:flex;align-items:center;gap:8px;width:100%;height:32px;box-sizing:border-box;padding:0 14px;background:var(--bg);border-top:1px solid var(--line);overflow:hidden}
+/* v4.80: solid 44px band = the whole tap target (no clear strip), 12px text centred. v4.76 daily verse ticker: sits ON TOP of nav.hud (never over its tap area), quiet --dim ink on solid --bg */
+#verseTicker{position:fixed;left:50%;transform:translateX(-50%);width:100%;max-width:440px;bottom:var(--vt-bottom,calc(71px + env(safe-area-inset-bottom,0px)));z-index:44;height:44px;display:flex;align-items:stretch;margin:0;padding:0;border:0;background:transparent;cursor:pointer;font:inherit;text-align:left;-webkit-tap-highlight-color:transparent}
+#verseTicker .vtBand{display:flex;align-items:center;gap:8px;width:100%;height:44px;box-sizing:border-box;padding:0 14px;background:var(--bg);border-top:1px solid var(--line);overflow:hidden}
 #verseTicker .vtRef{flex:none;font:600 11px/1 var(--font);color:var(--dim);letter-spacing:.02em}
 #verseTicker .vtWin{flex:1;min-width:0;overflow:hidden;white-space:nowrap}
 #verseTicker .vtText{display:block;font:500 12px/30px var(--font);color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1539,7 +1539,7 @@ function verseForISO(iso) {
   return {theme: theme, ref: v[0], text: v[1]};
 }
 function verseOn() { return !state || state.verseTicker !== false; }
-const APP_VERSION = "4.79";
+const APP_VERSION = "4.80";
 const LIVE_TTL_MS = 10 * 60 * 60 * 1000;
 const CIRC = 2 * Math.PI * 52;
 const COMPOUND = {press:1, lat:1, row:1, lpress:1, chest:1};
