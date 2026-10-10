@@ -7,5 +7,6 @@
     "contentInset": "never",
     "limitsNavigationsToAppBoundDomains": false
   },
-  "plugins": {}
+  "plugins": {},
+  "_telemetry": "Capacitor 8.5.3 has no config key for CLI telemetry (it lives in the user's CLI sysconfig). package.json postinstall runs `cap telemetry off`, and scripts run the CLI with CI=1 (non-interactive = no metrics)."
 }

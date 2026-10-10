@@ -2,9 +2,9 @@ import Foundation
 import HealthKit
 
 /// HealthKit facade for PF//TRACK (iOS 17+, async/await). On-device only.
-/// Reads: workouts, sleep, body mass, dietary water, active energy (+ HR / resting HR / HRV / steps for Recovery).
-/// Writes: workouts, sleep, body mass, dietary water, active energy. Every write is refused unless the web UI
-/// passes `optIn: true` (set by an explicit toggle in More), and HealthKit's own per-type sharing still applies.
+/// Reads (asked per feature, starting with steps + active energy): workouts, sleep, body mass, water, energy.
+/// Writes: workouts, sleep, body mass, dietary water, active energy, only after the native opt-in alert
+/// (HealthConsent, app-only UserDefaults). Nothing from the web page can enable writes.
 final class HealthBridge {
     static let shared = HealthBridge()
     private let store = HKHealthStore()
@@ -15,42 +15,43 @@ final class HealthBridge {
     private let energy = HKQuantityType(.activeEnergyBurned)
     private let sleep = HKCategoryType(.sleepAnalysis)
 
-    private var readTypes: Set<HKObjectType> {
-        [HKObjectType.workoutType(), sleep, bodyMass, water, energy,
-         HKQuantityType(.heartRate), HKQuantityType(.restingHeartRate),
-         HKQuantityType(.heartRateVariabilitySDNN), HKQuantityType(.stepCount)]
+    /// Read scopes, asked only when a feature needs them. Recovery (the first feature) = steps + active energy.
+    enum ReadScope { case recovery, sleep, workouts, body
+        var types: Set<HKObjectType> {
+            switch self {
+            case .recovery: [HKQuantityType(.stepCount), HKQuantityType(.activeEnergyBurned)]
+            case .sleep: [HKCategoryType(.sleepAnalysis)]
+            case .workouts: [HKObjectType.workoutType()]
+            case .body: [HKQuantityType(.bodyMass), HKQuantityType(.dietaryWater)]
+            }
+        }
     }
     private var shareTypes: Set<HKSampleType> { [HKObjectType.workoutType(), sleep, bodyMass, water, energy] }
 
-    func requestAuthorization() async throws {
+    /// Read-only request; never asks for write (share) access.
+    func requestRead(_ scope: ReadScope) async throws {
         guard isAvailable else { throw BridgeError.unavailable }
-        try await store.requestAuthorization(toShare: shareTypes, read: readTypes)
+        try await store.requestAuthorization(toShare: [], read: scope.types)
+    }
+
+    /// Only called after the native opt-in alert said yes (HealthConsent).
+    func requestWriteAuthorization() async throws {
+        guard isAvailable else { throw BridgeError.unavailable }
+        guard HealthConsent.writesAllowed else { throw BridgeError.notOptedIn }
+        try await store.requestAuthorization(toShare: shareTypes, read: [])
     }
 
     // MARK: Reads
 
     func summary() async -> [String: Any] {
         guard isAvailable else { return ["ok": false, "error": "unavailable"] }
-        let bpm = HKUnit.count().unitDivided(by: .minute())
-        async let hr = latest(.heartRate, bpm)
-        async let rhr = latest(.restingHeartRate, bpm)
-        async let hrv = latest(.heartRateVariabilitySDNN, .secondUnit(with: .milli))
-        async let mass = latest(.bodyMass, .pound())
+        // Recovery scope only (steps + active energy). Sleep / workouts / body readers below are used once those
+        // features request their own scope via requestRead(_:).
         async let steps = todaySum(.stepCount, .count())
         async let kcal = todaySum(.activeEnergyBurned, .kilocalorie())
-        async let oz = todaySum(.dietaryWater, .fluidOunceUS())
-        async let sleepH = lastNightSleepHours()
-        async let workouts = recentWorkouts(days: 7)
         var out: [String: Any] = ["ok": true]
-        if let v = await hr { out["heartRate"] = Int(v.rounded()) }
-        if let v = await rhr { out["restingHR"] = Int(v.rounded()) }
-        if let v = await hrv { out["hrv"] = Int(v.rounded()) }
-        if let v = await mass { out["bodyMassLb"] = (v * 10).rounded() / 10 }
         if let v = await steps { out["steps"] = Int(v) }
         if let v = await kcal { out["activeEnergy"] = Int(v.rounded()) }
-        if let v = await oz { out["waterOz"] = Int(v.rounded()) }
-        if let v = await sleepH { out["sleepHours"] = (v * 100).rounded() / 100 }
-        out["workouts"] = await workouts
         return out
     }
 
@@ -136,7 +137,7 @@ final class HealthBridge {
             switch self {
             case .unavailable: "Health data unavailable on this device"
             case .invalid(let what): "invalid \(what)"
-            case .notOptedIn: "Health writes are off. Turn them on in More first."
+            case .notOptedIn: "Health writes are off. Allow them in the app's own prompt first."
             }
         }
     }

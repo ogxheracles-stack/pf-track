@@ -1,5 +1,6 @@
 import Foundation
 import WebKit
+import UIKit
 
 /// WKScriptMessageHandler for the `pfHealth` channel.
 /// JS → native: `{ action, id, payload? }`
@@ -59,10 +60,11 @@ final class WebBridge: NSObject, WKScriptMessageHandler {
             post: post,
             requestAuth: function() { return post('health.requestAuth', {}); },
             getSummary: function() { return post('health.getSummary', {}); },
-            writeWeight: function(lb, iso) { return post('health.writeWeight', { lb: lb, date: iso || null, optIn: true }); },
-            writeWater: function(oz, iso) { return post('health.writeWater', { oz: oz, date: iso || null, optIn: true }); },
-            writeSleep: function(bed, wake) { return post('health.writeSleep', { bed: bed, wake: wake, optIn: true }); },
-            writeWorkout: function(start, end, kcal) { return post('health.writeWorkout', { start: start, end: end, kcal: kcal || null, optIn: true }); }
+            writeWeight: function(lb, iso) { return post('health.writeWeight', { lb: lb, date: iso || null }); },
+            writeWater: function(oz, iso) { return post('health.writeWater', { oz: oz, date: iso || null }); },
+            writeSleep: function(bed, wake) { return post('health.writeSleep', { bed: bed, wake: wake }); },
+            writeWorkout: function(start, end, kcal) { return post('health.writeWorkout', { start: start, end: end, kcal: kcal || null }); },
+            requestWriteOptIn: function() { return post('health.requestWriteOptIn', {}); }
           };
         })();
         """
@@ -85,13 +87,21 @@ final class WebBridge: NSObject, WKScriptMessageHandler {
         }
     }
 
-    /// Writes need `optIn: true` from the page (More toggle). Reads need nothing beyond HealthKit auth.
+    /// Writes are gated NATIVELY: `HealthConsent.writesAllowed` lives in the app's own UserDefaults (the web page
+    /// cannot read or set it) and is only set by the native UIAlert in `requestWriteOptIn`. Any web-side flag is ignored.
+    /// Reads ask HealthKit only for what a feature needs, starting with steps + active energy.
+    weak var presenter: UIViewController?
+
     private func handle(_ action: String, _ p: [String: Any]) async throws -> [String: Any] {
-        let isWrite = action.hasPrefix("health.write")
-        if isWrite && (p["optIn"] as? Bool) != true { throw HealthBridge.BridgeError.notOptedIn }
+        if action.hasPrefix("health.write") && !HealthConsent.writesAllowed { throw HealthBridge.BridgeError.notOptedIn }
         switch action {
         case "health.requestAuth":
-            try await health.requestAuthorization(); return ["ok": true]
+            try await health.requestRead(.recovery); return ["ok": true]
+        case "health.requestWriteOptIn":
+            guard let vc = presenter else { return ["ok": false, "error": "no presenter"] }
+            let allowed = await HealthConsent.askNatively(from: vc)
+            if allowed { try await health.requestWriteAuthorization() }
+            return ["ok": allowed]
         case "health.getSummary":
             return await health.summary()
         case "health.writeWeight":

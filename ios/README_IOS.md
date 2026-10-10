@@ -2,7 +2,10 @@
 
 Scaffold only: written on Linux and not compiled here. Swift targets iOS 17+ (async HealthKit descriptors,
 `HKWorkoutBuilder`, `containerBackground`). Build and review it on a Mac before any real health data touches it.
-Privacy rules: on-device only, no cloud, no Face ID, Health **writes off** until the user turns them on in More.
+Privacy rules: on-device only, no cloud, no Face ID. Health **writes are gated natively**: only a native
+`UIAlertController` (HealthConsent.swift) can turn them on, the answer lives in the app's own UserDefaults, and any
+web-side flag is ignored. Reads are asked per feature, starting with steps + active energy; no write permission is
+requested before that opt-in.
 Storage key `pftrack_v3` is never touched by native code; the native side only sees what the page posts.
 
 There are two ways to ship the same `index.html`. Pick one:
@@ -21,12 +24,13 @@ ios/
   project.yml                     # XcodeGen: PFTrack app + PFTrackWidget extension (build A)
   Shared/SharedStore.swift        # App Group (group.pftrack.shared) snapshot read/write, both targets
   PFTrack/
-    Info.plist                    # Health usage strings, pftrack:// URL scheme, UILaunchScreen
+    Info.plist                    # Health usage strings, pftrack:// URL scheme, UILaunchScreen, arm64
     PFTrack.entitlements          # HealthKit + App Group
     AppDelegate.swift  SceneDelegate.swift
     ViewController.swift          # WKWebView host; registers pfHealth + pfWidget handlers
-    WebBridge.swift               # WKScriptMessageHandler: health.* actions, writes need optIn
-    HealthBridge.swift            # HealthKit: read/write workouts, sleep, body mass, water, energy
+    WebBridge.swift               # WKScriptMessageHandler: health.* actions; writes need the native HealthConsent
+    HealthBridge.swift            # HealthKit: read/write workouts, sleep, body mass, water, energy (scoped reads)
+    HealthConsent.swift           # native-only write opt-in (UIAlert + app UserDefaults)
     WidgetBridge.swift            # page JSON -> App Group -> WidgetCenter reload (throttled 2 s)
   PFTrackWidget/
     PFTrackWidget.swift           # small + medium: plan, streak, verse; refresh after midnight
@@ -51,16 +55,19 @@ ios/
 
 | Action | Payload | Result |
 |---|---|---|
-| `health.requestAuth` | `{}` | `{ok}` |
-| `health.getSummary` | `{}` | `{ok, heartRate, restingHR, hrv, sleepHours, steps, activeEnergy, waterOz, bodyMassLb, workouts[]}` |
-| `health.writeWeight` | `{lb, date:"yyyy-MM-dd", optIn:true}` | `{ok}` |
-| `health.writeWater` | `{oz, date, optIn:true}` | `{ok}` |
-| `health.writeEnergy` | `{kcal, start:ms, end:ms, optIn:true}` | `{ok}` |
-| `health.writeSleep` | `{bed:ms, wake:ms, optIn:true}` | `{ok}` |
-| `health.writeWorkout` | `{start:ms, end:ms, kcal?, optIn:true}` | `{ok}` (traditional strength training) |
+| `health.requestAuth` | `{}` | `{ok}` (read: steps + active energy only) |
+| `health.requestWriteOptIn` | `{}` | `{ok}` (native Allow prompt, then write authorization) |
+| `health.getSummary` | `{}` | `{ok, steps, activeEnergy}` |
+| `health.writeWeight` | `{lb, date:"yyyy-MM-dd"}` | `{ok}` |
+| `health.writeWater` | `{oz, date}` | `{ok}` |
+| `health.writeEnergy` | `{kcal, start:ms, end:ms}` | `{ok}` |
+| `health.writeSleep` | `{bed:ms, wake:ms}` | `{ok}` |
+| `health.writeWorkout` | `{start:ms, end:ms, kcal?}` | `{ok}` (traditional strength training) |
 
-Any `health.write*` without `optIn:true` is refused natively (`notOptedIn`). The page only sends weight today,
-and only when More → "Write weight to Apple Health" is on.
+Any `health.write*` is refused natively (`notOptedIn`) until `health.requestWriteOptIn` has shown the native
+prompt and the user tapped Allow. Turning on More → "Write weight to Apple Health" calls that action; the page
+cannot set the consent itself. Note: build A loads the live Pages URL, so that remote page can call the bridge;
+the native consent is what keeps writes safe.
 
 ## Build A — plain WKWebView with XcodeGen
 
@@ -76,7 +83,7 @@ and only when More → "Write weight to Apple Health" is on.
 ```sh
 cd ios/cap
 npm ci || npm install --save-exact      # versions are exact in package.json; never @latest, never npx -y
-npx cap telemetry off                   # do this first
+                                        # postinstall already ran `cap telemetry off`
 npm run web                             # copies ../../index.html to www/
 npx cap add ios                         # generates ios/cap/App (SPM)
 npx cap sync ios

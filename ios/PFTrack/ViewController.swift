@@ -45,6 +45,7 @@ final class ViewController: UIViewController, WKNavigationDelegate {
         ])
 
         bridge.webView = webView
+        bridge.presenter = self
         loadApp()
     }
 

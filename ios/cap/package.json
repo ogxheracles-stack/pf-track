@@ -2,11 +2,12 @@
   "name": "pftrack-ios-cap",
   "private": true,
   "version": "4.76.0",
-  "description": "Capacitor shell for PF//TRACK. Exact pins only; never @latest.",
+  "description": "Capacitor shell for PF//TRACK. Exact pins only; never @latest. Telemetry is switched off automatically on install (postinstall) and CI=1 keeps the CLI non-interactive (no metrics).",
   "scripts": {
+    "postinstall": "cap telemetry off",
     "web": "mkdir -p www && cp ../../index.html www/index.html",
-    "sync": "npm run web && npx cap sync ios",
-    "telemetry-off": "npx cap telemetry off"
+    "sync": "npm run web && CI=1 cap sync ios",
+    "open": "CI=1 cap open ios"
   },
   "dependencies": {
     "@capacitor/core": "8.5.3",
