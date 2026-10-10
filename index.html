@@ -3813,7 +3813,7 @@ function diffPaths(a, b, path, out) {
   if (JSON.stringify(a) !== JSON.stringify(b)) out.push({p: path, had: true, v: a});
   return out;
 }
-function makePatch(json) { if (!json) return null; try { return diffPaths(JSON.parse(json), JSON.parse(JSON.stringify(state)), [], []); } catch (e) { return null; } }
+function makePatch(json, post) { if (!json) return null; try { return diffPaths(JSON.parse(json), JSON.parse(post || JSON.stringify(state)), [], []); } catch (e) { return null; } }
 function applyPatch(patch) {
   if (!patch) return false;
   patch.forEach(function(d) {
@@ -3830,7 +3830,7 @@ function finalizePatches() {
   if (plateUndo && plateUndo.full && !plateUndo.patch) plateUndo.patch = makePatch(plateUndo.full);
   if (undoSnapshot && undoSnapshot.full && !undoSnapshot.patch) undoSnapshot.patch = makePatch(undoSnapshot.full);
 }
-function undoPatchOf(u) { if (!u) return null; if (!u.patch && u.full) u.patch = makePatch(u.full); return u.patch; }
+function undoPatchOf(u) { if (!u) return null; if (!u.patch && u.full) u.patch = makePatch(u.full, u.post); return u.patch; } /* post = state right after the action, taken when the Undo was armed */
 function restoreState(json) {
   if (!json) return false;
   const o = JSON.parse(json);
@@ -3839,7 +3839,7 @@ function restoreState(json) {
   return true;
 }
 function armQuickUndo(label, revert) {
-  quickUndo = {label: label, revert: revert, view: view, full: preGestureState};
+  quickUndo = {label: label, revert: revert, view: view, full: preGestureState, post: JSON.stringify(state)};
   showQuickUndo(); /* v4.79: no timeout (WCAG 2.2.1). Stays until the next action or a screen change */
 }
 function clearQuickUndo() {
@@ -3871,6 +3871,7 @@ function clearUndo() {
 }
 
 function showUndoGhost() {
+  if (undoSnapshot && undoSnapshot.full && !undoSnapshot.post) undoSnapshot.post = JSON.stringify(state); /* v4.82: state right after the set */
   let el = document.getElementById("undoGhost");
   if (!el) {
     el = document.createElement("div");
@@ -5567,7 +5568,7 @@ function logAgainPlate(iso) {
 }
 
 function armPlateUndo(iso, count) {
-  plateUndo = {iso: iso, count: Math.max(1, count || 1), full: preGestureState};
+  plateUndo = {iso: iso, count: Math.max(1, count || 1), full: preGestureState, post: JSON.stringify(state)};
   if (plateUndoTimer) clearTimeout(plateUndoTimer);
   plateUndoTimer = null; /* v4.79: no timeout */
 }
