@@ -1,4 +1,5 @@
 import UIKit
+import WebKit
 import UIKit.UIGestureRecognizerSubclass
 
 /// Native-only consent for Apple Health WRITES. Stored in the app's standard UserDefaults, which WKWebView content
@@ -47,8 +48,21 @@ enum HealthConsent {
 /// Time of the last real touch on the web view, recorded natively (a page script cannot fake it).
 enum UserGesture {
     private(set) static var last: Date = .distantPast
-    static func mark() { last = Date() }
-    static var isRecent: Bool { Date().timeIntervalSince(last) < 2 }
+    private(set) static var point: CGPoint = .zero      // in web view coordinates (= CSS px of the viewport)
+    static func mark(_ p: CGPoint) { last = Date(); point = p }
+    static var isRecent: Bool { Date().timeIntervalSince(last) < 1.5 }
+
+    /// True only if the last native touch was < 1.5 s ago AND the element under that native point is the opt-in
+    /// control (marked data-pf-health-optin). Consumes the touch so one tap can open the prompt once.
+    @MainActor
+    static func lastTouchHitOptIn(in webView: WKWebView?) async -> Bool {
+        guard isRecent, let wv = webView else { return false }
+        let x = Double(point.x), y = Double(point.y)
+        last = .distantPast
+        let js = "(function(x,y){var e=document.elementFromPoint(x,y);return !!(e&&e.closest('[data-pf-health-optin]'));})(\(x),\(y))"
+        let hit = try? await wv.evaluateJavaScript(js)
+        return (hit as? Bool) == true
+    }
 }
 
 /// Watches touches on the web view without stealing them.
@@ -57,7 +71,10 @@ final class TouchWatcher: UIGestureRecognizer, UIGestureRecognizerDelegate {
         super.init(target: target, action: action)
         cancelsTouchesInView = false; delaysTouchesBegan = false; delaysTouchesEnded = false; delegate = self
     }
-    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent) { UserGesture.mark(); state = .failed }
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent) {
+        if let t = touches.first, let v = view { UserGesture.mark(t.location(in: v)) }
+        state = .failed
+    }
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) { }
     func gestureRecognizer(_ g: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { true }
 }

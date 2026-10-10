@@ -10,7 +10,8 @@ requested before that opt-in.
 **Stopping writes:** iOS Settings > PF//TRACK > "Write to Apple Health" (Settings.bundle) can only switch writes
 off; the app revokes on the next foreground and puts the switch back to off if someone turns it on without the native
 Allow. The More toggle off also revokes. The Allow prompt never shows on page load: the native `TouchWatcher` records
-real touches and `requestWriteOptIn` is refused unless one happened in the last 2 seconds.
+real touches (time + point), and `requestWriteOptIn` is refused unless the last native touch was under 1.5 s ago
+and landed on the opt-in switch itself (`data-pf-health-optin`, checked at the native point). One tap = one prompt.
 Storage key `pftrack_v3` is never touched by native code; the native side only sees what the page posts.
 
 There are two ways to ship the same `index.html`. Pick one:
@@ -62,7 +63,7 @@ ios/
 | Action | Payload | Result |
 |---|---|---|
 | `health.requestAuth` | `{}` | `{ok}` (read: steps + active energy only) |
-| `health.requestWriteOptIn` | `{}` | `{ok}` (native Allow prompt, only within 2 s of a real touch on the app; then write authorization) |
+| `health.requestWriteOptIn` | `{}` | `{ok}` (native Allow prompt, only after a native-recorded touch on the opt-in switch itself; then write authorization) |
 | `health.revokeWrites` | `{}` | `{ok}` (always allowed; the web toggle off calls it) |
 | `health.getSummary` | `{}` | `{ok, steps, activeEnergy}` |
 | `health.writeWeight` | `{lb, date:"yyyy-MM-dd"}` | `{ok}` |

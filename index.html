@@ -6815,7 +6815,7 @@ function screenFuel() {
   html += '<div class="stack" style="margin-top:10px"><input type="number" id="bwInput" inputmode="decimal" enterkeyhint="done" placeholder="Weight today (lb)" min="100" max="500" step="0.1" value="' + (bwPrefill() ? bwPrefill().lb : "") + '"/>' + (bwPrefill() ? '<span class="fromLast" id="bwHint">from last weigh-in · ' + esc(shortDate(bwPrefill().date)) + "</span>" : "");
   html += '<button class="btn pri" id="bwSave">Log Scale</button></div>';
   if (hasHealthBridge()) {
-    html += '<div class="toggle ' + (state.healthWriteWeight ? "on" : "") + '" id="healthWriteWeightToggle" style="margin-top:12px"><div><b>Write weight to Apple Health</b><span>Only when you log scale · on-device</span></div><div class="sw"></div></div>';
+    html += '<div class="toggle ' + (state.healthWriteWeight ? "on" : "") + '" id="healthWriteWeightToggle" data-pf-health-optin="1" style="margin-top:12px"><div><b>Write weight to Apple Health</b><span>Only when you log scale · on-device</span></div><div class="sw"></div></div>';
   } else {
     html += '<p class="sub" style="margin:10px 0 0">Apple Health write · requires PF//TRACK iOS app</p>';
   }
@@ -7088,7 +7088,7 @@ function screenCalDay() {
     html += '<div class="stack" style="margin-top:10px"><input type="number" id="bwInput" placeholder="Weight (lb)" min="100" max="500" step="0.1"/>';
     html += '<button class="btn pri" id="bwSave" data-bw-iso="' + iso + '">Save scale</button></div>';
     if (hasHealthBridge()) {
-      html += '<div class="toggle ' + (state.healthWriteWeight ? "on" : "") + '" id="healthWriteWeightToggle" style="margin-top:12px"><div><b>Write weight to Apple Health</b><span>On-device when you save</span></div><div class="sw"></div></div>';
+      html += '<div class="toggle ' + (state.healthWriteWeight ? "on" : "") + '" id="healthWriteWeightToggle" data-pf-health-optin="1" style="margin-top:12px"><div><b>Write weight to Apple Health</b><span>On-device when you save</span></div><div class="sw"></div></div>';
     }
   }
   html += "</div>";

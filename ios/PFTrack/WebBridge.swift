@@ -103,8 +103,9 @@ final class WebBridge: NSObject, WKScriptMessageHandler {
             HealthConsent.revoke(); return ["ok": true]
         case "health.requestWriteOptIn":
             guard let vc = presenter else { return ["ok": false, "error": "no presenter"] }
-            // The native prompt only follows a real touch in the app (UserGesture), never page load or a script on its own.
-            guard UserGesture.isRecent else { return ["ok": false, "error": "needs a tap"] }
+            // v4.82: the prompt only follows a NATIVE-recorded touch that landed on the opt-in control itself.
+            // The point comes from TouchWatcher (native), not from the page, so a script cannot choose where "the tap" was.
+            guard await UserGesture.lastTouchHitOptIn(in: webView) else { return ["ok": false, "error": "tap the Health switch"] }
             let allowed = await HealthConsent.askNatively(from: vc)
             if allowed { try await health.requestWriteAuthorization() }
             return ["ok": allowed]
