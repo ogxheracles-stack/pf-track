@@ -2102,6 +2102,23 @@ function defaultMacrosFromLbm() {
   };
 }
 
+/* v4.82: render-time READ-ONLY views. Screens must never change state while drawing, so they read through these:
+   an existing entry is returned as-is (or a normalised copy), a missing one is a local default that is NOT stored.
+   Only real actions (water, plates, toggles) call the ensure* writers. Checked by harness/render-pure.mjs. */
+function peekFoodFor(iso) {
+  const e = (state.foodHistory || []).find(function(f) { return f.date === iso; });
+  if (!e) return {date: iso, work: false, home: false, after: false, rice: false, items: [], waterOz: 0};
+  if (Array.isArray(e.items) && e.waterOz != null && !isNaN(Number(e.waterOz))) return e;
+  return Object.assign({}, e, {items: Array.isArray(e.items) ? e.items : [], waterOz: Number(e.waterOz) || 0});
+}
+function peekMacros() {
+  const base = defaultMacrosFromLbm(), m = state.macros && typeof state.macros === "object" ? state.macros : null;
+  if (!m) return Object.assign({}, base, {date: todayISO()});
+  const out = Object.assign({}, m);
+  ["calTarget","proteinTarget","carbsTarget","fatTarget","cal","protein","carbs","fat"].forEach(function(k) { out[k] = (m[k] == null || isNaN(Number(m[k]))) ? base[k] : Number(m[k]); });
+  if (typeof out.date !== "string" || !out.date) out.date = todayISO();
+  return out;
+}
 function ensureMacros() {
   const base = defaultMacrosFromLbm();
   if (!state.macros || typeof state.macros !== "object") {
@@ -4858,14 +4875,14 @@ function dayMacrosFor(iso) {
 }
 
 function weekNutritionHtml() {
-  const m = ensureMacros();
+  const m = peekMacros();
   let calSum = 0, proHits = 0, water = 0, locks = 0, withFood = 0;
   for (let i = 0; i < 7; i++) {
     const d = new Date();
     d.setDate(d.getDate() - i);
     const iso = isoFromDate(d);
     const dm = dayMacrosFor(iso);
-    const f = (iso === todayISO()) ? ensureFood() : foodForISO(iso);
+    const f = (iso === todayISO()) ? peekFoodFor(iso) : foodForISO(iso);
     calSum += Number(dm.cal) || 0;
     if ((Number(dm.protein) || 0) >= m.proteinTarget) proHits++;
     if ((Number(dm.cal) || 0) > 0 || (f && f.items && f.items.length)) withFood++;
@@ -4888,7 +4905,7 @@ function weekNutritionHtml() {
 
 function diaryBlockHtml(iso) {
   const future = isFutureISO(iso);
-  const entry = future ? (foodForISO(iso) || {items: [], waterOz: 0}) : ensureFoodFor(iso);
+  const entry = future ? (foodForISO(iso) || {items: [], waterOz: 0}) : peekFoodFor(iso);
   const items = entry.items || [];
   let html = '<div class="card mt"><div class="lbl">Diary</div>';
   if (!items.length) html += '<p class="sub" style="margin:8px 0 0">Nothing added.</p>';
@@ -4911,7 +4928,7 @@ function diaryBlockHtml(iso) {
 
 function waterBlockHtml(iso) {
   const future = isFutureISO(iso);
-  const entry = future ? (foodForISO(iso) || {}) : ensureFoodFor(iso);
+  const entry = future ? (foodForISO(iso) || {}) : peekFoodFor(iso);
   const oz = Number(entry.waterOz) || 0;
   let html = '<div class="card mt"><div class="lbl">Water</div>';
   html += '<div class="stat" style="font-size:28px;margin:6px 0">' + oz + "<small> oz</small></div>";
@@ -5241,7 +5258,7 @@ function macroPctLine() {
 }
 
 function macroBarsHtml() {
-  const m = ensureMacros();
+  const m = peekMacros();
   const rows = [
     ["Protein", m.protein, m.proteinTarget],
     ["Calories", m.cal, m.calTarget],
@@ -5337,7 +5354,7 @@ function trainHeatHtml() {
 }
 
 function dayFoodHasEntries(iso) {
-  const f = (iso === todayISO()) ? ensureFood() : foodForISO(iso);
+  const f = foodForISO(iso) /* v4.82 read-only */;
   return !!(f && f.items && f.items.length);
 }
 
@@ -5348,14 +5365,14 @@ function weekHasFoodData() {
     const iso = isoFromDate(d);
     const dm = dayMacrosFor(iso);
     if ((Number(dm.cal) || 0) > 0 || (Number(dm.protein) || 0) > 0) return true;
-    const f = (iso === todayISO()) ? ensureFood() : foodForISO(iso);
+    const f = foodForISO(iso) /* v4.82 read-only */;
     if (f && ((f.items && f.items.length) || Number(f.waterOz) > 0)) return true;
   }
   return false;
 }
 
 function proteinWeekBarsHtml() {
-  const m = ensureMacros();
+  const m = peekMacros();
   const tgt = Math.max(1, Number(m.proteinTarget) || 1);
   const names = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
   let html = '<div class="card mt"><div class="lbl">Protein vs goal</div><div class="pweek">';
@@ -5495,7 +5512,7 @@ function deleteMealTemplate(id) {
 }
 
 function againPlate(iso) {
-  const entry = iso === todayISO() ? ensureFood() : foodForISO(iso);
+  const entry = foodForISO(iso) /* v4.82 read-only (called while rendering Fuel) */;
   const items = entry && entry.items;
   if (!items || !items.length) return null;
   const last = items[items.length - 1];
@@ -5694,7 +5711,7 @@ function lastWeekReviewHtml() {
     const dt = parseLocalDate(w.date);
     if (dt >= start && dt < end) walks++;
   });
-  const m = ensureMacros();
+  const m = peekMacros();
   let proteinDays = 0;
   for (let i = 0; i < 7; i++) {
     const d = new Date(start);
@@ -6737,12 +6754,12 @@ function screenDone() {
 }
 
 function screenFuel() {
-  const food = ensureFood();
+  const food = peekFoodFor(todayISO());
   if (food.rice == null) food.rice = false;
   const lastW = state.bodyweights[0];
   const isWed = new Date().getDay() === 3;
   const win = fuelWindowMeta();
-  const m = ensureMacros();
+  const m = peekMacros();
   let html = statusbar();
   html += tabHeroHtml("nutrition", "Nutrition", "Fuel window", "2–8 PM · comida criolla in one tap");
 
@@ -6985,7 +7002,7 @@ function screenCalDay() {
   const future = isFutureISO(iso);
   const past = iso < todayISO();
   const sessions = sessionsForISO(iso);
-  const food = future ? (foodForISO(iso) || {date: iso, work: false, home: false, after: false, rice: false}) : ensureFoodFor(iso);
+  const food = future ? (foodForISO(iso) || {date: iso, work: false, home: false, after: false, rice: false}) : peekFoodFor(iso);
   const walk = walkForDate(iso);
   const bw = bodyweightForISO(iso);
   const note = (state.dayNotes && state.dayNotes[iso]) || "";
