@@ -17,17 +17,19 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>4.3</string>
+	<string>4.76</string>
 	<key>CFBundleVersion</key>
-	<string>43</string>
+	<string>476</string>
+	<key>CFBundleURLTypes</key>
+	<array><dict><key>CFBundleURLSchemes</key><array><string>pftrack</string></array></dict></array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSHealthShareUsageDescription</key>
-	<string>PF//TRACK reads heart rate, HRV, sleep, steps, energy, and weight from Apple Health to show recovery cues on device. Data stays on your phone — nothing is uploaded.</string>
+	<string>PF//TRACK reads workouts, sleep, weight, water and active energy (plus heart rate and steps for recovery cues) from Apple Health. Everything stays on your iPhone.</string>
 	<key>NSHealthUpdateUsageDescription</key>
-	<string>PF//TRACK can write scale weight (and optional workouts) you log in the app into Apple Health when you turn that on. Nothing is shared off-device.</string>
-	<key>UILaunchStoryboardName</key>
-	<string>LaunchScreen</string>
+	<string>Only if you turn it on in More: PF//TRACK saves the workouts, sleep, weight, water and energy you log into Apple Health. Nothing leaves your iPhone.</string>
+	<key>UILaunchScreen</key>
+	<dict/>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
 		<string>armv7</string>

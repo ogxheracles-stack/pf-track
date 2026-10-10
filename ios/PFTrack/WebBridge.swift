@@ -3,7 +3,7 @@ import WebKit
 
 /// WKScriptMessageHandler for the `pfHealth` channel.
 /// JS → native: `{ action, id, payload? }`
-/// Actions: `health.requestAuth` | `health.getSummary` | `health.writeWeight`
+/// Actions: health.requestAuth | health.getSummary | health.writeWeight | writeWater | writeEnergy | writeSleep | writeWorkout
 /// Native → JS: `window.__pfHealthReply(id, result)`
 final class WebBridge: NSObject, WKScriptMessageHandler {
     weak var webView: WKWebView?
@@ -59,9 +59,10 @@ final class WebBridge: NSObject, WKScriptMessageHandler {
             post: post,
             requestAuth: function() { return post('health.requestAuth', {}); },
             getSummary: function() { return post('health.getSummary', {}); },
-            writeWeight: function(lb, iso) {
-              return post('health.writeWeight', { lb: lb, date: iso || null });
-            }
+            writeWeight: function(lb, iso) { return post('health.writeWeight', { lb: lb, date: iso || null, optIn: true }); },
+            writeWater: function(oz, iso) { return post('health.writeWater', { oz: oz, date: iso || null, optIn: true }); },
+            writeSleep: function(bed, wake) { return post('health.writeSleep', { bed: bed, wake: wake, optIn: true }); },
+            writeWorkout: function(start, end, kcal) { return post('health.writeWorkout', { start: start, end: end, kcal: kcal || null, optIn: true }); }
           };
         })();
         """
@@ -69,54 +70,60 @@ final class WebBridge: NSObject, WKScriptMessageHandler {
 
     func userContentController(_ userContentController: WKUserContentController,
                                didReceive message: WKScriptMessage) {
-        guard message.name == Self.handlerName else { return }
-        guard let body = message.body as? [String: Any] else { return }
+        guard message.name == Self.handlerName,
+              let body = message.body as? [String: Any] else { return }
         let action = (body["action"] as? String) ?? ""
         let id = (body["id"] as? String) ?? ""
-        let payload = body["payload"] as? [String: Any] ?? [:]
+        let p = body["payload"] as? [String: Any] ?? [:]
+        Task { @MainActor in
+            do {
+                let result = try await self.handle(action, p)
+                self.reply(id: id, result)
+            } catch {
+                self.reply(id: id, ["ok": false, "error": error.localizedDescription])
+            }
+        }
+    }
 
+    /// Writes need `optIn: true` from the page (More toggle). Reads need nothing beyond HealthKit auth.
+    private func handle(_ action: String, _ p: [String: Any]) async throws -> [String: Any] {
+        let isWrite = action.hasPrefix("health.write")
+        if isWrite && (p["optIn"] as? Bool) != true { throw HealthBridge.BridgeError.notOptedIn }
         switch action {
         case "health.requestAuth":
-            health.requestAuthorization { ok, err in
-                var r: [String: Any] = ["ok": ok]
-                if let err = err { r["error"] = err }
-                self.reply(id: id, r)
-            }
-
+            try await health.requestAuthorization(); return ["ok": true]
         case "health.getSummary":
-            health.fetchSummary { summary in
-                self.reply(id: id, summary)
-            }
-
+            return await health.summary()
         case "health.writeWeight":
-            let lb: Double? = {
-                if let d = payload["lb"] as? Double { return d }
-                if let n = payload["lb"] as? NSNumber { return n.doubleValue }
-                if let s = payload["lb"] as? String { return Double(s) }
-                return nil
-            }()
-            guard let lb = lb, lb > 40, lb < 700 else {
-                self.reply(id: id, ["ok": false, "error": "invalid weight"])
-                return
-            }
-            var date = Date()
-            if let iso = payload["date"] as? String, !iso.isEmpty {
-                let f = DateFormatter()
-                f.calendar = Calendar(identifier: .gregorian)
-                f.locale = Locale(identifier: "en_US_POSIX")
-                f.timeZone = TimeZone.current
-                f.dateFormat = "yyyy-MM-dd"
-                if let d = f.date(from: iso) { date = d }
-            }
-            health.writeWeight(lb: lb, date: date) { ok, err in
-                var r: [String: Any] = ["ok": ok]
-                if let err = err { r["error"] = err }
-                self.reply(id: id, r)
-            }
-
+            try await health.writeBodyMass(lb: Self.num(p["lb"]) ?? 0, date: Self.day(p["date"]) ?? .now)
+        case "health.writeWater":
+            try await health.writeWater(oz: Self.num(p["oz"]) ?? 0, date: Self.day(p["date"]) ?? .now)
+        case "health.writeEnergy":
+            try await health.writeEnergy(kcal: Self.num(p["kcal"]) ?? 0, start: Self.ms(p["start"]) ?? .now, end: Self.ms(p["end"]) ?? .now)
+        case "health.writeSleep":
+            guard let bed = Self.ms(p["bed"]), let wake = Self.ms(p["wake"]) else { throw HealthBridge.BridgeError.invalid("sleep") }
+            try await health.writeSleep(bed: bed, wake: wake)
+        case "health.writeWorkout":
+            guard let s = Self.ms(p["start"]), let e = Self.ms(p["end"]) else { throw HealthBridge.BridgeError.invalid("workout") }
+            try await health.writeWorkout(start: s, end: e, kcal: Self.num(p["kcal"]))
         default:
-            reply(id: id, ["ok": false, "error": "unknown action"])
+            return ["ok": false, "error": "unknown action"]
         }
+        return ["ok": true]
+    }
+
+    private static func num(_ v: Any?) -> Double? {
+        if let n = v as? NSNumber { return n.doubleValue }
+        if let s = v as? String { return Double(s) }
+        return nil
+    }
+    /// Epoch milliseconds from JS Date.now()
+    private static func ms(_ v: Any?) -> Date? { num(v).map { Date(timeIntervalSince1970: $0 / 1000) } }
+    /// "yyyy-MM-dd" local day (noon, so time zones never flip the date)
+    private static func day(_ v: Any?) -> Date? {
+        guard let s = v as? String, !s.isEmpty else { return nil }
+        let f = DateFormatter(); f.locale = Locale(identifier: "en_US_POSIX"); f.dateFormat = "yyyy-MM-dd HH:mm"
+        return f.date(from: s + " 12:00")
     }
 
     private func reply(id: String, _ result: [String: Any]) {

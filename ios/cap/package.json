@@ -1,0 +1,19 @@
+{
+  "name": "pftrack-ios-cap",
+  "private": true,
+  "version": "4.76.0",
+  "description": "Capacitor shell for PF//TRACK. Exact pins only; never @latest.",
+  "scripts": {
+    "web": "mkdir -p www && cp ../../index.html www/index.html",
+    "sync": "npm run web && npx cap sync ios",
+    "telemetry-off": "npx cap telemetry off"
+  },
+  "dependencies": {
+    "@capacitor/core": "8.5.3",
+    "@capacitor/ios": "8.5.3",
+    "capacitor-health": "8.4.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.3"
+  }
+}

@@ -5,6 +5,7 @@ import WebKit
 final class ViewController: UIViewController, WKNavigationDelegate {
     private var webView: WKWebView!
     private let bridge = WebBridge()
+    private let widgetBridge = WidgetBridge()
 
     private let remoteURL = URL(string: "https://ogxheracles-stack.github.io/pf-track/")!
 
@@ -20,6 +21,7 @@ final class ViewController: UIViewController, WKNavigationDelegate {
         )
         uc.addUserScript(script)
         uc.add(bridge, name: WebBridge.handlerName)
+        uc.add(widgetBridge, name: WidgetBridge.handlerName)
 
         let config = WKWebViewConfiguration()
         config.userContentController = uc
@@ -49,7 +51,7 @@ final class ViewController: UIViewController, WKNavigationDelegate {
     private func loadApp() {
         // Prefer live Pages build; fall back to bundled index.html for offline / airplane.
         var req = URLRequest(url: remoteURL, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 12)
-        req.setValue("PFTrack-iOS/4.3", forHTTPHeaderField: "User-Agent")
+        req.setValue("PFTrack-iOS/4.76", forHTTPHeaderField: "User-Agent")
         webView.load(req)
     }
 
@@ -79,5 +81,6 @@ final class ViewController: UIViewController, WKNavigationDelegate {
 
     deinit {
         webView?.configuration.userContentController.removeScriptMessageHandler(forName: WebBridge.handlerName)
+        webView?.configuration.userContentController.removeScriptMessageHandler(forName: WidgetBridge.handlerName)
     }
 }

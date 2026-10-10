@@ -1,0 +1,11 @@
+{
+  "appId": "com.pjperez.pftrack",
+  "appName": "PF//TRACK",
+  "webDir": "www",
+  "ios": {
+    "path": "App",
+    "contentInset": "never",
+    "limitsNavigationsToAppBoundDomains": false
+  },
+  "plugins": {}
+}
