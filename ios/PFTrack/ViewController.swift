@@ -46,6 +46,11 @@ final class ViewController: UIViewController, WKNavigationDelegate {
 
         bridge.webView = webView
         bridge.presenter = self
+        webView.addGestureRecognizer(TouchWatcher(target: nil, action: nil)) // native user-gesture check for the Health prompt
+        HealthConsent.syncWithSettings()
+        NotificationCenter.default.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { _ in
+            HealthConsent.syncWithSettings()
+        }
         loadApp()
     }
 

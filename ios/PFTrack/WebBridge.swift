@@ -64,7 +64,8 @@ final class WebBridge: NSObject, WKScriptMessageHandler {
             writeWater: function(oz, iso) { return post('health.writeWater', { oz: oz, date: iso || null }); },
             writeSleep: function(bed, wake) { return post('health.writeSleep', { bed: bed, wake: wake }); },
             writeWorkout: function(start, end, kcal) { return post('health.writeWorkout', { start: start, end: end, kcal: kcal || null }); },
-            requestWriteOptIn: function() { return post('health.requestWriteOptIn', {}); }
+            requestWriteOptIn: function() { return post('health.requestWriteOptIn', {}); },
+            revokeWrites: function() { return post('health.revokeWrites', {}); }
           };
         })();
         """
@@ -97,8 +98,13 @@ final class WebBridge: NSObject, WKScriptMessageHandler {
         switch action {
         case "health.requestAuth":
             try await health.requestRead(.recovery); return ["ok": true]
+        case "health.revokeWrites":
+            // Turning writes OFF is always allowed, from the web toggle or anywhere else.
+            HealthConsent.revoke(); return ["ok": true]
         case "health.requestWriteOptIn":
             guard let vc = presenter else { return ["ok": false, "error": "no presenter"] }
+            // The native prompt only follows a real touch in the app (UserGesture), never page load or a script on its own.
+            guard UserGesture.isRecent else { return ["ok": false, "error": "needs a tap"] }
             let allowed = await HealthConsent.askNatively(from: vc)
             if allowed { try await health.requestWriteAuthorization() }
             return ["ok": allowed]

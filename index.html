@@ -7529,6 +7529,8 @@ function bind() {
     render();
     /* v4.79: turning it on asks the native app, which shows its own Allow prompt; the web flag alone writes nothing */
     if (state.healthWriteWeight && window.PFHealth && typeof window.PFHealth.requestWriteOptIn === "function") window.PFHealth.requestWriteOptIn().catch(function() {});
+    /* v4.81: turning it off also turns native writes off (revoking is always allowed) */
+    if (!state.healthWriteWeight && window.PFHealth && typeof window.PFHealth.revokeWrites === "function") window.PFHealth.revokeWrites().catch(function() {});
   };
   if ($("copyPFTRACK")) $("copyPFTRACK").onclick = function() {
     const last = state.sessions[0];
